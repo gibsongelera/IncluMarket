@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Orders &mdash; InkluMarket Seller</title>
+  <link rel="stylesheet" href="../assets/css/tokens.css" />
+  <link rel="stylesheet" href="../assets/css/base.css" />
+  <link rel="stylesheet" href="../assets/css/components.css" />
+  <link rel="stylesheet" href="../assets/css/layout.css" />
+  <link rel="stylesheet" href="../assets/css/shopee.css" />
+</head>
+<body class="page page--seller">
+  <a class="skip-link" href="#main">Skip to main content</a>
+
+  <header class="site-header site-header--seller" role="banner">
+    <div class="container header-row">
+      <a class="brand" href="dashboard.html"><span class="brand-mark" aria-hidden="true">IM</span><span class="brand-word">InkluMarket <small>Seller</small></span></a>
+      <nav class="header-nav" aria-label="Primary">
+        <a class="nav-link" href="dashboard.html">Dashboard</a>
+        <a class="nav-link" href="products.html">Products</a>
+        <a class="nav-link nav-link--active" href="orders.html">Orders</a>
+        <a class="nav-link" href="reviews.html">Reviews</a>
+        <button type="button" class="btn btn--ghost" data-action="toggle-contrast" aria-pressed="false">Contrast</button>
+        <button type="button" class="btn btn--ghost" data-action="logout">Sign out</button>
+      </nav>
+    </div>
+    <div class="user-strip" id="user-strip" aria-live="polite"></div>
+  </header>
+
+  <main id="main" class="container main--seller">
+    <h1>Order fulfillment</h1>
+    <div class="tabs" role="tablist" id="order-tabs" aria-label="Order status">
+      <button role="tab" class="tab tab--active" data-status="all" aria-selected="true">All</button>
+      <button role="tab" class="tab" data-status="pending" aria-selected="false">Pending</button>
+      <button role="tab" class="tab" data-status="processing" aria-selected="false">Processing</button>
+      <button role="tab" class="tab" data-status="shipped" aria-selected="false">Shipped</button>
+      <button role="tab" class="tab" data-status="delivered" aria-selected="false">Delivered</button>
+      <button role="tab" class="tab" data-status="returned" aria-selected="false">Returned</button>
+    </div>
+    <div class="table-wrap">
+      <table class="data-table" aria-label="Seller orders">
+        <thead>
+          <tr>
+            <th>Order</th>
+            <th>Buyer</th>
+            <th>Items</th>
+            <th>Total</th>
+            <th>Status</th>
+            <th>Advance</th>
+          </tr>
+        </thead>
+        <tbody id="order-rows"></tbody>
+      </table>
+    </div>
+    <p id="orders-empty" class="empty" hidden>No orders in this status.</p>
+  </main>
+
+  <footer class="site-footer" role="contentinfo">
+    <div class="container footer-row"><p>&copy; 2026 InkluMarket Demo</p></div>
+  </footer>
+  <div id="toast-region" class="toast-region" role="status" aria-live="polite"></div>
+
+  <script src="../assets/js/seed.js"></script>
+  <script src="../assets/js/store.js"></script>
+  <script src="../assets/js/ui.js"></script>
+  <script src="../assets/js/auth.js"></script>
+  <script src="../assets/js/page.seller-orders.js"></script>
+</body>
+</html>

@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Compliance Monitor &mdash; InkluMarket Admin</title>
+  <link rel="stylesheet" href="../assets/css/tokens.css" />
+  <link rel="stylesheet" href="../assets/css/base.css" />
+  <link rel="stylesheet" href="../assets/css/components.css" />
+  <link rel="stylesheet" href="../assets/css/layout.css" />
+  <link rel="stylesheet" href="../assets/css/shopee.css" />
+</head>
+<body class="page page--admin">
+  <a class="skip-link" href="#main">Skip to main content</a>
+
+  <header class="site-header site-header--admin" role="banner">
+    <div class="container header-row">
+      <a class="brand" href="users.html"><span class="brand-mark" aria-hidden="true">IM</span><span class="brand-word">InkluMarket <small>Admin</small></span></a>
+      <nav class="header-nav" aria-label="Primary">
+        <a class="nav-link" href="users.html">Users</a>
+        <a class="nav-link" href="products.html">Products</a>
+        <a class="nav-link" href="tickets.html">Tickets</a>
+        <a class="nav-link nav-link--active" href="compliance.html">Compliance</a>
+        <button type="button" class="btn btn--ghost" data-action="toggle-contrast" aria-pressed="false">Contrast</button>
+        <button type="button" class="btn btn--ghost" data-action="logout">Sign out</button>
+      </nav>
+    </div>
+    <div class="user-strip" id="user-strip" aria-live="polite"></div>
+  </header>
+
+  <main id="main" class="container main--admin">
+    <h1>Ecosystem compliance monitor</h1>
+    <p class="muted">RA 10173 (Data Privacy Act) alignment and audit trail visibility.</p>
+
+    <section class="kpis" aria-label="Compliance metrics">
+      <article class="kpi"><span class="kpi__label">Users with logged consent</span><strong class="kpi__value" id="cp-consent">0</strong></article>
+      <article class="kpi"><span class="kpi__label">PII fields masked in public views</span><strong class="kpi__value" id="cp-masked">0</strong></article>
+      <article class="kpi"><span class="kpi__label">Password storage (simulated)</span><strong class="kpi__value">bcrypt cost 12</strong></article>
+      <article class="kpi"><span class="kpi__label">Transport (simulated)</span><strong class="kpi__value">TLS 1.2+</strong></article>
+    </section>
+
+    <section class="chart-grid">
+      <article class="chart-card">
+        <h2>Daily activity (last 14 days)</h2>
+        <canvas id="chart-activity" width="600" height="240" aria-label="Daily activity chart" role="img"></canvas>
+      </article>
+      <article class="chart-card">
+        <h2>Orders by status</h2>
+        <canvas id="chart-orderstatus" width="600" height="240" aria-label="Orders by status chart" role="img"></canvas>
+      </article>
+    </section>
+
+    <section>
+      <h2>Audit trail (recent events)</h2>
+      <div class="table-wrap">
+        <table class="data-table" aria-label="Audit trail">
+          <thead>
+            <tr>
+              <th>Timestamp</th>
+              <th>Actor</th>
+              <th>Action</th>
+              <th>Target</th>
+            </tr>
+          </thead>
+          <tbody id="audit-rows"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="note">
+      <h2>Security disclaimer</h2>
+      <p>
+        This is a static demo. Passwords are stored as plaintext-marked placeholders labeled
+        "bcrypt-cost-12" only for illustration. AES-256-at-rest and TLS 1.2+ are conceptual
+        indicators; no real cryptography or network security is performed by this build.
+      </p>
+    </section>
+  </main>
+
+  <footer class="site-footer" role="contentinfo">
+    <div class="container footer-row"><p>&copy; 2026 InkluMarket Demo</p></div>
+  </footer>
+  <div id="toast-region" class="toast-region" role="status" aria-live="polite"></div>
+
+  <script src="../assets/js/seed.js"></script>
+  <script src="../assets/js/store.js"></script>
+  <script src="../assets/js/ui.js"></script>
+  <script src="../assets/js/auth.js"></script>
+  <script src="../assets/js/charts.js"></script>
+  <script src="../assets/js/page.admin-compliance.js"></script>
+</body>
+</html>

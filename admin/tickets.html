@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Support Tickets &mdash; InkluMarket Admin</title>
+  <link rel="stylesheet" href="../assets/css/tokens.css" />
+  <link rel="stylesheet" href="../assets/css/base.css" />
+  <link rel="stylesheet" href="../assets/css/components.css" />
+  <link rel="stylesheet" href="../assets/css/layout.css" />
+  <link rel="stylesheet" href="../assets/css/shopee.css" />
+</head>
+<body class="page page--admin">
+  <a class="skip-link" href="#main">Skip to main content</a>
+
+  <header class="site-header site-header--admin" role="banner">
+    <div class="container header-row">
+      <a class="brand" href="users.html"><span class="brand-mark" aria-hidden="true">IM</span><span class="brand-word">InkluMarket <small>Admin</small></span></a>
+      <nav class="header-nav" aria-label="Primary">
+        <a class="nav-link" href="users.html">Users</a>
+        <a class="nav-link" href="products.html">Products</a>
+        <a class="nav-link nav-link--active" href="tickets.html">Tickets</a>
+        <a class="nav-link" href="compliance.html">Compliance</a>
+        <button type="button" class="btn btn--ghost" data-action="toggle-contrast" aria-pressed="false">Contrast</button>
+        <button type="button" class="btn btn--ghost" data-action="logout">Sign out</button>
+      </nav>
+    </div>
+    <div class="user-strip" id="user-strip" aria-live="polite"></div>
+  </header>
+
+  <main id="main" class="container main--admin">
+    <h1>Support ticket resolution</h1>
+
+    <div class="tabs" role="tablist" id="tk-tabs" aria-label="Ticket status">
+      <button role="tab" class="tab tab--active" data-status="open" aria-selected="true">Open</button>
+      <button role="tab" class="tab" data-status="in_progress" aria-selected="false">In progress</button>
+      <button role="tab" class="tab" data-status="resolved" aria-selected="false">Resolved</button>
+      <button role="tab" class="tab" data-status="all" aria-selected="false">All</button>
+    </div>
+
+    <div class="ticket-workspace">
+      <div class="ticket-list" id="ticket-list" role="list"></div>
+      <section class="ticket-detail" id="ticket-detail" aria-live="polite">
+        <p class="muted">Select a ticket to view details.</p>
+      </section>
+    </div>
+  </main>
+
+  <footer class="site-footer" role="contentinfo">
+    <div class="container footer-row"><p>&copy; 2026 InkluMarket Demo</p></div>
+  </footer>
+  <div id="toast-region" class="toast-region" role="status" aria-live="polite"></div>
+
+  <script src="../assets/js/seed.js"></script>
+  <script src="../assets/js/store.js"></script>
+  <script src="../assets/js/ui.js"></script>
+  <script src="../assets/js/auth.js"></script>
+  <script src="../assets/js/page.admin-tickets.js"></script>
+</body>
+</html>
