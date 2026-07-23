@@ -15,12 +15,13 @@
   var HASH = 'bcrypt-cost-12$demo$placeholder-not-real';
 
   var CATEGORIES = [
-    { id: 'handicraft', label: 'Handicrafts' },
-    { id: 'food',       label: 'Food & Beverage' },
-    { id: 'textile',    label: 'Textiles & Weaving' },
-    { id: 'wellness',   label: 'Wellness & Personal Care' },
-    { id: 'digital',    label: 'Digital Services' },
-    { id: 'accessory',  label: 'Accessories' }
+    { id: 'bags',        label: 'Bags',        folder: 'Bags' },
+    { id: 'apparel',     label: 'Apparel',     folder: 'Apparel' },
+    { id: 'crafts',      label: 'Crafts',      folder: 'Crafts' },
+    { id: 'food',        label: 'Food',        folder: 'Food' },
+    { id: 'accessories', label: 'Accessories', folder: 'Accessories' },
+    { id: 'wellness',    label: 'Wellness',    folder: 'Wellness' },
+    { id: 'services',    label: 'Services',    folder: 'Services' }
   ];
 
   var users = [
@@ -76,26 +77,26 @@
   /* Products with an added 'category', 'image' (emoji), and 'status'
      (pending/approved/flagged) to power the admin verification queue. */
   var products = [
-    { id: 101, seller_id: 2, title: 'Handwoven Abaca Tote Bag',        description: 'Locally woven abaca tote with reinforced handles. Fair-trade sourced from Zamboanga weavers.', base_price: 850,  category: 'handicraft', image: '👜', status: 'approved', created_at: iso(-100), updated_at: iso(-10) },
-    { id: 102, seller_id: 2, title: 'Coconut Shell Coasters (Set of 4)', description: 'Polished coconut shell coasters, hand-sanded for a smooth finish.', base_price: 320, category: 'handicraft', image: '🥥', status: 'approved', created_at: iso(-95), updated_at: iso(-8) },
-    { id: 103, seller_id: 3, title: 'Malong Pillow Cover',              description: 'Traditional Mindanaoan malong pattern printed on soft cotton pillow cover.', base_price: 480,  category: 'textile', image: '🛏️', status: 'approved', created_at: iso(-92), updated_at: iso(-9) },
-    { id: 104, seller_id: 3, title: 'Yakan-Inspired Table Runner',     description: 'Vibrant Yakan-inspired weave, 180 cm table runner.', base_price: 1250, category: 'textile', image: '🧵', status: 'approved', created_at: iso(-85), updated_at: iso(-6) },
+    { id: 101, seller_id: 2, title: 'Handwoven Abaca Tote Bag',        description: 'Locally woven abaca tote with reinforced handles. Fair-trade sourced from Zamboanga weavers.', base_price: 850,  category: 'bags', image: '👜', status: 'approved', created_at: iso(-100), updated_at: iso(-10) },
+    { id: 102, seller_id: 2, title: 'Coconut Shell Coasters (Set of 4)', description: 'Polished coconut shell coasters, hand-sanded for a smooth finish.', base_price: 320, category: 'crafts', image: '🥥', status: 'approved', created_at: iso(-95), updated_at: iso(-8) },
+    { id: 103, seller_id: 3, title: 'Malong Pillow Cover',              description: 'Traditional Mindanaoan malong pattern printed on soft cotton pillow cover.', base_price: 480,  category: 'apparel', image: '🛏️', status: 'approved', created_at: iso(-92), updated_at: iso(-9) },
+    { id: 104, seller_id: 3, title: 'Yakan-Inspired Table Runner',     description: 'Vibrant Yakan-inspired weave, 180 cm table runner.', base_price: 1250, category: 'crafts', image: '🧵', status: 'approved', created_at: iso(-85), updated_at: iso(-6) },
     { id: 105, seller_id: 4, title: 'Homemade Suman (12 pcs)',         description: 'Fresh homemade suman wrapped in banana leaves. Best consumed within 3 days.', base_price: 180, category: 'food', image: '🍡', status: 'approved', created_at: iso(-80), updated_at: iso(-4) },
     { id: 106, seller_id: 4, title: 'Coco Sugar (500g)',                description: 'Low-glycemic coconut sugar, sun-dried and unrefined.', base_price: 220, category: 'food', image: '🍬', status: 'approved', created_at: iso(-75), updated_at: iso(-3) },
     { id: 107, seller_id: 5, title: 'Hand-poured Soy Candle',           description: 'Soy wax candle with locally sourced essential oils. Approx. 40-hour burn time.', base_price: 350, category: 'wellness', image: '🕯️', status: 'approved', created_at: iso(-70), updated_at: iso(-3) },
     { id: 108, seller_id: 5, title: 'Herbal Bath Soap Bar',             description: 'Cold-processed soap with lemongrass and coconut oil.', base_price: 120, category: 'wellness', image: '🧼', status: 'approved', created_at: iso(-65), updated_at: iso(-2) },
-    { id: 109, seller_id: 6, title: 'Beaded Statement Earrings',        description: 'Hand-beaded earrings, lightweight surgical-steel hooks.', base_price: 260, category: 'accessory', image: '💎', status: 'approved', created_at: iso(-60), updated_at: iso(-2) },
-    { id: 110, seller_id: 6, title: 'Recycled Denim Wallet',            description: 'Sturdy wallet made from upcycled denim with 8 card slots.', base_price: 420, category: 'accessory', image: '👛', status: 'approved', created_at: iso(-55), updated_at: iso(-2) },
-    { id: 111, seller_id: 7, title: 'Freelance Voice-Over (Filipino)',  description: 'Filipino voice-over service, 60-second script. Delivered in 3 days.', base_price: 900, category: 'digital', image: '🎙️', status: 'approved', created_at: iso(-50), updated_at: iso(-1) },
-    { id: 112, seller_id: 7, title: 'Custom Illustration (Portrait)',   description: 'Digital portrait illustration in your chosen style. 1 revision included.', base_price: 1500, category: 'digital', image: '🎨', status: 'approved', created_at: iso(-48), updated_at: iso(-1) },
-    { id: 113, seller_id: 2, title: 'Piña Fabric Scarf',                description: 'Delicate piña fabric scarf, hand-hemmed edges.', base_price: 780, category: 'textile', image: '🧣', status: 'approved', created_at: iso(-45), updated_at: iso(-1) },
-    { id: 114, seller_id: 3, title: 'Bamboo Cutlery Set',                description: 'Reusable bamboo utensil set with cotton pouch.', base_price: 300, category: 'handicraft', image: '🥢', status: 'approved', created_at: iso(-40), updated_at: iso(-1) },
+    { id: 109, seller_id: 6, title: 'Beaded Statement Earrings',        description: 'Hand-beaded earrings, lightweight surgical-steel hooks.', base_price: 260, category: 'accessories', image: '💎', status: 'approved', created_at: iso(-60), updated_at: iso(-2) },
+    { id: 110, seller_id: 6, title: 'Recycled Denim Wallet',            description: 'Sturdy wallet made from upcycled denim with 8 card slots.', base_price: 420, category: 'accessories', image: '👛', status: 'approved', created_at: iso(-55), updated_at: iso(-2) },
+    { id: 111, seller_id: 7, title: 'Freelance Voice-Over (Filipino)',  description: 'Filipino voice-over service, 60-second script. Delivered in 3 days.', base_price: 900, category: 'services', image: '🎙️', status: 'approved', created_at: iso(-50), updated_at: iso(-1) },
+    { id: 112, seller_id: 7, title: 'Custom Illustration (Portrait)',   description: 'Digital portrait illustration in your chosen style. 1 revision included.', base_price: 1500, category: 'services', image: '🎨', status: 'approved', created_at: iso(-48), updated_at: iso(-1) },
+    { id: 113, seller_id: 2, title: 'Piña Fabric Scarf',                description: 'Delicate piña fabric scarf, hand-hemmed edges.', base_price: 780, category: 'apparel', image: '🧣', status: 'approved', created_at: iso(-45), updated_at: iso(-1) },
+    { id: 114, seller_id: 3, title: 'Bamboo Cutlery Set',                description: 'Reusable bamboo utensil set with cotton pouch.', base_price: 300, category: 'crafts', image: '🥢', status: 'approved', created_at: iso(-40), updated_at: iso(-1) },
     { id: 115, seller_id: 4, title: 'Dried Mango Slices (200g)',        description: 'Chewy dried mango slices, no added sugar.', base_price: 180, category: 'food', image: '🥭', status: 'approved', created_at: iso(-38), updated_at: iso(-1) },
     { id: 116, seller_id: 5, title: 'Reed Diffuser Set',                description: 'Reed diffuser with a 100 ml essential oil blend.', base_price: 550, category: 'wellness', image: '🌿', status: 'approved', created_at: iso(-35), updated_at: iso(-1) },
-    { id: 117, seller_id: 6, title: 'Woven Rattan Fan',                 description: 'Classic hand-woven rattan fan, lightweight.', base_price: 190, category: 'accessory', image: '🪭', status: 'approved', created_at: iso(-33), updated_at: iso(-1) },
-    { id: 118, seller_id: 7, title: 'Logo Design Service',              description: '2 initial concepts, 2 revisions, final vector files.', base_price: 2500, category: 'digital', image: '✒️', status: 'approved', created_at: iso(-30), updated_at: iso(-1) },
+    { id: 117, seller_id: 6, title: 'Woven Rattan Fan',                 description: 'Classic hand-woven rattan fan, lightweight.', base_price: 190, category: 'accessories', image: '🪭', status: 'approved', created_at: iso(-33), updated_at: iso(-1) },
+    { id: 118, seller_id: 7, title: 'Logo Design Service',              description: '2 initial concepts, 2 revisions, final vector files.', base_price: 2500, category: 'services', image: '✒️', status: 'approved', created_at: iso(-30), updated_at: iso(-1) },
     /* Pending / flagged so the admin queue is populated */
-    { id: 119, seller_id: 6, title: 'Beaded Bracelet (New Collection)', description: 'Newly listed bracelet awaiting compliance review.', base_price: 240, category: 'accessory', image: '📿', status: 'pending',  created_at: iso(-2),  updated_at: iso(-2) },
+    { id: 119, seller_id: 6, title: 'Beaded Bracelet (New Collection)', description: 'Newly listed bracelet awaiting compliance review.', base_price: 240, category: 'accessories', image: '📿', status: 'pending',  created_at: iso(-2),  updated_at: iso(-2) },
     { id: 120, seller_id: 5, title: 'Aromatherapy Roll-On',             description: 'Lavender roll-on, 10 ml. Awaiting label review.', base_price: 190, category: 'wellness',  image: '🧴', status: 'pending',  created_at: iso(-1),  updated_at: iso(-1) },
     { id: 121, seller_id: 4, title: 'Frozen Ube Halaya (500g)',         description: 'Fresh ube halaya. Flagged due to a cold-chain policy check.', base_price: 380, category: 'food',       image: '🍮', status: 'flagged',  created_at: iso(-4),  updated_at: iso(-3) }
   ];
@@ -276,7 +277,7 @@
 
   /* Categories are metadata (not from the DDL), exposed as a helper collection. */
   global.INKLU_SEED = {
-    _version: 2,
+    _version: 3,
     categories: CATEGORIES,
     users: users,
     products: products,

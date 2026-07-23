@@ -196,6 +196,9 @@
   function setUiPref(patch) {
     var cur = getUiPref();
     var next = Object.assign({}, cur, patch);
+    Object.keys(next).forEach(function (k) {
+      if (next[k] === null || next[k] === undefined) delete next[k];
+    });
     localStorage.setItem(UI_KEY, JSON.stringify(next));
   }
 

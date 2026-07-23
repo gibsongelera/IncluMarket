@@ -1,13 +1,13 @@
-/* Site header */
+/* Site header — themed via --color-nav (admin Theme customizer) */
 .site-header {
-  background: var(--brand-blue);
-  color: #FFFFFF;
+  background: var(--color-nav);
+  color: var(--color-nav-text);
   box-shadow: var(--shadow-sm);
 }
-.site-header a { color: #FFFFFF; text-decoration: none; }
-.site-header--seller { background: var(--brand-blue-800); }
-.site-header--admin  { background: var(--text-charcoal); }
-.site-header--landing { background: var(--brand-blue); }
+.site-header a { color: var(--color-nav-text); text-decoration: none; }
+.site-header--seller { background: var(--color-nav); }
+.site-header--admin  { background: var(--color-nav); }
+.site-header--landing { background: var(--color-nav); }
 
 .header-row {
   display: flex;
@@ -29,7 +29,7 @@
   align-items: center;
   justify-content: center;
   width: 32px; height: 32px;
-  background: var(--brand-yellow); color: var(--text-charcoal); /* Guardrail 1 */
+  background: var(--palette-primary); color: var(--text-charcoal); /* Guardrail 1: dark text on orange */
   border-radius: var(--radius-sm);
   font-weight: 900;
   font-size: .95rem;
@@ -46,7 +46,7 @@
 .nav-link {
   padding: .45rem .75rem;
   border-radius: var(--radius-sm);
-  color: #FFFFFF;
+  color: var(--color-nav-text);
 }
 .nav-link:hover { background: rgba(255,255,255,.12); text-decoration: none; }
 .nav-link--active { background: rgba(255,255,255,.18); }
@@ -65,32 +65,33 @@
 
 /* Header ghost buttons on colored bg need visible border */
 .site-header .btn--ghost {
-  color: #FFFFFF;
-  border-color: rgba(255,255,255,.5);
+  color: var(--color-nav-text);
+  border-color: color-mix(in srgb, var(--color-nav-text) 50%, transparent);
   background: transparent;
 }
-.site-header .btn--ghost:hover { background: rgba(255,255,255,.14); }
+.site-header .btn--ghost:hover { background: color-mix(in srgb, var(--color-nav-text) 14%, transparent); }
 
 /* Session strip */
 .user-strip {
-  background: var(--brand-blue-800);
-  color: #FFFFFF;
+  background: color-mix(in srgb, var(--color-nav) 82%, #000);
+  color: var(--color-nav-text);
   font-size: .85rem;
   padding: .35rem 1rem;
 }
-.site-header--seller .user-strip { background: var(--brand-blue); }
-.site-header--admin  .user-strip { background: var(--brand-red); color: var(--text-charcoal); } /* Guardrail 1 */
+.site-header--seller .user-strip { background: color-mix(in srgb, var(--color-nav) 88%, var(--palette-primary)); }
+.site-header--admin  .user-strip { background: var(--palette-primary-dark); color: #FFFFFF; }
 
 .user-strip .container { display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; }
 
-/* Footer */
+/* Footer — themed via --color-footer */
 .site-footer {
-  background: var(--surface-gray);
-  color: var(--text-muted);
-  border-top: 1px solid var(--border);
+  background: var(--color-footer);
+  color: var(--color-footer-text);
+  border-top: 1px solid color-mix(in srgb, var(--color-footer-text) 18%, transparent);
   margin-top: 3rem;
 }
 .footer-row { padding: 1rem; text-align: center; }
+.site-footer a { color: var(--color-footer-text); }
 
 /* Landing page */
 .main--landing { display: grid; gap: 2rem; padding-top: 2rem; padding-bottom: 2rem; }

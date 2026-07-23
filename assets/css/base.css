@@ -7,7 +7,7 @@ html { color-scheme: light; }
 body {
   font-family: var(--font-body);
   color: var(--text-charcoal);
-  background: var(--canvas-white);
+  background: var(--color-body);
   font-size: var(--step-0);
   line-height: 1.5;
   min-height: 100vh;

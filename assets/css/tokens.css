@@ -1,19 +1,32 @@
 /* InkluMarket Design Tokens
-   Source: DSWD Visual Identity (MC 01, S. 2024)
+   Default brand: complementary orange / burgundy / olive / forest palette.
    Guardrails:
-     1) Never use white typography on Yellow (#FEF200) or Red (#EE1C25) surfaces.
-        Use --text-charcoal instead. Enforced by component classes below.
-     2) White typography is only permitted inside .btn--primary (Blue) or .btn--danger (Red).
+     1) Prefer dark text on light / orange / olive highlight surfaces.
+     2) White typography is reserved for dark burgundy / forest surfaces
+        (.btn--primary, .btn--danger, nav on --color-nav, success chips).
 */
 :root {
-  --brand-blue: #2E3192;
-  --brand-blue-800: #23256F;
-  --brand-blue-100: #E7E8F4;
-  --brand-red: #EE1C25;
-  --brand-red-800: #B7141B;
-  --brand-red-100: #FDE3E5;
-  --brand-yellow: #FEF200;
-  --brand-yellow-800: #C5BC00;
+  /* Core complementary palette */
+  --palette-primary: #D46E00;
+  --palette-primary-dark: #C55501;
+  --palette-deep: #711402;
+  --palette-olive: #695A07;
+  --palette-forest: #136533;
+
+  --palette-primary-100: #FCE8D4;
+  --palette-deep-100: #F3E4E0;
+  --palette-olive-100: #F0ECD4;
+  --palette-forest-100: #D8EDE3;
+
+  /* Compat aliases used across components (map to complementary set) */
+  --brand-blue: var(--palette-primary-dark);
+  --brand-blue-800: var(--palette-deep);
+  --brand-blue-100: var(--palette-primary-100);
+  --brand-red: var(--palette-deep);
+  --brand-red-800: #4A0D01;
+  --brand-red-100: var(--palette-deep-100);
+  --brand-yellow: #F0C36A;
+  --brand-yellow-800: var(--palette-olive);
 
   --text-charcoal: #212529;
   --text-muted: #5A6169;
@@ -22,14 +35,21 @@
   --surface-gray: #F8F9FA;
   --surface-gray-2: #EEF0F3;
 
-  --success: #146C43;
-  --success-100: #D1E7DD;
-  --warning: #7A5B00;
-  --warning-100: #FFF3CD;
-  --danger: var(--brand-red);
-  --danger-100: var(--brand-red-100);
-  --info: var(--brand-blue);
-  --info-100: var(--brand-blue-100);
+  --success: var(--palette-forest);
+  --success-100: var(--palette-forest-100);
+  --warning: var(--palette-olive);
+  --warning-100: var(--palette-olive-100);
+  --danger: var(--palette-deep);
+  --danger-100: var(--palette-deep-100);
+  --info: var(--palette-primary-dark);
+  --info-100: var(--palette-primary-100);
+
+  /* Themeable chrome (admin customizer + event presets) */
+  --color-nav: var(--palette-deep);
+  --color-nav-text: #FFFFFF;
+  --color-body: #FFF9F3;
+  --color-footer: #2A1A12;
+  --color-footer-text: #F8F1EA;
 
   --radius-xs: 4px;
   --radius-sm: 6px;
@@ -40,7 +60,7 @@
   --shadow-md: 0 4px 12px rgba(33, 37, 41, 0.08);
   --shadow-lg: 0 12px 24px rgba(33, 37, 41, 0.12);
 
-  --focus-ring: 3px solid #FEF200;
+  --focus-ring: 3px solid var(--palette-primary);
   --focus-ring-offset: 2px;
 
   --font-body: "Nunito Sans", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -68,8 +88,15 @@
   --border: #000000;
   --surface-gray: #FFFFFF;
   --surface-gray-2: #FFFFFF;
-  --brand-blue: #1B1E7A;
-  --brand-red: #B7141B;
+  --color-body: #FFFFFF;
+  --palette-primary: #9A4E00;
+  --palette-primary-dark: #7A3D00;
+  --palette-deep: #4A0D01;
+  --palette-olive: #3D3504;
+  --palette-forest: #0A3D1F;
+  --brand-blue: var(--palette-primary-dark);
+  --brand-blue-800: var(--palette-deep);
+  --brand-red: var(--palette-deep);
   --shadow-sm: 0 0 0 1px #000;
   --shadow-md: 0 0 0 2px #000;
   --shadow-lg: 0 0 0 3px #000;

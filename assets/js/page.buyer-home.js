@@ -40,20 +40,22 @@
   });
 
   var CAT_ICONS = {
-    handicraft: '🧺', food: '🥭', textile: '🧵', wellness: '🕯️', digital: '🎨', accessory: '💎'
+    bags: '👜', apparel: '🧣', crafts: '🧺', food: '🥭',
+    accessories: '💎', wellness: '🕯️', services: '🎨'
   };
   var chipsEl = document.getElementById('category-chips');
   if (chipsEl) {
     var chipHtml = '<button type="button" class="category-chip ' + (state.category === '' ? 'is-active' : '') + '" data-cat="" aria-pressed="' + (state.category === '') + '">' +
-      '<span class="chip-emoji" aria-hidden="true">🛍️</span> All' +
+      '<span class="chip-emoji" aria-hidden="true">🛍️</span> All folders' +
       '<span class="chip-count">' + products.length + '</span>' +
     '</button>';
     categories.forEach(function (c) {
       var count = products.filter(function (p) { return p.category === c.id; }).length;
       var active = state.category === c.id;
-      chipHtml += '<button type="button" class="category-chip ' + (active ? 'is-active' : '') + '" data-cat="' + c.id + '" aria-pressed="' + active + '">' +
+      var folder = c.folder || c.label;
+      chipHtml += '<button type="button" class="category-chip ' + (active ? 'is-active' : '') + '" data-cat="' + c.id + '" aria-pressed="' + active + '" title="Open ' + ui.escapeHtml(folder) + ' folder">' +
         '<span class="chip-emoji" aria-hidden="true">' + (CAT_ICONS[c.id] || '📦') + '</span> ' +
-        ui.escapeHtml(c.label) +
+        ui.escapeHtml(folder) +
         '<span class="chip-count">' + count + '</span>' +
       '</button>';
     });
@@ -109,6 +111,11 @@
     grid.innerHTML = results.map(cardHtml).join('');
   }
 
+  function categoryLabel(id) {
+    var c = categories.filter(function (x) { return x.id === id; })[0];
+    return c ? (c.folder || c.label) : (id || 'Uncategorized');
+  }
+
   function cardHtml(p) {
     var stock = byProductStock[p.id] || 0;
     var rating = byProductRating[p.id] || 0;
@@ -123,6 +130,7 @@
           (hasPhoto ? '' : '<span class="tag--placeholder" aria-hidden="true">Illustration</span>') +
         '</div>' +
         '<div class="product-card__body">' +
+          '<span class="product-card__cat">' + ui.escapeHtml(categoryLabel(p.category)) + '</span>' +
           '<div class="product-card__title">' + ui.escapeHtml(p.title) + '</div>' +
           '<div class="product-card__price">' + ui.money(p.base_price) + '</div>' +
           '<div class="product-card__meta">' +

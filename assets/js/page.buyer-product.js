@@ -74,11 +74,15 @@
     '</div>';
   }
 
+  var catMeta = store.query('categories', function (c) { return c.id === product.category; })[0];
+  var catFolder = catMeta ? (catMeta.folder || catMeta.label) : (product.category || 'Uncategorized');
+
   function render() {
     var v = activeVariant();
     detailEl.innerHTML = '' +
       galleryHtml() +
       '<div class="pd__body">' +
+        '<span class="product-card__cat">' + ui.escapeHtml(catFolder) + '</span>' +
         '<h1 class="pd__title">' + ui.escapeHtml(product.title) + '</h1>' +
         '<p class="muted">Sold by <strong>' + ui.escapeHtml(seller ? seller.name : 'PWD Seller') + '</strong></p>' +
         '<p class="pd__price">' + ui.money(product.base_price) + '</p>' +

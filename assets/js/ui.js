@@ -179,10 +179,302 @@
     return '<svg class="icon" width="' + size + '" height="' + size + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + d + '</svg>';
   }
 
-  /* Global helpers: contrast toggle + logout wiring */
+  /* ---------- Theme / appearance (synced via localStorage UI prefs) ---------- */
+  var THEME_PRESETS = {
+    default: {
+      id: 'default',
+      label: 'Inklu default',
+      description: 'Orange · burgundy · olive · forest',
+      swatches: ['#D46E00', '#C55501', '#711402', '#695A07', '#136533'],
+      vars: {
+        '--palette-primary': '#D46E00',
+        '--palette-primary-dark': '#C55501',
+        '--palette-deep': '#711402',
+        '--palette-olive': '#695A07',
+        '--palette-forest': '#136533',
+        '--palette-primary-100': '#FCE8D4',
+        '--palette-deep-100': '#F3E4E0',
+        '--palette-olive-100': '#F0ECD4',
+        '--palette-forest-100': '#D8EDE3',
+        '--brand-yellow': '#F0C36A',
+        '--brand-yellow-800': '#695A07',
+        '--brand-red-800': '#4A0D01',
+        '--color-nav': '#711402',
+        '--color-nav-text': '#FFFFFF',
+        '--color-body': '#FFF9F3',
+        '--color-footer': '#2A1A12',
+        '--color-footer-text': '#F8F1EA'
+      }
+    },
+    womens_month: {
+      id: 'womens_month',
+      label: "Women's Month",
+      description: 'Pink-forward complementary',
+      swatches: ['#C2185B', '#AD1457', '#6A1B4D', '#8E2448', '#2E7D6F'],
+      vars: {
+        '--palette-primary': '#C2185B',
+        '--palette-primary-dark': '#AD1457',
+        '--palette-deep': '#6A1B4D',
+        '--palette-olive': '#8E2448',
+        '--palette-forest': '#2E7D6F',
+        '--palette-primary-100': '#FCE4EC',
+        '--palette-deep-100': '#F3E5F0',
+        '--palette-olive-100': '#F8E7EE',
+        '--palette-forest-100': '#DFF3EF',
+        '--brand-yellow': '#F48FB1',
+        '--brand-yellow-800': '#8E2448',
+        '--brand-red-800': '#4A0E36',
+        '--color-nav': '#6A1B4D',
+        '--color-nav-text': '#FFFFFF',
+        '--color-body': '#FFF5F8',
+        '--color-footer': '#3D102C',
+        '--color-footer-text': '#FCE4EC'
+      }
+    },
+    pride: {
+      id: 'pride',
+      label: 'Pride Month',
+      description: 'Rainbow-inspired complementary',
+      swatches: ['#E40303', '#FF8C00', '#5B2C6F', '#0047AB', '#009C49'],
+      vars: {
+        '--palette-primary': '#FF8C00',
+        '--palette-primary-dark': '#E40303',
+        '--palette-deep': '#5B2C6F',
+        '--palette-olive': '#0047AB',
+        '--palette-forest': '#009C49',
+        '--palette-primary-100': '#FFF0D9',
+        '--palette-deep-100': '#EDE4F3',
+        '--palette-olive-100': '#DCE6F5',
+        '--palette-forest-100': '#D6F3E4',
+        '--brand-yellow': '#FFD100',
+        '--brand-yellow-800': '#B8860B',
+        '--brand-red-800': '#3D1C4A',
+        '--color-nav': '#5B2C6F',
+        '--color-nav-text': '#FFFFFF',
+        '--color-body': '#FFF8F0',
+        '--color-footer': '#2A1638',
+        '--color-footer-text': '#F3E9FF'
+      }
+    },
+    independence: {
+      id: 'independence',
+      label: 'Independence Day',
+      description: 'June 12 — blue · red · gold',
+      swatches: ['#0038A8', '#CE1126', '#0A1F5C', '#FCD116', '#0B5C3B'],
+      vars: {
+        '--palette-primary': '#CE1126',
+        '--palette-primary-dark': '#A50E1E',
+        '--palette-deep': '#0038A8',
+        '--palette-olive': '#B8860B',
+        '--palette-forest': '#0B5C3B',
+        '--palette-primary-100': '#FDE3E6',
+        '--palette-deep-100': '#DCE6F7',
+        '--palette-olive-100': '#FFF6D6',
+        '--palette-forest-100': '#D8EFE4',
+        '--brand-yellow': '#FCD116',
+        '--brand-yellow-800': '#B8860B',
+        '--brand-red-800': '#7A0A16',
+        '--color-nav': '#0038A8',
+        '--color-nav-text': '#FFFFFF',
+        '--color-body': '#F5F8FF',
+        '--color-footer': '#0A1F5C',
+        '--color-footer-text': '#FCD116'
+      }
+    },
+    christmas: {
+      id: 'christmas',
+      label: 'Christmas',
+      description: 'Evergreen · berry · gold',
+      swatches: ['#C41E3A', '#8B0000', '#0B3D2E', '#B8860B', '#145A32'],
+      vars: {
+        '--palette-primary': '#C41E3A',
+        '--palette-primary-dark': '#8B0000',
+        '--palette-deep': '#0B3D2E',
+        '--palette-olive': '#B8860B',
+        '--palette-forest': '#145A32',
+        '--palette-primary-100': '#FDE6EA',
+        '--palette-deep-100': '#D9EBE3',
+        '--palette-olive-100': '#FFF4D6',
+        '--palette-forest-100': '#D8EFDF',
+        '--brand-yellow': '#F0D060',
+        '--brand-yellow-800': '#B8860B',
+        '--brand-red-800': '#5C0000',
+        '--color-nav': '#0B3D2E',
+        '--color-nav-text': '#FFFFFF',
+        '--color-body': '#F7FBF8',
+        '--color-footer': '#06261C',
+        '--color-footer-text': '#F0D060'
+      }
+    },
+    holy_week: {
+      id: 'holy_week',
+      label: 'Holy Week / Lent',
+      description: 'Violet · ash · olive',
+      swatches: ['#6B4C9A', '#4A2C6A', '#3D2B1F', '#6B5B2A', '#2F5D50'],
+      vars: {
+        '--palette-primary': '#6B4C9A',
+        '--palette-primary-dark': '#4A2C6A',
+        '--palette-deep': '#3D2B1F',
+        '--palette-olive': '#6B5B2A',
+        '--palette-forest': '#2F5D50',
+        '--palette-primary-100': '#EDE6F5',
+        '--palette-deep-100': '#E8E0D8',
+        '--palette-olive-100': '#F0ECD4',
+        '--palette-forest-100': '#D8EBE5',
+        '--brand-yellow': '#D4C48A',
+        '--brand-yellow-800': '#6B5B2A',
+        '--brand-red-800': '#2A1C14',
+        '--color-nav': '#3D2B1F',
+        '--color-nav-text': '#FFFFFF',
+        '--color-body': '#F7F4EF',
+        '--color-footer': '#241912',
+        '--color-footer-text': '#EDE6F5'
+      }
+    },
+    buwan_ng_wika: {
+      id: 'buwan_ng_wika',
+      label: 'Buwan ng Wika',
+      description: 'Language month — warm gold · earth',
+      swatches: ['#D4A017', '#B8860B', '#5C3317', '#6B4F1D', '#1B5E4B'],
+      vars: {
+        '--palette-primary': '#D4A017',
+        '--palette-primary-dark': '#B8860B',
+        '--palette-deep': '#5C3317',
+        '--palette-olive': '#6B4F1D',
+        '--palette-forest': '#1B5E4B',
+        '--palette-primary-100': '#FFF4D4',
+        '--palette-deep-100': '#F0E4D8',
+        '--palette-olive-100': '#F3ECD4',
+        '--palette-forest-100': '#D6EFE7',
+        '--brand-yellow': '#F5D76E',
+        '--brand-yellow-800': '#6B4F1D',
+        '--brand-red-800': '#3D220F',
+        '--color-nav': '#5C3317',
+        '--color-nav-text': '#FFFFFF',
+        '--color-body': '#FFFBF0',
+        '--color-footer': '#2E1A0C',
+        '--color-footer-text': '#FFF4D4'
+      }
+    },
+    pwd_awareness: {
+      id: 'pwd_awareness',
+      label: 'PWD / Disability Rights',
+      description: 'Awareness blue · teal · gold',
+      swatches: ['#0077C8', '#005A9C', '#003D6B', '#6B5B00', '#00857C'],
+      vars: {
+        '--palette-primary': '#0077C8',
+        '--palette-primary-dark': '#005A9C',
+        '--palette-deep': '#003D6B',
+        '--palette-olive': '#6B5B00',
+        '--palette-forest': '#00857C',
+        '--palette-primary-100': '#D9EFFA',
+        '--palette-deep-100': '#D6E4F0',
+        '--palette-olive-100': '#F5F0D0',
+        '--palette-forest-100': '#D4F0ED',
+        '--brand-yellow': '#F0D060',
+        '--brand-yellow-800': '#6B5B00',
+        '--brand-red-800': '#00284A',
+        '--color-nav': '#003D6B',
+        '--color-nav-text': '#FFFFFF',
+        '--color-body': '#F3F9FC',
+        '--color-footer': '#00284A',
+        '--color-footer-text': '#D9EFFA'
+      }
+    }
+  };
+
+  var THEME_VAR_KEYS = [
+    '--palette-primary', '--palette-primary-dark', '--palette-deep',
+    '--palette-olive', '--palette-forest',
+    '--palette-primary-100', '--palette-deep-100', '--palette-olive-100', '--palette-forest-100',
+    '--brand-yellow', '--brand-yellow-800', '--brand-red-800',
+    '--color-nav', '--color-nav-text', '--color-body', '--color-footer', '--color-footer-text'
+  ];
+
+  function syncCompatAliases(root) {
+    /* Keep legacy --brand-* tokens in sync with the complementary palette. */
+    root.style.setProperty('--brand-blue', 'var(--palette-primary-dark)');
+    root.style.setProperty('--brand-blue-800', 'var(--palette-deep)');
+    root.style.setProperty('--brand-blue-100', 'var(--palette-primary-100)');
+    root.style.setProperty('--brand-red', 'var(--palette-deep)');
+    root.style.setProperty('--brand-red-100', 'var(--palette-deep-100)');
+    root.style.setProperty('--success', 'var(--palette-forest)');
+    root.style.setProperty('--success-100', 'var(--palette-forest-100)');
+    root.style.setProperty('--warning', 'var(--palette-olive)');
+    root.style.setProperty('--warning-100', 'var(--palette-olive-100)');
+    root.style.setProperty('--danger', 'var(--palette-deep)');
+    root.style.setProperty('--danger-100', 'var(--palette-deep-100)');
+    root.style.setProperty('--info', 'var(--palette-primary-dark)');
+    root.style.setProperty('--info-100', 'var(--palette-primary-100)');
+    root.style.setProperty('--focus-ring', '3px solid var(--palette-primary)');
+  }
+
+  function clearThemeVars(root) {
+    THEME_VAR_KEYS.forEach(function (k) { root.style.removeProperty(k); });
+    [
+      '--brand-blue', '--brand-blue-800', '--brand-blue-100',
+      '--brand-red', '--brand-red-100',
+      '--success', '--success-100', '--warning', '--warning-100',
+      '--danger', '--danger-100', '--info', '--info-100', '--focus-ring'
+    ].forEach(function (k) { root.style.removeProperty(k); });
+  }
+
+  function applyThemeFromPref(pref) {
+    pref = pref || (global.store && global.store.getUiPref()) || {};
+    var root = document.documentElement;
+    var presetId = pref.themePreset || 'default';
+    var preset = THEME_PRESETS[presetId] || THEME_PRESETS.default;
+    var vars = Object.assign({}, preset.vars);
+
+    if (pref.colorNav) vars['--color-nav'] = pref.colorNav;
+    if (pref.colorBody) vars['--color-body'] = pref.colorBody;
+    if (pref.colorFooter) vars['--color-footer'] = pref.colorFooter;
+    if (pref.colorNavText) vars['--color-nav-text'] = pref.colorNavText;
+    if (pref.colorFooterText) vars['--color-footer-text'] = pref.colorFooterText;
+
+    clearThemeVars(root);
+    Object.keys(vars).forEach(function (k) {
+      root.style.setProperty(k, vars[k]);
+    });
+    syncCompatAliases(root);
+    root.setAttribute('data-theme-preset', preset.id);
+
+    var meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute('content', vars['--color-nav'] || vars['--palette-deep']);
+  }
+
+  function saveThemePref(patch) {
+    if (!global.store) return;
+    global.store.setUiPref(patch);
+    applyThemeFromPref(global.store.getUiPref());
+  }
+
+  function getThemePresets() {
+    return Object.keys(THEME_PRESETS).map(function (k) { return THEME_PRESETS[k]; });
+  }
+
+  function getThemePreset(id) {
+    return THEME_PRESETS[id] || THEME_PRESETS.default;
+  }
+
+  /* Global helpers: contrast toggle + logout wiring + theme boot */
   function initGlobalUI() {
     var pref = global.store && global.store.getUiPref() || {};
     if (pref.contrast === 'high') document.documentElement.setAttribute('data-contrast', 'high');
+    applyThemeFromPref(pref);
+
+    window.addEventListener('storage', function (e) {
+      if (!global.store) return;
+      if (e.key === global.store.KEYS.UI) {
+        var next = global.store.getUiPref();
+        if (next.contrast === 'high') document.documentElement.setAttribute('data-contrast', 'high');
+        else document.documentElement.removeAttribute('data-contrast');
+        applyThemeFromPref(next);
+        document.querySelectorAll('[data-action="toggle-contrast"]').forEach(function (b) {
+          b.setAttribute('aria-pressed', String(document.documentElement.getAttribute('data-contrast') === 'high'));
+        });
+      }
+    });
 
     document.addEventListener('click', function (e) {
       var btn = e.target.closest('[data-action="toggle-contrast"]');
@@ -221,6 +513,9 @@
     });
   }
 
+  /* Apply theme ASAP (before paint of chrome) and again on DOM ready for contrast buttons */
+  applyThemeFromPref((global.store && global.store.getUiPref()) || {});
+
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initGlobalUI);
   } else {
@@ -240,6 +535,11 @@
     svgPlaceholder: svgPlaceholder,
     productImageSrc: productImageSrc,
     productThumb: productThumb,
-    icon: icon
+    icon: icon,
+    applyThemeFromPref: applyThemeFromPref,
+    saveThemePref: saveThemePref,
+    getThemePresets: getThemePresets,
+    getThemePreset: getThemePreset,
+    THEME_PRESETS: THEME_PRESETS
   };
 })(window);

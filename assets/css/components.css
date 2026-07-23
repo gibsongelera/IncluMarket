@@ -22,13 +22,13 @@
   transform: none;
 }
 
-/* Guardrail 2: white text permitted on blue and red buttons only */
+/* Guardrail 2: white text on dark burgundy / forest surfaces */
 .btn--primary {
-  background: var(--brand-blue);
+  background: var(--palette-deep);
   color: #FFFFFF;
-  border-color: var(--brand-blue);
+  border-color: var(--palette-deep);
 }
-.btn--primary:hover { background: var(--brand-blue-800); border-color: var(--brand-blue-800); }
+.btn--primary:hover { background: var(--brand-red-800); border-color: var(--brand-red-800); }
 
 .btn--danger {
   background: var(--brand-red);
