@@ -1,11 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { money, svgPlaceholder } from "@/lib/format";
 import { toast } from "@/lib/toast";
-import * as cart from "@/lib/cart";
 import { placeOrder } from "@/lib/actions/shop";
 import type { CartItem } from "@/lib/types";
 
@@ -20,30 +19,26 @@ function imgSrc(p?: ProductLite): string {
 }
 
 export function CheckoutClient({
-  userId,
   userName,
+  items,
   products,
   variants,
 }: {
-  userId: number;
   userName: string;
+  items: CartItem[];
   products: ProductLite[];
   variants: VariantLite[];
 }) {
   const router = useRouter();
-  const [items, setItems] = useState<CartItem[]>([]);
-  const [ready, setReady] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  useEffect(() => {
-    const list = cart.getItems(userId);
-    setItems(list);
-    setReady(true);
-    if (list.length === 0) router.replace("/buyer/cart");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId]);
-
-  if (!ready || items.length === 0) return null;
+  if (items.length === 0) {
+    return (
+      <p className="empty">
+        Your cart is empty. <Link href="/buyer/cart">Back to cart</Link>
+      </p>
+    );
+  }
 
   const sub = items.reduce((n, it) => n + it.unit_price * it.quantity, 0);
   const total = sub + SHIPPING;
@@ -56,13 +51,12 @@ export function CheckoutClient({
       return;
     }
     setBusy(true);
-    const res = await placeOrder(items);
+    const res = await placeOrder();
     setBusy(false);
     if (!res.ok) {
       toast(res.error || "Could not place order.", "error");
       return;
     }
-    cart.clear(userId);
     toast(`Order ${res.orderId} placed. Thank you!`, "success");
     setTimeout(() => router.push("/buyer/orders"), 500);
   }
@@ -93,7 +87,7 @@ export function CheckoutClient({
         </fieldset>
 
         <fieldset>
-          <legend>Payment (demo)</legend>
+          <legend>Payment</legend>
           <div className="field">
             <label>
               <input type="radio" name="payment" value="cod" defaultChecked /> Cash on delivery
@@ -101,10 +95,10 @@ export function CheckoutClient({
           </div>
           <div className="field">
             <label>
-              <input type="radio" name="payment" value="ewallet" /> E-wallet (simulated)
+              <input type="radio" name="payment" value="ewallet" /> E-wallet
             </label>
           </div>
-          <p className="hint">No real payment is processed. This is a capstone demo.</p>
+          <p className="hint">Payment is recorded with the order; no card data is stored.</p>
         </fieldset>
 
         <div className="form-actions">

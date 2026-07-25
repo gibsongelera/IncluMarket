@@ -130,6 +130,7 @@ export interface ThemeSettings {
 }
 
 export interface CartItem {
+  id?: number;
   product_id: number;
   variant_id: number;
   quantity: number;

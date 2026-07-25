@@ -1,14 +1,22 @@
+import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/session";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { CheckoutClient } from "@/components/CheckoutClient";
+import { getCartItems } from "@/lib/actions/cart";
 import { getAllProducts, getVariants } from "@/lib/data";
 
 export const dynamic = "force-dynamic";
 
 export default async function CheckoutPage() {
   const session = await requireRole(["buyer"]);
-  const [products, variants] = await Promise.all([getAllProducts(), getVariants()]);
+  const [items, products, variants] = await Promise.all([
+    getCartItems(),
+    getAllProducts(),
+    getVariants(),
+  ]);
+
+  if (!items.length) redirect("/buyer/cart");
 
   return (
     <>
@@ -16,8 +24,8 @@ export default async function CheckoutPage() {
       <main id="main" className="container main--checkout">
         <h1>Checkout</h1>
         <CheckoutClient
-          userId={session.user_id}
           userName={session.name}
+          items={items}
           products={products.map((p) => ({
             id: p.id,
             title: p.title,

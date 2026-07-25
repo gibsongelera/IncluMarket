@@ -2,11 +2,12 @@
 
 All InkluMarket tables are namespaced with an `im_` prefix because the Supabase
 project is shared with the wider InkluTrack ecosystem (avoids collisions with an
-existing `public.profiles` / `public.orders`). Integer primary keys mirror the
-original static-demo seed ids so every foreign key lines up with `assets/js/seed.js`.
+existing `public.profiles` / `public.orders`). Profiles link to Supabase Auth via
+`auth_user_id`. Cart lines live in `im_cart_items`.
 
 ```mermaid
 erDiagram
+    im_profiles ||--o{ im_cart_items       : "owns (user_id)"
     im_profiles ||--o{ im_products         : "sells (seller_id)"
     im_profiles ||--o{ im_orders           : "places (buyer_id)"
     im_profiles ||--o{ im_product_reviews  : "writes (buyer_id)"
@@ -24,8 +25,10 @@ erDiagram
     im_products ||--o{ im_product_images   : "has (product_id)"
     im_products ||--o{ im_product_reviews  : "receives (product_id)"
     im_products ||--o{ im_order_items      : "sold in (product_id)"
+    im_products ||--o{ im_cart_items       : "in cart (product_id)"
 
     im_product_variants ||--o{ im_order_items : "ordered as (variant_id)"
+    im_product_variants ||--o{ im_cart_items  : "cart variant (variant_id)"
 
     im_orders ||--o{ im_order_items : "contains (order_id)"
 

@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getSession } from "@/lib/session";
-import type { CartItem, Priority } from "@/lib/types";
+import { clearCartAction, getCartItems } from "@/lib/actions/cart";
+import type { Priority } from "@/lib/types";
 
 export interface ActionResult {
   ok: boolean;
@@ -11,11 +12,13 @@ export interface ActionResult {
   orderId?: number;
 }
 
-export async function placeOrder(items: CartItem[]): Promise<ActionResult> {
+export async function placeOrder(): Promise<ActionResult> {
   const session = await getSession();
   if (!session || session.role !== "buyer")
     return { ok: false, error: "Sign in as a buyer to place an order." };
-  if (!items?.length) return { ok: false, error: "Your cart is empty." };
+
+  const items = await getCartItems();
+  if (!items.length) return { ok: false, error: "Your cart is empty." };
 
   const db = createAdminClient();
   const total = items.reduce(
@@ -34,7 +37,7 @@ export async function placeOrder(items: CartItem[]): Promise<ActionResult> {
     items.map((it) => ({
       order_id: order.id,
       product_id: it.product_id,
-      variant_id: it.variant_id,
+      variant_id: it.variant_id || null,
       quantity: it.quantity,
       unit_price: it.unit_price,
     }))
@@ -57,6 +60,8 @@ export async function placeOrder(items: CartItem[]): Promise<ActionResult> {
     }
   }
 
+  await clearCartAction();
+
   await db.from("im_audit_logs").insert({
     actor_id: session.user_id,
     actor_role: "buyer",
@@ -64,6 +69,7 @@ export async function placeOrder(items: CartItem[]): Promise<ActionResult> {
     target: `order:${order.id}`,
   });
   revalidatePath("/buyer/orders");
+  revalidatePath("/buyer/cart");
   return { ok: true, orderId: order.id };
 }
 

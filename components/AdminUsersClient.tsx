@@ -350,8 +350,7 @@ export function AdminUsersClient({
             <div className="field" id="um-consent-field">
               <label>
                 <input type="checkbox" id="um-consent" checked={fConsent} onChange={(e) => setFConsent(e.target.checked)} />{" "}
-                I confirm this user has consented to data processing under RA 10173 (Data Privacy Act) for InkluMarket
-                demo purposes.
+                I confirm this user has consented to data processing under RA 10173 (Data Privacy Act) for InkluMarket.
               </label>
             </div>
           ) : null}

@@ -2,10 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { loginAction, signupAction } from "@/lib/actions/auth";
+import {
+  loginAction,
+  resendConfirmationAction,
+  signupAction,
+} from "@/lib/actions/auth";
 import { toast } from "@/lib/toast";
-import { initials } from "@/lib/format";
-import { ContrastToggle, ResetDemoButton } from "@/components/HeaderActions";
+import { ContrastToggle } from "@/components/HeaderActions";
 import type { Role } from "@/lib/types";
 
 const HOME_BY_ROLE: Record<Role, string> = {
@@ -13,13 +16,6 @@ const HOME_BY_ROLE: Record<Role, string> = {
   seller: "/seller/dashboard",
   admin: "/admin/users",
 };
-
-const QUICK = [
-  { email: "buyer1@inklumarket.ph", label: "Karla Mendoza", role: "buyer" as const },
-  { email: "seller1@inklumarket.ph", label: "Maria Santos", role: "seller" as const },
-  { email: "seller3@inklumarket.ph", label: "Liwayway Bautista", role: "seller" as const },
-  { email: "admin@inklumarket.ph", label: "Ana Reyes", role: "admin" as const },
-];
 
 function useCountUp(target: number) {
   const [value, setValue] = useState(0);
@@ -56,8 +52,9 @@ export function LandingClient({
   const [showPw, setShowPw] = useState(false);
   const [loginErr, setLoginErr] = useState<string | null>(null);
   const [signupErr, setSignupErr] = useState<string | null>(null);
+  const [needsConfirm, setNeedsConfirm] = useState(false);
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("demo1234");
+  const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const emailRef = useRef<HTMLInputElement>(null);
 
@@ -73,15 +70,32 @@ export function LandingClient({
   async function doLogin(nextEmail: string, nextPassword: string) {
     setBusy(true);
     setLoginErr(null);
+    setNeedsConfirm(false);
     const res = await loginAction(nextEmail, nextPassword);
     setBusy(false);
     if (!res.ok) {
       setLoginErr(res.error || "Sign in failed.");
+      setNeedsConfirm(!!res.needsEmailConfirm);
       toast(res.error || "Sign in failed.", "error");
       return;
     }
     toast(`Welcome back, ${res.name}.`, "success");
     router.push(HOME_BY_ROLE[res.role!]);
+  }
+
+  async function onResendConfirm() {
+    if (!email.trim()) {
+      setLoginErr("Enter your email to resend confirmation.");
+      return;
+    }
+    setBusy(true);
+    const res = await resendConfirmationAction(email);
+    setBusy(false);
+    if (!res.ok) {
+      toast(res.error || "Could not resend confirmation.", "error");
+      return;
+    }
+    toast(res.message || "Confirmation email sent.", "success");
   }
 
   async function onSignup(e: React.FormEvent<HTMLFormElement>) {
@@ -94,13 +108,21 @@ export function LandingClient({
       String(data.get("name") || ""),
       String(data.get("email") || ""),
       String(data.get("password") || ""),
-      (String(data.get("role") || "buyer") as Role),
+      String(data.get("role") || "buyer") as Role,
       data.get("consent") === "on"
     );
     setBusy(false);
     if (!res.ok) {
       setSignupErr(res.error || "Could not create account.");
       toast(res.error || "Could not create account.", "error");
+      return;
+    }
+    if (res.needsEmailConfirm) {
+      toast(res.message || "Check your email to confirm your account.", "success");
+      setEmail(String(data.get("email") || "").trim().toLowerCase());
+      setTab("signin");
+      setNeedsConfirm(true);
+      setLoginErr("Please confirm your email first");
       return;
     }
     toast("Account created. Signing you in…", "success");
@@ -129,7 +151,7 @@ export function LandingClient({
 
             <p className="landing-eyebrow">
               <span className="dot dot--live" aria-hidden="true" />
-              InkluTrack Ecosystem &middot; Demo Build
+              InkluTrack Ecosystem
             </p>
 
             <h1 id="hero-title" className="landing-hero__title">
@@ -171,15 +193,15 @@ export function LandingClient({
               </span>
             </div>
 
-            <div className="landing-metrics" aria-label="Demo dataset snapshot">
+            <div className="landing-metrics" aria-label="Marketplace snapshot">
               <div><strong>{products}</strong><span>Products listed</span></div>
               <div><strong>{sellers}</strong><span>PWD sellers</span></div>
-              <div><strong>{orders}</strong><span>Sample orders</span></div>
+              <div><strong>{orders}</strong><span>Orders</span></div>
             </div>
           </div>
 
           <div className="landing-hero__foot">
-            <span className="muted">&copy; 2026 InkluMarket Demo &middot; ZPPSU-CICS Capstone</span>
+            <span className="muted">&copy; 2026 InkluMarket &middot; ZPPSU-CICS Capstone</span>
             <span className="muted">RA 7277 &middot; RA 10173</span>
           </div>
         </aside>
@@ -187,7 +209,6 @@ export function LandingClient({
         <section className="landing-auth" aria-labelledby="auth-title">
           <div className="landing-auth__top">
             <ContrastToggle />
-            <ResetDemoButton />
           </div>
 
           <div className="auth-card">
@@ -224,7 +245,7 @@ export function LandingClient({
               hidden={tab !== "signin"}
             >
               <h2 id="auth-title">Welcome back</h2>
-              <p className="muted">Use a seeded demo account or your own credentials.</p>
+              <p className="muted">Sign in with your email and password.</p>
 
               <form
                 className="form"
@@ -240,6 +261,20 @@ export function LandingClient({
                   </p>
                 ) : null}
 
+                {needsConfirm ? (
+                  <p className="hint" role="status">
+                    Didn&apos;t get the email?{" "}
+                    <button
+                      type="button"
+                      className="btn btn--ghost btn--sm"
+                      disabled={busy}
+                      onClick={onResendConfirm}
+                    >
+                      Resend confirmation
+                    </button>
+                  </p>
+                ) : null}
+
                 <div className="field">
                   <label htmlFor="login-email">Email address</label>
                   <div className="input-icon">
@@ -250,16 +285,12 @@ export function LandingClient({
                       type="email"
                       autoComplete="username"
                       required
-                      placeholder="you@inklumarket.ph"
+                      placeholder="you@example.com"
                       ref={emailRef}
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                     />
                   </div>
-                  <small className="hint">
-                    Try <code>buyer1@inklumarket.ph</code>, <code>seller1@inklumarket.ph</code>, or{" "}
-                    <code>admin@inklumarket.ph</code>
-                  </small>
                 </div>
 
                 <div className="field">
@@ -295,45 +326,12 @@ export function LandingClient({
                   <label>
                     <input type="checkbox" defaultChecked /> Remember me
                   </label>
-                  <a
-                    href="#"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      toast("Password recovery isn’t wired in this demo build.", "info");
-                    }}
-                  >
-                    Forgot password?
-                  </a>
                 </div>
 
                 <button type="submit" className="btn btn--primary" disabled={busy}>
                   Sign in to InkluMarket
                 </button>
               </form>
-
-              <div className="auth-divider">Quick demo accounts</div>
-              <div className="quick-accounts" role="group" aria-label="Quick demo accounts">
-                {QUICK.map((p) => (
-                  <button
-                    key={p.email}
-                    type="button"
-                    className={`quick-account qa-${p.role}`}
-                    data-initials={initials(p.label)}
-                    aria-label={`Sign in as ${p.label} (${p.role})`}
-                    disabled={busy}
-                    onClick={() => {
-                      setEmail(p.email);
-                      setPassword("demo1234");
-                      doLogin(p.email, "demo1234");
-                    }}
-                  >
-                    <span className="qa-body">
-                      <span className="qa-name">{p.label}</span>
-                      <span className="qa-role">{p.role}</span>
-                    </span>
-                  </button>
-                ))}
-              </div>
             </div>
 
             <div
@@ -343,8 +341,10 @@ export function LandingClient({
               aria-labelledby="tab-signup"
               hidden={tab !== "signup"}
             >
-              <h2>Create your demo account</h2>
-              <p className="muted">Register as a buyer or PWD seller. Data is stored in Supabase.</p>
+              <h2>Create your account</h2>
+              <p className="muted">
+                Register as a buyer or PWD seller. You will need to confirm your email before signing in.
+              </p>
 
               <form className="form" noValidate onSubmit={onSignup}>
                 {signupErr ? (
@@ -377,7 +377,6 @@ export function LandingClient({
                       <svg className="leading" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="10" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
                       <input id="su-password" name="password" type="password" required minLength={8} autoComplete="new-password" placeholder="At least 8 characters" />
                     </div>
-                    <small className="hint">Simulated bcrypt (cost 12) hashing on submit.</small>
                   </div>
                   <div className="field">
                     <label htmlFor="su-role">Sign up as</label>
@@ -409,27 +408,20 @@ export function LandingClient({
                   <input type="checkbox" id="su-consent" name="consent" required />
                   <span>
                     I have read and agree to the Data Privacy notice (<strong>RA 10173</strong>). I consent
-                    to the collection and processing of my registration data for InkluMarket demo purposes.
+                    to the collection and processing of my registration data for InkluMarket.
                   </span>
                 </label>
 
                 <button type="submit" className="btn btn--primary" disabled={busy}>
-                  Create demo account
+                  Create account
                 </button>
               </form>
             </div>
           </div>
 
           <p className="landing-legal">
-            &copy; 2026 InkluMarket Demo &middot; Aligned to <strong>RA 7277</strong> &amp;{" "}
-            <strong>RA 10173</strong> &middot;{" "}
-            <a href="#" onClick={(e) => { e.preventDefault(); toast("Privacy notice: PII is masked and consent is logged (demo).", "info"); }}>
-              Privacy
-            </a>{" "}
-            &middot;{" "}
-            <a href="#" onClick={(e) => { e.preventDefault(); toast("Terms: for capstone demonstration only.", "info"); }}>
-              Terms
-            </a>
+            &copy; 2026 InkluMarket &middot; Aligned to <strong>RA 7277</strong> &amp;{" "}
+            <strong>RA 10173</strong>
           </p>
         </section>
       </div>

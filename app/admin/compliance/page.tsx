@@ -142,11 +142,11 @@ export default async function AdminCompliancePage() {
         </section>
 
         <section className="note">
-          <h2 style={{ color: "var(--muted)" }}>Security disclaimer</h2>
+          <h2 style={{ color: "var(--muted)" }}>Security note</h2>
           <p>
-            This is a demo. Passwords are not verified in this build; a real Supabase Auth upgrade
-            path is wired in <code>lib/supabase/*</code>. AES-256-at-rest and TLS 1.2+ are conceptual
-            indicators for the capstone narrative.
+            Authentication uses Supabase Auth with email confirmation for new signups.
+            Passwords are verified by Supabase. AES-256-at-rest and TLS 1.2+ apply at the
+            platform layer for stored data in transit and at rest.
           </p>
         </section>
       </main>

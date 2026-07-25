@@ -2,12 +2,13 @@
   "name": "inklumarket-next",
   "version": "1.0.0",
   "private": true,
-  "description": "InkluMarket — PWD livelihood marketplace (Next.js + Supabase port of the static demo)",
+  "description": "InkluMarket — PWD livelihood marketplace (Next.js + Supabase)",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "provision-users": "node --env-file=.env.local scripts/provision-users.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.5.2",

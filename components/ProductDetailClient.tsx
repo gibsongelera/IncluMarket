@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { Product, ProductVariant } from "@/lib/types";
 import { money, productImageSrc } from "@/lib/format";
-import { addItem } from "@/lib/cart";
+import { addToCartAction } from "@/lib/actions/cart";
 import { toast } from "@/lib/toast";
 
 export function ProductDetailClient({
@@ -13,15 +13,15 @@ export function ProductDetailClient({
   variants,
   sellerName,
   categoryFolder,
-  userId,
 }: {
   product: Product;
   variants: ProductVariant[];
   sellerName: string;
   categoryFolder: string;
-  userId: number;
+  userId?: number;
 }) {
   const router = useRouter();
+  const [busy, setBusy] = useState(false);
 
   const colors = useMemo(() => {
     const c: string[] = [];
@@ -75,15 +75,38 @@ export function ProductDetailClient({
     setQty(next);
   }
 
-  function addToCart() {
-    if (!activeVariant || activeVariant.stock_qty <= 0) return;
-    addItem(userId, product.id, activeVariant.id, qty, product.base_price, activeVariant.stock_qty);
+  async function addToCart() {
+    if (!activeVariant || activeVariant.stock_qty <= 0 || busy) return;
+    setBusy(true);
+    const res = await addToCartAction(
+      product.id,
+      activeVariant.id,
+      qty,
+      activeVariant.stock_qty
+    );
+    setBusy(false);
+    if (!res.ok) {
+      toast(res.error || "Could not add to cart.", "error");
+      return;
+    }
     toast("Added to cart.", "success");
+    router.refresh();
   }
 
-  function buyNow() {
-    if (!activeVariant || activeVariant.stock_qty <= 0) return;
-    addItem(userId, product.id, activeVariant.id, qty, product.base_price, activeVariant.stock_qty);
+  async function buyNow() {
+    if (!activeVariant || activeVariant.stock_qty <= 0 || busy) return;
+    setBusy(true);
+    const res = await addToCartAction(
+      product.id,
+      activeVariant.id,
+      qty,
+      activeVariant.stock_qty
+    );
+    setBusy(false);
+    if (!res.ok) {
+      toast(res.error || "Could not add to cart.", "error");
+      return;
+    }
     router.push("/buyer/checkout");
   }
 

@@ -1,19 +1,27 @@
 "use server";
 
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getSession, setSession } from "@/lib/session";
+import { getSession, homeForRole } from "@/lib/session";
 import type { Role } from "@/lib/types";
-
-// NOTE (demo): this mirrors the original static demo's auth semantics — any
-// non-empty password is accepted for a known seeded email. Real Supabase Auth
-// clients are wired (lib/supabase/*) for a production upgrade path; see README.
 
 export interface AuthResult {
   ok: boolean;
   error?: string;
   role?: Role;
   name?: string;
+  needsEmailConfirm?: boolean;
+  message?: string;
+}
+
+async function siteOrigin(): Promise<string> {
+  const h = await headers();
+  const proto = h.get("x-forwarded-proto") || "http";
+  const host = h.get("x-forwarded-host") || h.get("host");
+  if (host) return `${proto}://${host}`;
+  return process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 }
 
 async function audit(actorId: number, role: string, action: string, target: string) {
@@ -27,24 +35,43 @@ export async function loginAction(email: string, password: string): Promise<Auth
   if (!normalized) return { ok: false, error: "Please enter your email." };
   if (!password) return { ok: false, error: "Please enter your password." };
 
-  const { data: user } = await createAdminClient()
-    .from("im_profiles")
-    .select("*")
-    .ilike("email", normalized)
-    .maybeSingle();
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email: normalized,
+    password,
+  });
 
-  if (!user) {
-    return { ok: false, error: "No account matches that email in the demo dataset." };
+  if (error) {
+    const msg = error.message || "Sign in failed.";
+    if (/confirm|not confirmed|email not confirmed/i.test(msg)) {
+      return {
+        ok: false,
+        error: "Please confirm your email first",
+        needsEmailConfirm: true,
+      };
+    }
+    if (/invalid login credentials/i.test(msg)) {
+      return { ok: false, error: "Invalid email or password." };
+    }
+    return { ok: false, error: msg };
   }
 
-  await setSession({
-    user_id: user.id,
-    role: user.role,
-    email: user.email,
-    name: user.name,
-  });
-  await audit(user.id, user.role, "auth_login (simulated bcrypt verify)", `user:${user.id}`);
-  return { ok: true, role: user.role, name: user.name };
+  if (!data.user?.email_confirmed_at && !data.user?.confirmed_at) {
+    await supabase.auth.signOut();
+    return {
+      ok: false,
+      error: "Please confirm your email first",
+      needsEmailConfirm: true,
+    };
+  }
+
+  const session = await getSession();
+  if (!session) {
+    return { ok: false, error: "Account profile not found. Contact support." };
+  }
+
+  await audit(session.user_id, session.role, "auth_login", `user:${session.user_id}`);
+  return { ok: true, role: session.role, name: session.name };
 }
 
 export async function signupAction(
@@ -65,38 +92,62 @@ export async function signupAction(
   if (role !== "buyer" && role !== "seller")
     return { ok: false, error: "Please choose a valid role." };
 
-  const admin = createAdminClient();
-  const { data: existing } = await admin
-    .from("im_profiles")
-    .select("id")
-    .ilike("email", cleanEmail)
-    .maybeSingle();
-  if (existing)
-    return { ok: false, error: "An account with that email already exists in the demo." };
-
-  const { data: created, error } = await admin
-    .from("im_profiles")
-    .insert({ name: cleanName, email: cleanEmail, role })
-    .select("*")
-    .single();
-  if (error || !created)
-    return { ok: false, error: error?.message || "Could not create account." };
-
-  await admin.from("im_consent_logs").insert({
-    user_id: created.id,
-    action: "account_created",
-    consent: true,
-    purpose: "RA 10173 DPA registration consent",
+  const origin = await siteOrigin();
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase.auth.signUp({
+    email: cleanEmail,
+    password,
+    options: {
+      emailRedirectTo: `${origin}/auth/callback`,
+      data: { name: cleanName, role },
+    },
   });
-  await audit(created.id, role, "account_created", `user:${created.id}`);
 
-  await setSession({
-    user_id: created.id,
-    role: created.role,
-    email: created.email,
-    name: created.name,
+  if (error) {
+    if (/already registered|already been registered/i.test(error.message)) {
+      return { ok: false, error: "An account with that email already exists." };
+    }
+    return { ok: false, error: error.message };
+  }
+
+  // If email confirmations are disabled, a session may already exist.
+  if (data.session) {
+    const session = await getSession();
+    if (session) {
+      await createAdminClient().from("im_consent_logs").insert({
+        user_id: session.user_id,
+        action: "account_created",
+        consent: true,
+        purpose: "RA 10173 DPA registration consent",
+      });
+      await audit(session.user_id, role, "account_created", `user:${session.user_id}`);
+      return { ok: true, role: session.role, name: session.name };
+    }
+  }
+
+  return {
+    ok: true,
+    needsEmailConfirm: true,
+    message: "Check your email to confirm your account before signing in.",
+  };
+}
+
+export async function resendConfirmationAction(email: string): Promise<AuthResult> {
+  const normalized = String(email || "").trim().toLowerCase();
+  if (!normalized) return { ok: false, error: "Please enter your email." };
+
+  const origin = await siteOrigin();
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase.auth.resend({
+    type: "signup",
+    email: normalized,
+    options: { emailRedirectTo: `${origin}/auth/callback` },
   });
-  return { ok: true, role: created.role, name: created.name };
+  if (error) return { ok: false, error: error.message };
+  return {
+    ok: true,
+    message: "Confirmation email sent. Please check your inbox.",
+  };
 }
 
 export async function logoutAction(): Promise<void> {
@@ -104,6 +155,12 @@ export async function logoutAction(): Promise<void> {
   if (session) {
     await audit(session.user_id, session.role, "auth_logout", `user:${session.user_id}`);
   }
-  await setSession(null);
+  const supabase = await createSupabaseServerClient();
+  await supabase.auth.signOut();
   redirect("/");
+}
+
+export async function redirectHomeForSession(): Promise<string | null> {
+  const session = await getSession();
+  return session ? homeForRole(session.role) : null;
 }

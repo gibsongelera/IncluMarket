@@ -1,9 +1,10 @@
 import "server-only";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import type { Role, SessionUser } from "./types";
 
-const COOKIE = "im_session";
 const CONTRAST_COOKIE = "im_contrast";
 
 const HOME_BY_ROLE: Record<Role, string> = {
@@ -17,33 +18,49 @@ export function homeForRole(role: Role): string {
 }
 
 export async function getSession(): Promise<SessionUser | null> {
-  const raw = (await cookies()).get(COOKIE)?.value;
-  if (!raw) return null;
-  try {
-    return JSON.parse(Buffer.from(raw, "base64").toString("utf8")) as SessionUser;
-  } catch {
-    return null;
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user?.email) return null;
+
+  const admin = createAdminClient();
+  const { data: profile } = await admin
+    .from("im_profiles")
+    .select("id, role, email, name, auth_user_id")
+    .eq("auth_user_id", user.id)
+    .maybeSingle();
+
+  if (!profile) {
+    // Fallback: link by email if trigger lagged or profile was provisioned first.
+    const { data: byEmail } = await admin
+      .from("im_profiles")
+      .select("id, role, email, name, auth_user_id")
+      .ilike("email", user.email)
+      .maybeSingle();
+    if (!byEmail) return null;
+    if (!byEmail.auth_user_id) {
+      await admin
+        .from("im_profiles")
+        .update({ auth_user_id: user.id, updated_at: new Date().toISOString() })
+        .eq("id", byEmail.id);
+    }
+    return {
+      user_id: byEmail.id,
+      role: byEmail.role as Role,
+      email: byEmail.email,
+      name: byEmail.name,
+    };
   }
+
+  return {
+    user_id: profile.id,
+    role: profile.role as Role,
+    email: profile.email,
+    name: profile.name,
+  };
 }
 
-export async function setSession(user: SessionUser | null): Promise<void> {
-  const store = await cookies();
-  if (!user) {
-    store.delete(COOKIE);
-    return;
-  }
-  const value = Buffer.from(JSON.stringify(user), "utf8").toString("base64");
-  store.set(COOKIE, value, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-    maxAge: 60 * 60 * 24 * 7,
-  });
-}
-
-// Redirects to login if unauthenticated, or to the user's own home if the role
-// is not permitted — mirroring the original auth.require() guard.
 export async function requireRole(roles: Role[]): Promise<SessionUser> {
   const session = await getSession();
   if (!session) redirect("/");

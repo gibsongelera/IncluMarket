@@ -12,9 +12,9 @@ import { resolveThemeVars, themeVarsToCss } from "@/lib/theme";
 import { Toaster } from "@/components/Toaster";
 
 export const metadata: Metadata = {
-  title: "InkluMarket — PWD Livelihood Marketplace (Demo)",
+  title: "InkluMarket — PWD Livelihood Marketplace",
   description:
-    "InkluMarket demo — a Shopee-style e-commerce module for PWD livelihood under the InkluTrack ecosystem. Built on DSWD identity and WCAG 2.1 AA.",
+    "InkluMarket — a Shopee-style e-commerce module for PWD livelihood under the InkluTrack ecosystem. Built on DSWD identity and WCAG 2.1 AA.",
 };
 
 export default async function RootLayout({

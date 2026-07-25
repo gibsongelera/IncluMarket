@@ -1,11 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Icon } from "./Icon";
 import { money, svgPlaceholder } from "@/lib/format";
 import { toast } from "@/lib/toast";
-import * as cart from "@/lib/cart";
+import {
+  removeFromCartAction,
+  setCartQuantityAction,
+} from "@/lib/actions/cart";
 import type { CartItem } from "@/lib/types";
 
 type ProductLite = {
@@ -30,37 +33,41 @@ function imgSrc(p?: ProductLite): string {
 }
 
 export function CartClient({
-  userId,
+  items: initialItems,
   products,
   variants,
   sellers,
 }: {
-  userId: number;
+  items: CartItem[];
   products: ProductLite[];
   variants: VariantLite[];
   sellers: SellerLite[];
 }) {
-  const [items, setItems] = useState<CartItem[]>([]);
-  const [ready, setReady] = useState(false);
-
-  function refresh() {
-    setItems(cart.getItems(userId));
-  }
-
-  useEffect(() => {
-    refresh();
-    setReady(true);
-    const onCart = () => refresh();
-    window.addEventListener("im:cart", onCart);
-    return () => window.removeEventListener("im:cart", onCart);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId]);
+  const router = useRouter();
+  const items = initialItems;
 
   const productById = (id: number) => products.find((p) => p.id === id);
   const variantById = (id: number) => variants.find((v) => v.id === id);
   const sellerById = (id: number) => sellers.find((s) => s.id === id);
 
-  if (!ready) return null;
+  async function changeQty(it: CartItem, quantity: number, stockCap: number) {
+    const res = await setCartQuantityAction(it.product_id, it.variant_id || null, quantity, stockCap);
+    if (!res.ok) {
+      toast(res.error || "Could not update quantity.", "error");
+      return;
+    }
+    router.refresh();
+  }
+
+  async function remove(it: CartItem) {
+    const res = await removeFromCartAction(it.product_id, it.variant_id || null);
+    if (!res.ok) {
+      toast(res.error || "Could not remove item.", "error");
+      return;
+    }
+    toast("Item removed.", "success");
+    router.refresh();
+  }
 
   if (items.length === 0) {
     return (
@@ -127,16 +134,7 @@ export function CartClient({
                         <button
                           type="button"
                           aria-label="Decrease quantity"
-                          onClick={() => {
-                            cart.setQuantity(
-                              userId,
-                              it.product_id,
-                              it.variant_id,
-                              it.quantity - 1,
-                              stockCap
-                            );
-                            refresh();
-                          }}
+                          onClick={() => changeQty(it, it.quantity - 1, stockCap)}
                         >
                           -
                         </button>
@@ -146,30 +144,14 @@ export function CartClient({
                           max={stockCap}
                           value={it.quantity}
                           aria-label="Quantity"
-                          onChange={(e) => {
-                            cart.setQuantity(
-                              userId,
-                              it.product_id,
-                              it.variant_id,
-                              Number(e.target.value),
-                              stockCap
-                            );
-                            refresh();
-                          }}
+                          onChange={(e) =>
+                            changeQty(it, Number(e.target.value), stockCap)
+                          }
                         />
                         <button
                           type="button"
                           aria-label="Increase quantity"
-                          onClick={() => {
-                            cart.setQuantity(
-                              userId,
-                              it.product_id,
-                              it.variant_id,
-                              it.quantity + 1,
-                              stockCap
-                            );
-                            refresh();
-                          }}
+                          onClick={() => changeQty(it, it.quantity + 1, stockCap)}
                         >
                           +
                         </button>
@@ -178,11 +160,7 @@ export function CartClient({
                         type="button"
                         className="btn btn--ghost btn--sm"
                         aria-label="Remove item"
-                        onClick={() => {
-                          cart.removeItem(userId, it.product_id, it.variant_id);
-                          toast("Item removed.", "success");
-                          refresh();
-                        }}
+                        onClick={() => remove(it)}
                       >
                         Remove
                       </button>

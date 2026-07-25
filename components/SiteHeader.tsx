@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Role, SessionUser } from "@/lib/types";
 import { maskEmail } from "@/lib/format";
+import { getCartCount } from "@/lib/actions/cart";
 import { Icon } from "./Icon";
 import { CartBadge } from "./CartBadge";
 import { ContrastToggle, LogoutButton } from "./HeaderActions";
@@ -34,7 +35,7 @@ const BRAND_HREF: Record<Role, string> = {
   admin: "/admin/users",
 };
 
-export function SiteHeader({
+export async function SiteHeader({
   variant,
   active,
   session,
@@ -43,6 +44,8 @@ export function SiteHeader({
   active: string;
   session: SessionUser;
 }) {
+  const cartCount = variant === "buyer" ? await getCartCount(session.user_id) : 0;
+
   return (
     <header
       className={`site-header site-header--${variant}`}
@@ -89,7 +92,7 @@ export function SiteHeader({
           ))}
           {variant === "buyer" ? (
             <Link className="nav-link nav-link--cart" href="/buyer/cart" aria-label="Cart">
-              Cart <CartBadge userId={session.user_id} />
+              Cart <CartBadge count={cartCount} />
             </Link>
           ) : null}
           <ContrastToggle />
