@@ -46,7 +46,7 @@
   var chipsEl = document.getElementById('category-chips');
   if (chipsEl) {
     var chipHtml = '<button type="button" class="category-chip ' + (state.category === '' ? 'is-active' : '') + '" data-cat="" aria-pressed="' + (state.category === '') + '">' +
-      '<span class="chip-emoji" aria-hidden="true">🛍️</span> All folders' +
+      '<span class="chip-emoji" aria-hidden="true">🛍️</span> All Items' +
       '<span class="chip-count">' + products.length + '</span>' +
     '</button>';
     categories.forEach(function (c) {

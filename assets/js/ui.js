@@ -201,7 +201,9 @@
         '--brand-red-800': '#4A0D01',
         '--color-nav': '#711402',
         '--color-nav-text': '#FFFFFF',
-        '--color-body': '#FFF9F3',
+        '--color-body': '#5D9D8A',
+        /* Exact rainbow from provided gradient swatch (plum → navy → teal → green → gold → orange → rust) */
+        '--color-body-bg': 'linear-gradient(90deg,#781838 0%,#551547 7.7%,#301658 15.4%,#121B69 23.1%,#234075 30.8%,#417080 38.5%,#5D9D8A 46.2%,#75B485 53.8%,#8DA062 61.5%,#B28C42 69.2%,#DF7B30 76.9%,#D26F2C 84.6%,#C36227 92.3%,#B45623 100%)',
         '--color-footer': '#2A1A12',
         '--color-footer-text': '#F8F1EA'
       }
@@ -227,6 +229,7 @@
         '--color-nav': '#6A1B4D',
         '--color-nav-text': '#FFFFFF',
         '--color-body': '#FFF5F8',
+        '--color-body-bg': '#FFF5F8',
         '--color-footer': '#3D102C',
         '--color-footer-text': '#FCE4EC'
       }
@@ -252,6 +255,7 @@
         '--color-nav': '#5B2C6F',
         '--color-nav-text': '#FFFFFF',
         '--color-body': '#FFF8F0',
+        '--color-body-bg': '#FFF8F0',
         '--color-footer': '#2A1638',
         '--color-footer-text': '#F3E9FF'
       }
@@ -277,6 +281,7 @@
         '--color-nav': '#0038A8',
         '--color-nav-text': '#FFFFFF',
         '--color-body': '#F5F8FF',
+        '--color-body-bg': '#F5F8FF',
         '--color-footer': '#0A1F5C',
         '--color-footer-text': '#FCD116'
       }
@@ -302,6 +307,7 @@
         '--color-nav': '#0B3D2E',
         '--color-nav-text': '#FFFFFF',
         '--color-body': '#F7FBF8',
+        '--color-body-bg': '#F7FBF8',
         '--color-footer': '#06261C',
         '--color-footer-text': '#F0D060'
       }
@@ -327,6 +333,7 @@
         '--color-nav': '#3D2B1F',
         '--color-nav-text': '#FFFFFF',
         '--color-body': '#F7F4EF',
+        '--color-body-bg': '#F7F4EF',
         '--color-footer': '#241912',
         '--color-footer-text': '#EDE6F5'
       }
@@ -352,6 +359,7 @@
         '--color-nav': '#5C3317',
         '--color-nav-text': '#FFFFFF',
         '--color-body': '#FFFBF0',
+        '--color-body-bg': '#FFFBF0',
         '--color-footer': '#2E1A0C',
         '--color-footer-text': '#FFF4D4'
       }
@@ -377,6 +385,7 @@
         '--color-nav': '#003D6B',
         '--color-nav-text': '#FFFFFF',
         '--color-body': '#F3F9FC',
+        '--color-body-bg': '#F3F9FC',
         '--color-footer': '#00284A',
         '--color-footer-text': '#D9EFFA'
       }
@@ -388,7 +397,7 @@
     '--palette-olive', '--palette-forest',
     '--palette-primary-100', '--palette-deep-100', '--palette-olive-100', '--palette-forest-100',
     '--brand-yellow', '--brand-yellow-800', '--brand-red-800',
-    '--color-nav', '--color-nav-text', '--color-body', '--color-footer', '--color-footer-text'
+    '--color-nav', '--color-nav-text', '--color-body', '--color-body-bg', '--color-footer', '--color-footer-text'
   ];
 
   function syncCompatAliases(root) {
@@ -427,10 +436,18 @@
     var vars = Object.assign({}, preset.vars);
 
     if (pref.colorNav) vars['--color-nav'] = pref.colorNav;
-    if (pref.colorBody) vars['--color-body'] = pref.colorBody;
+    if (pref.colorBody) {
+      vars['--color-body'] = pref.colorBody;
+      vars['--color-body-bg'] = pref.colorBody; /* solid override replaces rainbow bg */
+    }
     if (pref.colorFooter) vars['--color-footer'] = pref.colorFooter;
     if (pref.colorNavText) vars['--color-nav-text'] = pref.colorNavText;
     if (pref.colorFooterText) vars['--color-footer-text'] = pref.colorFooterText;
+
+    /* Ensure non-default presets always have a solid body-bg when not specified */
+    if (!vars['--color-body-bg'] && vars['--color-body']) {
+      vars['--color-body-bg'] = vars['--color-body'];
+    }
 
     clearThemeVars(root);
     Object.keys(vars).forEach(function (k) {

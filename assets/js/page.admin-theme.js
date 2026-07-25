@@ -56,6 +56,7 @@
   function livePreviewChrome() {
     document.documentElement.style.setProperty('--color-nav', navEl.value);
     document.documentElement.style.setProperty('--color-body', bodyEl.value);
+    document.documentElement.style.setProperty('--color-body-bg', bodyEl.value);
     document.documentElement.style.setProperty('--color-footer', footerEl.value);
   }
 

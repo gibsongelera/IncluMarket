@@ -26,3 +26,10 @@ tmp-*
 node_modules/
 dist/
 build/
+
+# Next.js
+.next/
+/out/
+next-env.d.ts
+*.tsbuildinfo
+.vercel
