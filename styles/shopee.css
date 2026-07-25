@@ -626,7 +626,7 @@ a, .nav-link, .quick-account {
 }
 .category-folder-hint {
   font-size: .9rem;
-  color: var(--text-muted);
+  color: var(--text-on-canvas-muted, var(--text-muted));
   margin: 0 0 .75rem;
 }
 

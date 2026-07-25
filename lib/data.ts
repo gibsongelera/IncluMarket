@@ -176,8 +176,22 @@ export async function getAuditLogs(): Promise<AuditLog[]> {
 }
 
 export async function getThemeSettings(): Promise<ThemeSettings | null> {
-  const { data } = await db().from("im_theme_settings").select("*").eq("id", 1).maybeSingle();
-  return data ?? null;
+  // Soft-fail during `next build` / missing Vercel env so `/_not-found` prerender
+  // can complete. Runtime requests with a real key still load the live theme.
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY || !process.env.NEXT_PUBLIC_SUPABASE_URL) {
+    return null;
+  }
+  try {
+    const { data, error } = await db()
+      .from("im_theme_settings")
+      .select("*")
+      .eq("id", 1)
+      .maybeSingle();
+    if (error) return null;
+    return data ?? null;
+  } catch {
+    return null;
+  }
 }
 
 // ---- aggregation helpers ---------------------------------------------------

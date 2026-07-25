@@ -39,6 +39,23 @@ NEXT_PUBLIC_SITE_URL=http://localhost:3000
 
 `.env.example` contains placeholders and is safe to commit.
 
+### Deploy on Vercel
+
+1. Import the GitHub repo in Vercel.
+2. **Project Settings → Environment Variables** — add for **Production** and **Preview**:
+
+| Name | Notes |
+|------|--------|
+| `NEXT_PUBLIC_SUPABASE_URL` | Your project URL |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Publishable / anon key |
+| `SUPABASE_SERVICE_ROLE_KEY` | **Server-only** — do **not** use `NEXT_PUBLIC_` |
+| `NEXT_PUBLIC_SITE_URL` | Your Vercel URL, e.g. `https://your-app.vercel.app` |
+
+3. Redeploy after saving env vars (env changes do not apply to an in-flight build).
+4. In Supabase Auth → URL configuration, add your Vercel domain to **Site URL** and **Redirect URLs** (`https://your-app.vercel.app/auth/callback`).
+
+The root layout soft-fails theme loading when the service-role key is missing at build time so `npm run build` can complete; login and data features still need those variables at **runtime**.
+
 ---
 
 ## Accounts

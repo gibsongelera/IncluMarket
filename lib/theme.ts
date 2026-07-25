@@ -1,7 +1,7 @@
-// Theme presets + CSS-variable resolution, ported verbatim from assets/js/ui.js.
-// The admin Theme customizer edits a global im_theme_settings row; the resolved
+// Theme presets + CSS-variable resolution.
+// Admin Theme customizer edits a global im_theme_settings row; resolved
 // CSS custom properties are injected as a <style> block by the root layout so
-// buyer / seller / admin chrome all update together (no flash of default theme).
+// buyer / seller / admin chrome all update together.
 
 import type { ThemeSettings } from "./types";
 
@@ -13,12 +13,99 @@ export interface ThemePreset {
   vars: Record<string, string>;
 }
 
+/** Every CSS custom property a theme may set — used to clear stale inline overrides. */
+export const THEME_VAR_KEYS = [
+  "--palette-primary",
+  "--palette-primary-dark",
+  "--palette-deep",
+  "--palette-olive",
+  "--palette-forest",
+  "--palette-primary-100",
+  "--palette-deep-100",
+  "--palette-olive-100",
+  "--palette-forest-100",
+  "--brand-yellow",
+  "--brand-yellow-800",
+  "--brand-red-800",
+  "--brand-blue",
+  "--brand-blue-800",
+  "--brand-blue-100",
+  "--brand-red",
+  "--brand-red-100",
+  "--success",
+  "--success-100",
+  "--warning",
+  "--warning-100",
+  "--danger",
+  "--danger-100",
+  "--info",
+  "--info-100",
+  "--focus-ring",
+  "--color-nav",
+  "--color-nav-text",
+  "--color-body",
+  "--color-body-bg",
+  "--color-footer",
+  "--color-footer-text",
+  "--text-charcoal",
+  "--text-muted",
+  "--text-heading",
+  "--text-on-canvas",
+  "--text-on-canvas-muted",
+  "--text-on-canvas-shadow",
+  "--text-on-canvas-link",
+] as const;
+
+/**
+ * Shared brand aliases derived from palette tokens.
+ * Applied for every preset so buttons, links, badges, and pills follow the theme.
+ */
+function brandAliases(): Record<string, string> {
+  return {
+    "--brand-blue": "var(--palette-primary-dark)",
+    "--brand-blue-800": "var(--palette-deep)",
+    "--brand-blue-100": "var(--palette-primary-100)",
+    "--brand-red": "var(--palette-deep)",
+    "--brand-red-100": "var(--palette-deep-100)",
+    "--success": "var(--palette-forest)",
+    "--success-100": "var(--palette-forest-100)",
+    "--warning": "var(--palette-olive)",
+    "--warning-100": "var(--palette-olive-100)",
+    "--danger": "var(--palette-deep)",
+    "--danger-100": "var(--palette-deep-100)",
+    "--info": "var(--palette-primary-dark)",
+    "--info-100": "var(--palette-primary-100)",
+    "--focus-ring": "3px solid var(--palette-primary)",
+  };
+}
+
+/**
+ * Event-theme text colors: deep complementary tones readable on the light body,
+ * so names / headings are clearly themed (not flat charcoal-black).
+ * Default theme intentionally omits these so tokens.css (#212529 / #5A6169) stay as-is.
+ */
+function eventText(deep: string, muted: string, heading?: string): Record<string, string> {
+  const h = heading || deep;
+  return {
+    "--text-charcoal": deep,
+    "--text-muted": muted,
+    "--text-heading": h,
+    /* Solid light event bodies — canvas titles use the same deep themed ink */
+    "--text-on-canvas": h,
+    "--text-on-canvas-muted": muted,
+    "--text-on-canvas-shadow": "none",
+    "--text-on-canvas-link": deep,
+  };
+}
+
 export const THEME_PRESETS: Record<string, ThemePreset> = {
   default: {
     id: "default",
     label: "Inklu default",
     description: "Orange · burgundy · olive · forest",
     swatches: ["#D46E00", "#C55501", "#711402", "#695A07", "#136533"],
+    // Body/card text stays tokens.css charcoal. Only canvas titles go white
+    // so names stay readable on the rainbow background.
     vars: {
       "--palette-primary": "#D46E00",
       "--palette-primary-dark": "#C55501",
@@ -39,6 +126,10 @@ export const THEME_PRESETS: Record<string, ThemePreset> = {
         "linear-gradient(90deg,#781838 0%,#551547 7.7%,#301658 15.4%,#121B69 23.1%,#234075 30.8%,#417080 38.5%,#5D9D8A 46.2%,#75B485 53.8%,#8DA062 61.5%,#B28C42 69.2%,#DF7B30 76.9%,#D26F2C 84.6%,#C36227 92.3%,#B45623 100%)",
       "--color-footer": "#2A1A12",
       "--color-footer-text": "#F8F1EA",
+      "--text-on-canvas": "#FFFFFF",
+      "--text-on-canvas-muted": "rgba(255,255,255,0.9)",
+      "--text-on-canvas-shadow": "0 1px 3px rgba(0,0,0,0.45)",
+      "--text-on-canvas-link": "#FFFFFF",
     },
   },
   womens_month: {
@@ -65,6 +156,8 @@ export const THEME_PRESETS: Record<string, ThemePreset> = {
       "--color-body-bg": "#FFF5F8",
       "--color-footer": "#3D102C",
       "--color-footer-text": "#FCE4EC",
+      // Deep plum on blush pink — clear names/titles, not flat charcoal-black
+      ...eventText("#3D102C", "#8E2448", "#6A1B4D"),
     },
   },
   pride: {
@@ -91,6 +184,7 @@ export const THEME_PRESETS: Record<string, ThemePreset> = {
       "--color-body-bg": "#FFF8F0",
       "--color-footer": "#2A1638",
       "--color-footer-text": "#F3E9FF",
+      ...eventText("#2A1638", "#5B2C6F", "#5B2C6F"),
     },
   },
   independence: {
@@ -117,6 +211,7 @@ export const THEME_PRESETS: Record<string, ThemePreset> = {
       "--color-body-bg": "#F5F8FF",
       "--color-footer": "#0A1F5C",
       "--color-footer-text": "#FCD116",
+      ...eventText("#0A1F5C", "#0038A8", "#0038A8"),
     },
   },
   christmas: {
@@ -143,6 +238,7 @@ export const THEME_PRESETS: Record<string, ThemePreset> = {
       "--color-body-bg": "#F7FBF8",
       "--color-footer": "#06261C",
       "--color-footer-text": "#F0D060",
+      ...eventText("#06261C", "#0B3D2E", "#0B3D2E"),
     },
   },
   holy_week: {
@@ -169,6 +265,7 @@ export const THEME_PRESETS: Record<string, ThemePreset> = {
       "--color-body-bg": "#F7F4EF",
       "--color-footer": "#241912",
       "--color-footer-text": "#EDE6F5",
+      ...eventText("#241912", "#4A2C6A", "#3D2B1F"),
     },
   },
   buwan_ng_wika: {
@@ -195,6 +292,7 @@ export const THEME_PRESETS: Record<string, ThemePreset> = {
       "--color-body-bg": "#FFFBF0",
       "--color-footer": "#2E1A0C",
       "--color-footer-text": "#FFF4D4",
+      ...eventText("#2E1A0C", "#6B4F1D", "#5C3317"),
     },
   },
   pwd_awareness: {
@@ -221,6 +319,7 @@ export const THEME_PRESETS: Record<string, ThemePreset> = {
       "--color-body-bg": "#F3F9FC",
       "--color-footer": "#00284A",
       "--color-footer-text": "#D9EFFA",
+      ...eventText("#00284A", "#005A9C", "#003D6B"),
     },
   },
 };
@@ -233,13 +332,30 @@ export function getThemePresets(): ThemePreset[] {
   return Object.keys(THEME_PRESETS).map((k) => THEME_PRESETS[k]);
 }
 
+/** Clear every theme custom property from an element's inline style. */
+export function clearInlineThemeVars(root: CSSStyleDeclaration | { removeProperty(k: string): void }) {
+  THEME_VAR_KEYS.forEach((k) => root.removeProperty(k));
+}
+
+/** Apply a full resolved var map to documentElement (client live preview). */
+export function applyInlineThemeVars(vars: Record<string, string>) {
+  if (typeof document === "undefined") return;
+  const root = document.documentElement.style;
+  clearInlineThemeVars(root);
+  Object.entries(vars).forEach(([k, v]) => root.setProperty(k, v));
+}
+
 // Resolve the effective CSS custom properties for a stored settings row,
-// applying any per-chrome overrides exactly like the original applyThemeFromPref.
+// applying any per-chrome overrides. Always merges brand aliases so UI chrome
+// (buttons, links, badges) tracks the active palette.
 export function resolveThemeVars(
   settings?: Partial<ThemeSettings> | null
 ): Record<string, string> {
   const preset = getThemePreset(settings?.theme_preset);
-  const vars: Record<string, string> = { ...preset.vars };
+  const vars: Record<string, string> = {
+    ...preset.vars,
+    ...brandAliases(),
+  };
   if (settings?.color_nav) vars["--color-nav"] = settings.color_nav;
   if (settings?.color_body) {
     vars["--color-body"] = settings.color_body;
@@ -251,6 +367,15 @@ export function resolveThemeVars(
     vars["--color-footer-text"] = settings.color_footer_text;
   if (!vars["--color-body-bg"] && vars["--color-body"])
     vars["--color-body-bg"] = vars["--color-body"];
+
+  // Default theme: keep tokens.css charcoal/muted/heading for cards & body text.
+  // Canvas title vars (--text-on-canvas*) stay so rainbow page titles remain white.
+  if (preset.id === "default") {
+    delete vars["--text-charcoal"];
+    delete vars["--text-muted"];
+    delete vars["--text-heading"];
+  }
+
   return vars;
 }
 

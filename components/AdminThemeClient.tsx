@@ -3,7 +3,11 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "@/lib/toast";
-import { getThemePreset } from "@/lib/theme";
+import {
+  applyInlineThemeVars,
+  getThemePreset,
+  resolveThemeVars,
+} from "@/lib/theme";
 import { applyThemePreset, saveThemeChrome } from "@/lib/actions/theme";
 
 type PresetLite = { id: string; label: string; description: string; swatches: string[] };
@@ -47,15 +51,33 @@ export function AdminThemeClient({
     return `Active preset: ${p.label}${hasOverrides ? " (with custom chrome overrides)" : ""}`;
   }, [activePreset, hasOverrides]);
 
-  function livePreview(next?: { nav?: string; body?: string; footer?: string }) {
-    const root = document.documentElement;
-    const n = next?.nav ?? nav;
-    const b = next?.body ?? body;
-    const f = next?.footer ?? footer;
-    root.style.setProperty("--color-nav", n);
-    root.style.setProperty("--color-body", b);
-    root.style.setProperty("--color-body-bg", b);
-    root.style.setProperty("--color-footer", f);
+  /** Apply full palette + chrome + text tokens for the active preset (and optional chrome overrides). */
+  function livePreviewFull(opts?: {
+    presetId?: string;
+    nav?: string;
+    body?: string;
+    footer?: string;
+    chromeOverride?: boolean;
+  }) {
+    const presetId = opts?.presetId ?? activePreset;
+    const n = opts?.nav ?? nav;
+    const b = opts?.body ?? body;
+    const f = opts?.footer ?? footer;
+    const chromeOverride = opts?.chromeOverride ?? hasOverrides;
+    const vars = resolveThemeVars({
+      theme_preset: presetId,
+      color_nav: chromeOverride ? n : null,
+      color_body: chromeOverride ? b : null,
+      color_footer: chromeOverride ? f : null,
+    });
+    // While dragging chrome pickers, always preview the live hex even before "Save".
+    if (opts?.nav) vars["--color-nav"] = opts.nav;
+    if (opts?.body) {
+      vars["--color-body"] = opts.body;
+      vars["--color-body-bg"] = opts.body;
+    }
+    if (opts?.footer) vars["--color-footer"] = opts.footer;
+    applyInlineThemeVars(vars);
   }
 
   function onPicker(which: "nav" | "body" | "footer", value: string) {
@@ -63,15 +85,15 @@ export function AdminThemeClient({
     if (which === "nav") {
       setNav(v);
       setNavHex(v);
-      livePreview({ nav: v });
+      livePreviewFull({ nav: v, chromeOverride: true });
     } else if (which === "body") {
       setBody(v);
       setBodyHex(v);
-      livePreview({ body: v });
+      livePreviewFull({ body: v, chromeOverride: true });
     } else {
       setFooter(v);
       setFooterHex(v);
-      livePreview({ footer: v });
+      livePreviewFull({ footer: v, chromeOverride: true });
     }
   }
 
@@ -98,6 +120,7 @@ export function AdminThemeClient({
       return;
     }
     setHasOverrides(true);
+    livePreviewFull({ nav: n, body: b, footer: f, chromeOverride: true });
     toast("Chrome colors saved. Synced for all roles.", "success");
     router.refresh();
   }
@@ -109,11 +132,25 @@ export function AdminThemeClient({
       return;
     }
     const preset = getThemePreset(id);
-    onPicker("nav", (preset.vars["--color-nav"] || "#711402").toUpperCase());
-    onPicker("body", (preset.vars["--color-body"] || "#FFFFFF").toUpperCase());
-    onPicker("footer", (preset.vars["--color-footer"] || "#2A1A12").toUpperCase());
+    const nextNav = (preset.vars["--color-nav"] || "#711402").toUpperCase();
+    const nextBody = (preset.vars["--color-body"] || "#FFFFFF").toUpperCase();
+    const nextFooter = (preset.vars["--color-footer"] || "#2A1A12").toUpperCase();
+    setNav(nextNav);
+    setNavHex(nextNav);
+    setBody(nextBody);
+    setBodyHex(nextBody);
+    setFooter(nextFooter);
+    setFooterHex(nextFooter);
     setActivePreset(id);
     setHasOverrides(false);
+    // Apply EVERY palette + text token immediately (not just chrome).
+    livePreviewFull({
+      presetId: id,
+      nav: nextNav,
+      body: nextBody,
+      footer: nextFooter,
+      chromeOverride: false,
+    });
     toast(`Theme applied: ${preset.label}`, "success");
     router.refresh();
   }
@@ -252,6 +289,7 @@ export function AdminThemeClient({
             <span className="btn btn--warning btn--sm">Accent</span>
             <span className="badge badge--blue">Badge</span>
             <span className="pill pill--processing">Status</span>
+            <strong style={{ color: "var(--text-heading, var(--text-charcoal))" }}>Sample name</strong>
           </div>
           <div className="theme-preview__footer">Footer</div>
         </div>

@@ -7,11 +7,21 @@ import { createClient } from "@supabase/supabase-js";
 // browser bundle. Only use inside server actions / route handlers after an
 // explicit role check.
 export function createAdminClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!serviceKey) {
-    throw new Error("SUPABASE_SERVICE_ROLE_KEY is not set (server-only).");
+  if (!url || !serviceKey) {
+    throw new Error(
+      "Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY (server-only). " +
+        "Add both in Vercel → Project Settings → Environment Variables " +
+        "(Production + Preview), then redeploy."
+    );
   }
-  return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, serviceKey, {
+  return createClient(url, serviceKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
+}
+
+/** True when the service-role client can be constructed (env present). */
+export function hasAdminEnv(): boolean {
+  return Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
 }

@@ -25,7 +25,32 @@ body.page--admin {
 }
 main { flex: 1 0 auto; }
 
-h1, h2, h3, h4 { margin: 0 0 .5em; line-height: 1.2; color: var( --canvas-white); font-weight: 700; font-family: var(--font-display); letter-spacing: -0.005em; }
+/* Card / panel headings: event themes set --text-heading; default keeps charcoal. */
+h1, h2, h3, h4 {
+  margin: 0 0 .5em;
+  line-height: 1.2;
+  color: var(--text-heading, var(--text-charcoal));
+  font-weight: 700;
+  font-family: var(--font-display);
+  letter-spacing: -0.005em;
+}
+
+/*
+ * Titles that sit ON the page canvas (rainbow default / solid event body),
+ * not inside white cards. Default uses white (--text-on-canvas); event themes
+ * fall back to --text-heading (deep plum/blue/etc.).
+ */
+main > h1,
+.page-head > h1,
+.page-head > h2,
+#feed-title,
+.category-strip > h2 {
+  color: var(--text-on-canvas, var(--text-heading, var(--text-charcoal)));
+  
+}
+.category-folder-hint {
+  color: var(--text-on-canvas-muted, var(--text-muted));
+}
 h1 { font-size: var(--step-5); }
 h2 { font-size: var(--step-3); }
 h3 { font-size: var(--step-2); }

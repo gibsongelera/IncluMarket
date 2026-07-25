@@ -250,8 +250,11 @@
 
 /* Product detail */
 .main--product { padding-top: 1rem; padding-bottom: 2rem; }
-.breadcrumbs { margin-bottom: 1rem; color: var(--text-muted); }
-.breadcrumbs a { color: var(--brand-blue); }
+.breadcrumbs {
+  margin-bottom: 1rem;
+  color: var(--text-on-canvas-muted, var(--text-muted));
+}
+.breadcrumbs a { color: var(--text-on-canvas-link, var(--brand-blue)); }
 .product-detail {
   display: grid;
   grid-template-columns: minmax(280px, 1fr) 1.2fr;

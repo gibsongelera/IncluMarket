@@ -17,12 +17,22 @@ export const metadata: Metadata = {
     "InkluMarket — a Shopee-style e-commerce module for PWD livelihood under the InkluTrack ecosystem. Built on DSWD identity and WCAG 2.1 AA.",
 };
 
+// Theme + contrast are request-time; avoid static prerender crashing when
+// SUPABASE_SERVICE_ROLE_KEY is absent at build (e.g. Vercel before env is wired).
+export const dynamic = "force-dynamic";
+
 export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const [theme, contrast] = await Promise.all([getThemeSettings(), getContrast()]);
+  let theme = null;
+  let contrast: "default" | "high" = "default";
+  try {
+    [theme, contrast] = await Promise.all([getThemeSettings(), getContrast()]);
+  } catch {
+    // Missing env / DB during build or cold start — fall back to default theme.
+  }
   const vars = resolveThemeVars(theme);
   const css = themeVarsToCss(vars);
 
