@@ -31,7 +31,7 @@ export default async function AdminThemePage() {
   return (
     <>
       <SiteHeader variant="admin" active="theme" session={session} />
-      <main id="main" className="container main--admin">
+      <main id="main" tabIndex={-1} className="container main--admin">
         <div className="page-head">
           <h1>Theme &amp; appearance</h1>
           <p className="lede muted" style={{ color: "var(--canvas-white)" }}>

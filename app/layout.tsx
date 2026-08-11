@@ -1,3 +1,5 @@
+import "@fortawesome/fontawesome-svg-core/styles.css";
+import "@/lib/fontawesome";
 import "@/styles/tokens.css";
 import "@/styles/base.css";
 import "@/styles/components.css";
@@ -10,11 +12,14 @@ import { getThemeSettings } from "@/lib/data";
 import { getContrast } from "@/lib/session";
 import { resolveThemeVars, themeVarsToCss } from "@/lib/theme";
 import { Toaster } from "@/components/Toaster";
+import { ChatWidget } from "@/components/ChatWidget";
+import { AccessibilityWidget } from "@/components/AccessibilityWidget";
+import { VisualAlertHost } from "@/components/VisualAlert";
 
 export const metadata: Metadata = {
-  title: "InkluMarket — PWD Livelihood Marketplace",
+  title: "IncluMarket — PWD Livelihood Marketplace",
   description:
-    "InkluMarket — a Shopee-style e-commerce module for PWD livelihood under the InkluTrack ecosystem. Built on DSWD identity and WCAG 2.1 AA.",
+    "IncluMarket — a Shopee-style e-commerce module for PWD livelihood under the InkluTrack ecosystem. Built on DSWD identity and WCAG 2.1 AA.",
 };
 
 // Theme + contrast are request-time; avoid static prerender crashing when
@@ -39,12 +44,18 @@ export default async function RootLayout({
   return (
     <html lang="en" data-contrast={contrast === "high" ? "high" : undefined}>
       <head>
-        <meta name="theme-color" content={vars["--color-nav"] || "#711402"} />
+        <meta name="theme-color" content={vars["--color-nav"] || "#0038A8"} />
         <style id="im-theme" dangerouslySetInnerHTML={{ __html: css }} />
       </head>
       <body>
+        <a className="skip-link" href="#main">
+          Skip to main content
+        </a>
         {children}
         <Toaster />
+        <VisualAlertHost />
+        <ChatWidget />
+        <AccessibilityWidget />
       </body>
     </html>
   );

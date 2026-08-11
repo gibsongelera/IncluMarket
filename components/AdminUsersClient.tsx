@@ -4,7 +4,8 @@ import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { formatDate, maskEmail } from "@/lib/format";
 import { toast } from "@/lib/toast";
-import { createUser, updateUser, deleteUser, updateUserRole } from "@/lib/actions/admin";
+import { createUser, updateUser, deleteUser, updateUserRole, setSellerFeatured } from "@/lib/actions/admin";
+import { Icon } from "./Icon";
 import type { Profile, Role } from "@/lib/types";
 
 type UserRow = Profile & {
@@ -157,6 +158,23 @@ export function AdminUsersClient({
     router.refresh();
   }
 
+  async function toggleFeaturedSeller(u: UserRow) {
+    const next = !u.is_featured_seller;
+    let story = u.seller_story || "";
+    if (next) {
+      const entered = prompt(`Short seller story for "${u.name}" (shown on the homepage):`, story);
+      if (entered == null) return; // cancelled
+      story = entered;
+    }
+    const res = await setSellerFeatured(u.id, next, story);
+    if (!res.ok) {
+      toast(res.error || "Could not update.", "error");
+      return;
+    }
+    toast(next ? `"${u.name}" is now a featured PWD seller.` : `Removed "${u.name}" from featured sellers.`, "success");
+    router.refresh();
+  }
+
   return (
     <>
       <div className="page-head">
@@ -213,6 +231,7 @@ export function AdminUsersClient({
               <th scope="col">Email (masked)</th>
               <th scope="col">Role</th>
               <th scope="col">Disability type</th>
+              <th scope="col">Featured</th>
               <th scope="col">Joined</th>
               <th scope="col">Actions</th>
             </tr>
@@ -244,6 +263,25 @@ export function AdminUsersClient({
                     </select>
                   </td>
                   <td>{u.disability_type || "—"}</td>
+                  <td>
+                    {u.role === "seller" ? (
+                      <button
+                        type="button"
+                        className="icon-btn"
+                        aria-pressed={u.is_featured_seller}
+                        aria-label={
+                          u.is_featured_seller
+                            ? `Remove ${u.name} from featured PWD sellers`
+                            : `Feature ${u.name} as a PWD seller`
+                        }
+                        onClick={() => toggleFeaturedSeller(u)}
+                      >
+                        <Icon name="sparkles" size={16} />
+                      </button>
+                    ) : (
+                      <span className="muted small">—</span>
+                    )}
+                  </td>
                   <td>{formatDate(u.created_at)}</td>
                   <td className="row-actions">
                     <button className="btn btn--ghost btn--sm" onClick={() => openDetails(u)}>
@@ -350,7 +388,7 @@ export function AdminUsersClient({
             <div className="field" id="um-consent-field">
               <label>
                 <input type="checkbox" id="um-consent" checked={fConsent} onChange={(e) => setFConsent(e.target.checked)} />{" "}
-                I confirm this user has consented to data processing under RA 10173 (Data Privacy Act) for InkluMarket.
+                I confirm this user has consented to data processing under RA 10173 (Data Privacy Act) for IncluMarket.
               </label>
             </div>
           ) : null}

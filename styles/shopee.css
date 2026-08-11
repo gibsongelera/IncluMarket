@@ -102,6 +102,10 @@ button[disabled], .btn[disabled], .variant-btn[disabled] {
   border-color: var(--brand-blue);
 }
 .category-chip .chip-emoji {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.1rem;
   font-size: 1.1rem;
   line-height: 1;
 }

@@ -1,0 +1,160 @@
+/* Reset + typography + a11y utilities */
+@import url('https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;600;700;800&family=Rubik:wght@500;600;700;800&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+html { color-scheme: light; }
+body {
+  font-family: var(--font-body);
+  color: var(--text-charcoal);
+  background: var(--color-body-bg, var(--color-body));
+  background-attachment: fixed;
+  font-size: var(--step-0);
+  line-height: 1.5;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Buyer / Seller / Admin: keep the rainbow body background */
+body.page--buyer,
+body.page--seller,
+body.page--admin {
+  background: var(--color-body-bg, var(--bg-rainbow));
+  background-attachment: fixed;
+}
+main { flex: 1 0 auto; }
+
+/* Card / panel headings: event themes set --text-heading; default keeps charcoal. */
+h1, h2, h3, h4 {
+  margin: 0 0 .5em;
+  line-height: 1.2;
+  color: var(--text-heading, var(--text-charcoal));
+  font-weight: 700;
+  font-family: var(--font-display);
+  letter-spacing: -0.005em;
+}
+
+/*
+ * Titles that sit ON the page canvas (rainbow default / solid event body),
+ * not inside white cards. Default uses white (--text-on-canvas); event themes
+ * fall back to --text-heading (deep plum/blue/etc.).
+ */
+main > h1,
+.page-head > h1,
+.page-head > h2,
+#feed-title,
+.category-strip > h2 {
+  color: var(--text-on-canvas, var(--text-heading, var(--text-charcoal)));
+  
+}
+.category-folder-hint {
+  color: var(--text-on-canvas-muted, var(--text-muted));
+}
+h1 { font-size: var(--step-5); }
+h2 { font-size: var(--step-3); }
+h3 { font-size: var(--step-2); }
+p { margin: 0 0 .75em; }
+a { color: var(--brand-blue); text-underline-offset: 2px; }
+a:hover { text-decoration: underline; }
+small { font-size: .875em; }
+
+img, svg, canvas { max-width: 100%; display: block; }
+
+code {
+  font-family: var(--font-mono);
+  background: var(--surface-gray);
+  padding: 2px 6px;
+  border-radius: var(--radius-xs);
+  font-size: .9em;
+}
+
+hr {
+  border: 0;
+  border-top: 1px solid var(--border);
+  margin: 1.5rem 0;
+}
+
+/* Focus states — visible for all interactive elements */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+  border-radius: var(--radius-xs);
+}
+
+/* Screen-reader-only */
+.sr-only {
+  position: absolute !important;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0,0,0,0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Skip link */
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  background: var(--brand-blue);
+  color: #FFFFFF;
+  padding: 10px 14px;
+  z-index: 1000;
+  border-radius: 0 0 var(--radius-sm) 0;
+  text-decoration: none;
+}
+.skip-link:focus { left: 0; }
+
+.container {
+  width: 100%;
+  max-width: var(--container-max);
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+.muted { color: var(--text-muted); }
+.small { font-size: .875rem; }
+.eyebrow {
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  font-weight: 700;
+  font-size: .8rem;
+  color: var(--brand-blue);
+  margin: 0 0 .5rem;
+}
+
+/* Toast region */
+.toast-region {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+  z-index: 100;
+  pointer-events: none;
+}
+.toast {
+  background: var(--text-charcoal);
+  color: #FFFFFF;
+  padding: .75rem 1rem;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  min-width: 220px;
+  pointer-events: auto;
+  animation: toast-in 180ms ease-out;
+}
+.toast--success { background: var(--success); color: #FFFFFF; }
+.toast--error   { background: var(--brand-red); color: #FFFFFF; }
+.toast--warning { background: var(--brand-yellow); color: var(--text-charcoal); } /* Guardrail 1 */
+@keyframes toast-in {
+  from { transform: translateY(6px); opacity: 0; }
+  to   { transform: translateY(0);   opacity: 1; }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}

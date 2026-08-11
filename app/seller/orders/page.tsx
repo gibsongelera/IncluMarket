@@ -5,6 +5,7 @@ import { SellerOrdersClient } from "@/components/SellerOrdersClient";
 import {
   getOrderItems,
   getOrders,
+  getOrderStatusHistoryForOrders,
   getProductsBySeller,
   getProfiles,
   getVariants,
@@ -30,11 +31,12 @@ export default async function SellerOrdersPage() {
     .sort((a, b) => b.created_at.localeCompare(a.created_at));
   // include all items belonging to those orders (for line display)
   const relatedItems = orderItems.filter((it) => orderIds.has(it.order_id));
+  const history = await getOrderStatusHistoryForOrders(myOrders.map((o) => o.id));
 
   return (
     <>
       <SiteHeader variant="seller" active="orders" session={session} />
-      <main id="main" className="container main--seller">
+      <main id="main" tabIndex={-1} className="container main--seller">
         <h1>Order fulfillment</h1>
         <SellerOrdersClient
           orders={myOrders}
@@ -42,6 +44,7 @@ export default async function SellerOrdersPage() {
           products={products.map((p) => ({ id: p.id, title: p.title }))}
           variants={variants.map((v) => ({ id: v.id, color_name: v.color_name, size: v.size }))}
           buyers={profiles.map((p) => ({ id: p.id, name: p.name, email: p.email }))}
+          history={history}
         />
       </main>
       <SiteFooter />

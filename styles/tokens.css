@@ -1,86 +1,80 @@
-/* InkluMarket Design Tokens
-   Default brand: complementary orange / burgundy / olive / forest palette.
+/* IncluMarket Design Tokens
+   Default brand: DSWD Blue / Red / Yellow-Gold / White (accessibility-first).
    Guardrails:
-     1) Prefer dark text on light / orange / olive highlight surfaces.
-     2) White typography is reserved for dark burgundy / forest surfaces
+     1) Prefer dark text on light / gold highlight surfaces.
+     2) White typography is reserved for dark blue / red / green surfaces
         (.btn--primary, .btn--danger, nav on --color-nav, success chips).
 */
 :root {
-  /* Core complementary palette */
-  --palette-primary: #D46E00;
-  --palette-primary-dark: #C55501;
-  --palette-deep: #711402;
-  --palette-olive: #695A07;
-  --palette-forest: #136533;
+  /* DSWD-aligned core palette */
+  --palette-primary: #F5C518; /* gold warmth / badges */
+  --palette-primary-dark: #0038A8; /* DSWD blue */
+  --palette-deep: #00287A; /* nav / deep blue */
+  --palette-olive: #B8860B; /* gold dark */
+  --palette-forest: #0B5C3B; /* success / positive */
 
-  --palette-primary-100: #FCE8D4;
-  --palette-deep-100: #F3E4E0;
-  --palette-olive-100: #F0ECD4;
+  --palette-primary-100: #FFF6D6;
+  --palette-deep-100: #E8EEF9;
+  --palette-olive-100: #FFF4D1;
   --palette-forest-100: #D8EDE3;
 
-  /* Compat aliases used across components (map to complementary set) */
-  --brand-blue: var(--palette-primary-dark);
-  --brand-blue-800: var(--palette-deep);
-  --brand-blue-100: var(--palette-primary-100);
-  --brand-red: var(--palette-deep);
-  --brand-red-800: #4A0D01;
-  --brand-red-100: var(--palette-deep-100);
-  --brand-yellow: #F0C36A;
-  --brand-yellow-800: var(--palette-olive);
+  /* Extended accents */
+  --palette-plum: #6B2357;
+  --palette-teal: #0E5C63;
+  --palette-rose: #C41E3A; /* compassion / heart red */
+
+  /* Compat aliases */
+  --brand-blue: #0038A8;
+  --brand-blue-800: #00287A;
+  --brand-blue-100: #E8EEF9;
+  --brand-red: #C41E3A;
+  --brand-red-800: #8E1529;
+  --brand-red-100: #FCE8EC;
+  --brand-yellow: #F5C518;
+  --brand-yellow-800: #B8860B;
 
   --text-charcoal: #212529;
   --text-muted: #5A6169;
   --canvas-white: #FFFFFF;
   --border: #DEE2E6;
-  --surface-gray: #F8F9FA;
+  --surface-gray: #F5F7FA;
   --surface-gray-2: #EEF0F3;
 
   --success: var(--palette-forest);
   --success-100: var(--palette-forest-100);
   --warning: var(--palette-olive);
   --warning-100: var(--palette-olive-100);
-  --danger: var(--palette-deep);
-  --danger-100: var(--palette-deep-100);
-  --info: var(--palette-primary-dark);
-  --info-100: var(--palette-primary-100);
+  --danger: var(--brand-red);
+  --danger-100: var(--brand-red-100);
+  --info: var(--brand-blue);
+  --info-100: var(--brand-blue-100);
 
-  /* Exact rainbow gradient sampled from provided swatch (L→R) */
+  /* Soft blue→white atmosphere (not purple AI gradient) */
   --bg-rainbow: linear-gradient(
-    90deg,
-    #781838 0%,
-    #551547 7.7%,
-    #301658 15.4%,
-    #121B69 23.1%,
-    #234075 30.8%,
-    #417080 38.5%,
-    #5D9D8A 46.2%,
-    #75B485 53.8%,
-    #8DA062 61.5%,
-    #B28C42 69.2%,
-    #DF7B30 76.9%,
-    #D26F2C 84.6%,
-    #C36227 92.3%,
-    #B45623 100%
+    160deg,
+    #E8EEF9 0%,
+    #F5F7FA 42%,
+    #FFFFFF 100%
   );
 
-  /* Themeable chrome (admin customizer + event presets) */
-  --color-nav: var(--palette-deep);
+  /* Themeable chrome */
+  --color-nav: var(--brand-blue-800);
   --color-nav-text: #FFFFFF;
-  --color-body: #5D9D8A; /* solid picker fallback (mid stop of --bg-rainbow) */
-  --color-body-bg: var(--bg-rainbow); /* default page background for buyer/seller/admin */
-  --color-footer: #2A1A12;
-  --color-footer-text: #F8F1EA;
+  --color-body: #F5F7FA;
+  --color-body-bg: var(--bg-rainbow);
+  --color-footer: #00205B;
+  --color-footer-text: #F5F7FA;
 
   --radius-xs: 4px;
   --radius-sm: 6px;
   --radius-md: 10px;
   --radius-lg: 14px;
 
-  --shadow-sm: 0 1px 2px rgba(33, 37, 41, 0.06), 0 1px 1px rgba(33, 37, 41, 0.04);
-  --shadow-md: 0 4px 12px rgba(33, 37, 41, 0.08);
-  --shadow-lg: 0 12px 24px rgba(33, 37, 41, 0.12);
+  --shadow-sm: 0 1px 2px rgba(0, 40, 122, 0.06), 0 1px 1px rgba(0, 40, 122, 0.04);
+  --shadow-md: 0 4px 12px rgba(0, 40, 122, 0.08);
+  --shadow-lg: 0 12px 24px rgba(0, 40, 122, 0.12);
 
-  --focus-ring: 3px solid var(--palette-primary);
+  --focus-ring: 3px solid var(--brand-blue);
   --focus-ring-offset: 2px;
 
   --font-body: "Nunito Sans", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -110,15 +104,31 @@
   --surface-gray-2: #FFFFFF;
   --color-body: #FFFFFF;
   --color-body-bg: #FFFFFF;
-  --palette-primary: #9A4E00;
-  --palette-primary-dark: #7A3D00;
-  --palette-deep: #4A0D01;
-  --palette-olive: #3D3504;
-  --palette-forest: #0A3D1F;
-  --brand-blue: var(--palette-primary-dark);
-  --brand-blue-800: var(--palette-deep);
-  --brand-red: var(--palette-deep);
+  --palette-primary: #B8860B;
+  --palette-primary-dark: #00205B;
+  --palette-deep: #00143D;
+  --brand-blue: #00205B;
+  --brand-blue-800: #00143D;
+  --brand-red: #8E1529;
   --shadow-sm: 0 0 0 1px #000;
   --shadow-md: 0 0 0 2px #000;
   --shadow-lg: 0 0 0 3px #000;
+}
+
+/* Font size set precisely by accessibility toolbar (12–24px) */
+:root[data-font-px] { /* attribute marker; size applied via inline style */ }
+
+:root[data-reduce-motion="true"] * {
+  animation: none !important;
+  transition: none !important;
+}
+
+:root[data-large-cursors="true"],
+:root[data-large-cursors="true"] * {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Cpath fill='%23000' stroke='%23fff' stroke-width='2' d='M4 2 L4 26 L10 20 L14 28 L18 26 L14 18 L22 18 Z'/%3E%3C/svg%3E") 2 2, auto !important;
+}
+
+.a11y-read-highlight {
+  outline: 3px solid var(--brand-yellow) !important;
+  background: color-mix(in srgb, var(--brand-yellow) 35%, transparent) !important;
 }

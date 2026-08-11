@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { money, maskEmail, productImageSrc } from "@/lib/format";
 import { toast } from "@/lib/toast";
 import { Pill } from "./Pill";
-import { setProductStatus } from "@/lib/actions/admin";
+import { Icon } from "./Icon";
+import { setProductStatus, setProductFeatured } from "@/lib/actions/admin";
 import type { Category, Product, ProductStatus } from "@/lib/types";
 
 type SellerLite = { id: number; name: string; email: string };
@@ -43,6 +44,16 @@ export function AdminProductsClient({
     router.refresh();
   }
 
+  async function toggleFeatured(id: number, next: boolean) {
+    const res = await setProductFeatured(id, next);
+    if (!res.ok) {
+      toast(res.error || "Could not update.", "error");
+      return;
+    }
+    toast(next ? "Product featured on the homepage." : "Product removed from featured.", "success");
+    router.refresh();
+  }
+
   return (
     <>
       <div className="tabs" role="tablist" id="prod-tabs" aria-label="Product status">
@@ -68,6 +79,7 @@ export function AdminProductsClient({
               <th>Category</th>
               <th>Base price</th>
               <th>Status</th>
+              <th>Featured</th>
               <th>Decision</th>
             </tr>
           </thead>
@@ -110,6 +122,17 @@ export function AdminProductsClient({
                   <td>{money(p.base_price)}</td>
                   <td>
                     <Pill status={status} />
+                  </td>
+                  <td>
+                    <button
+                      type="button"
+                      className="icon-btn"
+                      aria-pressed={p.is_featured}
+                      aria-label={p.is_featured ? `Remove ${p.title} from featured` : `Feature ${p.title} on the homepage`}
+                      onClick={() => toggleFeatured(p.id, !p.is_featured)}
+                    >
+                      <Icon name="sparkles" size={16} />
+                    </button>
                   </td>
                   <td>
                     {status === "pending" ? (

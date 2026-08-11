@@ -3,7 +3,13 @@
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getSession } from "@/lib/session";
+import {
+  buildReportWorkbook,
+  type ReportType,
+} from "@/lib/reports/excel";
 import type { ProductStatus, TicketStatus } from "@/lib/types";
+
+export type { ReportType };
 
 export interface ActionResult {
   ok: boolean;
@@ -37,6 +43,47 @@ export async function setProductStatus(
   const verb = status === "approved" ? "approved_product" : status === "flagged" ? "flagged_product" : "reset_product";
   await audit(admin.user_id, verb, `product:${productId}`);
   revalidatePath("/admin/products");
+  return { ok: true };
+}
+
+export async function setProductFeatured(
+  productId: number,
+  featured: boolean
+): Promise<ActionResult> {
+  const admin = await requireAdmin();
+  if (!admin) return { ok: false, error: "Admin access required." };
+  const db = createAdminClient();
+  const { error } = await db
+    .from("im_products")
+    .update({ is_featured: featured, updated_at: new Date().toISOString() })
+    .eq("id", productId);
+  if (error) return { ok: false, error: error.message };
+  await audit(admin.user_id, featured ? "featured_product" : "unfeatured_product", `product:${productId}`);
+  revalidatePath("/admin/products");
+  revalidatePath("/home");
+  revalidatePath("/buyer/product", "layout");
+  return { ok: true };
+}
+
+export async function setSellerFeatured(
+  userId: number,
+  featured: boolean,
+  story?: string
+): Promise<ActionResult> {
+  const admin = await requireAdmin();
+  if (!admin) return { ok: false, error: "Admin access required." };
+  const db = createAdminClient();
+  const { data: target } = await db.from("im_profiles").select("role").eq("id", userId).maybeSingle();
+  if (!target || target.role !== "seller") return { ok: false, error: "Only sellers can be featured." };
+
+  const patch: Record<string, unknown> = { is_featured_seller: featured, updated_at: new Date().toISOString() };
+  if (story !== undefined) patch.seller_story = story.trim() || null;
+
+  const { error } = await db.from("im_profiles").update(patch).eq("id", userId);
+  if (error) return { ok: false, error: error.message };
+  await audit(admin.user_id, featured ? "featured_seller" : "unfeatured_seller", `profile:${userId}`);
+  revalidatePath("/admin/users");
+  revalidatePath("/home");
   return { ok: true };
 }
 
@@ -216,4 +263,33 @@ export async function deleteUser(userId: number): Promise<ActionResult> {
   await audit(admin.user_id, `deleted_user_${user.role}`, `user:${userId}`);
   revalidatePath("/admin/users");
   return { ok: true };
+}
+
+// ---------------------------------------------------------------------------
+// Excel export (ISO 8601 dates, ISO 4217 PHP, resolved display names)
+// ---------------------------------------------------------------------------
+
+export interface ExportResult {
+  ok: boolean;
+  error?: string;
+  fileBase64?: string;
+  filename?: string;
+}
+
+export async function exportReport(type: ReportType): Promise<ExportResult> {
+  const admin = await requireAdmin();
+  if (!admin) return { ok: false, error: "Admin access required." };
+
+  try {
+    const { workbook, filename } = await buildReportWorkbook(type);
+    const buffer = await workbook.xlsx.writeBuffer();
+    const fileBase64 = Buffer.from(buffer).toString("base64");
+
+    await audit(admin.user_id, "exported_report", `report:${type}:${filename}`);
+
+    return { ok: true, fileBase64, filename };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Could not generate the report.";
+    return { ok: false, error: message };
+  }
 }

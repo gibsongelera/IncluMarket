@@ -72,7 +72,7 @@ export function CartClient({
   if (items.length === 0) {
     return (
       <p className="empty" id="cart-empty">
-        Your cart is empty. <Link href="/buyer/home">Start shopping.</Link>
+        Your cart is empty. <Link href="/home">Start shopping.</Link>
       </p>
     );
   }

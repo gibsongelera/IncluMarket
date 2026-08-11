@@ -2,22 +2,28 @@ import Link from "next/link";
 import type { Role, SessionUser } from "@/lib/types";
 import { maskEmail } from "@/lib/format";
 import { getCartCount } from "@/lib/actions/cart";
-import { Icon } from "./Icon";
+import { getMyNotifications, getMyUnreadCount } from "@/lib/actions/notifications";
+import { getMyUnreadMessageCount } from "@/lib/actions/messages";
 import { CartBadge } from "./CartBadge";
+import { SearchBox } from "./SearchBox";
+import { NotificationBell } from "./NotificationBell";
 import { ContrastToggle, LogoutButton } from "./HeaderActions";
 
 type NavItem = { href: string; label: string; key: string };
 
 const NAV: Record<Role, NavItem[]> = {
   buyer: [
-    { href: "/buyer/home", label: "Shop", key: "home" },
+    { href: "/home", label: "Shop", key: "home" },
+    { href: "/buyer/wishlist", label: "Wishlist", key: "wishlist" },
     { href: "/buyer/orders", label: "My Orders", key: "orders" },
+    { href: "/buyer/messages", label: "Messages", key: "messages" },
     { href: "/buyer/support", label: "Support", key: "support" },
   ],
   seller: [
     { href: "/seller/dashboard", label: "Dashboard", key: "dashboard" },
     { href: "/seller/products", label: "Products", key: "products" },
     { href: "/seller/orders", label: "Orders", key: "orders" },
+    { href: "/seller/messages", label: "Messages", key: "messages" },
     { href: "/seller/reviews", label: "Reviews", key: "reviews" },
   ],
   admin: [
@@ -25,12 +31,14 @@ const NAV: Record<Role, NavItem[]> = {
     { href: "/admin/products", label: "Products", key: "products" },
     { href: "/admin/tickets", label: "Tickets", key: "tickets" },
     { href: "/admin/compliance", label: "Compliance", key: "compliance" },
+    { href: "/admin/reports", label: "Reports", key: "reports" },
+    { href: "/admin/payments", label: "Payments", key: "payments" },
     { href: "/admin/theme", label: "Theme", key: "theme" },
   ],
 };
 
 const BRAND_HREF: Record<Role, string> = {
-  buyer: "/buyer/home",
+  buyer: "/home",
   seller: "/seller/dashboard",
   admin: "/admin/users",
 };
@@ -42,9 +50,38 @@ export async function SiteHeader({
 }: {
   variant: Role;
   active: string;
-  session: SessionUser;
+  session: SessionUser | null;
 }) {
+  if (!session) {
+    return (
+      <header className="site-header site-header--buyer" role="banner">
+        <div className="container header-row">
+          <Link className="brand" href="/home" aria-label="IncluMarket home">
+            <span className="brand-mark" aria-hidden="true">
+              IM
+            </span>
+            <span className="brand-word">IncluMarket</span>
+          </Link>
+
+          <SearchBox />
+
+          <nav className="header-nav" aria-label="Primary">
+            <ContrastToggle />
+            <Link className="btn btn--primary btn--sm" href="/login">
+              Sign in
+            </Link>
+          </nav>
+        </div>
+      </header>
+    );
+  }
+
   const cartCount = variant === "buyer" ? await getCartCount(session.user_id) : 0;
+  const [unread, notifications, unreadMessages] = await Promise.all([
+    getMyUnreadCount(),
+    getMyNotifications(),
+    variant === "buyer" || variant === "seller" ? getMyUnreadMessageCount() : Promise.resolve(0),
+  ]);
 
   return (
     <header
@@ -52,33 +89,16 @@ export async function SiteHeader({
       role="banner"
     >
       <div className="container header-row">
-        <Link className="brand" href={BRAND_HREF[variant]} aria-label="InkluMarket home">
+        <Link className="brand" href={BRAND_HREF[variant]} aria-label="IncluMarket home">
           <span className="brand-mark" aria-hidden="true">
             IM
           </span>
           <span className="brand-word">
-            InkluMarket{variant !== "buyer" ? <small>{variant === "admin" ? "Admin" : "Seller"}</small> : null}
+            IncluMarket{variant !== "buyer" ? <small>{variant === "admin" ? "Admin" : "Seller"}</small> : null}
           </span>
         </Link>
 
-        {variant === "buyer" ? (
-          <form className="search" role="search" action="/buyer/home">
-            <label htmlFor="search-input" className="sr-only">
-              Search products
-            </label>
-            <input
-              id="search-input"
-              name="q"
-              type="search"
-              placeholder="Search PWD-made products…"
-              autoComplete="off"
-            />
-            <button type="submit" className="btn btn--primary" aria-label="Search">
-              <Icon name="search" size={18} />
-              <span>Search</span>
-            </button>
-          </form>
-        ) : null}
+        {variant === "buyer" ? <SearchBox /> : null}
 
         <nav className="header-nav" aria-label="Primary">
           {NAV[variant].map((item) => (
@@ -88,6 +108,9 @@ export async function SiteHeader({
               href={item.href}
             >
               {item.label}
+              {item.key === "messages" && unreadMessages > 0 ? (
+                <CartBadge count={unreadMessages} />
+              ) : null}
             </Link>
           ))}
           {variant === "buyer" ? (
@@ -95,6 +118,7 @@ export async function SiteHeader({
               Cart <CartBadge count={cartCount} />
             </Link>
           ) : null}
+          <NotificationBell initialUnread={unread} initialNotifications={notifications} />
           <ContrastToggle />
           <LogoutButton />
         </nav>

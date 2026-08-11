@@ -19,7 +19,7 @@ export default async function SellerReviewsPage() {
   return (
     <>
       <SiteHeader variant="seller" active="reviews" session={session} />
-      <main id="main" className="container main--seller">
+      <main id="main" tabIndex={-1} className="container main--seller">
         <h1>Customer reviews</h1>
         <SellerReviewsClient
           reviews={myReviews}

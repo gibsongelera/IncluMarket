@@ -4,7 +4,10 @@ import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getSession } from "@/lib/session";
 import { clearCartAction, getCartItems } from "@/lib/actions/cart";
+import { createNotification } from "@/lib/actions/notifications";
 import type { Priority } from "@/lib/types";
+
+const LOW_STOCK_THRESHOLD = 5;
 
 export interface ActionResult {
   ok: boolean;
@@ -33,6 +36,12 @@ export async function placeOrder(): Promise<ActionResult> {
     .single();
   if (error || !order) return { ok: false, error: error?.message || "Could not place order." };
 
+  await db.from("im_order_status_history").insert({
+    order_id: order.id,
+    status: "pending",
+    created_by: session.user_id,
+  });
+
   const { error: itemsErr } = await db.from("im_order_items").insert(
     items.map((it) => ({
       order_id: order.id,
@@ -44,7 +53,8 @@ export async function placeOrder(): Promise<ActionResult> {
   );
   if (itemsErr) return { ok: false, error: itemsErr.message };
 
-  // Decrement variant stock (best-effort, floored at 0).
+  // Decrement variant stock (best-effort, floored at 0); alert the seller if
+  // the remaining stock just dropped to or below the low-stock threshold.
   for (const it of items) {
     if (!it.variant_id) continue;
     const { data: v } = await db
@@ -53,11 +63,49 @@ export async function placeOrder(): Promise<ActionResult> {
       .eq("id", it.variant_id)
       .maybeSingle();
     if (v) {
+      const nextQty = Math.max(0, v.stock_qty - it.quantity);
       await db
         .from("im_product_variants")
-        .update({ stock_qty: Math.max(0, v.stock_qty - it.quantity) })
+        .update({ stock_qty: nextQty })
         .eq("id", it.variant_id);
+      if (nextQty <= LOW_STOCK_THRESHOLD && it.product_id) {
+        const { data: p } = await db
+          .from("im_products")
+          .select("seller_id, title")
+          .eq("id", it.product_id)
+          .maybeSingle();
+        if (p) {
+          await createNotification({
+            userId: p.seller_id,
+            type: "low_stock",
+            title: `Low stock: ${p.title}`,
+            body: `Only ${nextQty} left. Restock soon to avoid selling out.`,
+            link: "/seller/products",
+          });
+        }
+      }
     }
+  }
+
+  // Notify each seller with a product in this order.
+  const sellerIds = new Set<number>();
+  for (const it of items) {
+    if (!it.product_id) continue;
+    const { data: p } = await db
+      .from("im_products")
+      .select("seller_id")
+      .eq("id", it.product_id)
+      .maybeSingle();
+    if (p) sellerIds.add(p.seller_id);
+  }
+  for (const sellerId of sellerIds) {
+    await createNotification({
+      userId: sellerId,
+      type: "new_order",
+      title: `New order #${order.id}`,
+      body: "You have a new order to fulfill.",
+      link: "/seller/orders",
+    });
   }
 
   await clearCartAction();
@@ -104,6 +152,22 @@ export async function addReview(
     action: "reviewed_product",
     target: `product:${productId}`,
   });
+
+  const { data: product } = await db
+    .from("im_products")
+    .select("seller_id, title")
+    .eq("id", productId)
+    .maybeSingle();
+  if (product) {
+    await createNotification({
+      userId: product.seller_id,
+      type: "new_review",
+      title: `New review on ${product.title}`,
+      body: `${rating}-star review received.`,
+      link: "/seller/reviews",
+    });
+  }
+
   revalidatePath(`/buyer/product/${productId}`);
   return { ok: true };
 }

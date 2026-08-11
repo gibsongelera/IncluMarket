@@ -4,8 +4,12 @@ import type {
   AuditLog,
   Category,
   ConsentLog,
+  Conversation,
+  FlashSale,
+  Message,
   Order,
   OrderItem,
+  OrderStatusHistoryEntry,
   Product,
   ProductReview,
   ProductVariant,
@@ -80,6 +84,47 @@ export async function getProductById(id: number): Promise<Product | null> {
   return (await hydrateImages([data]))[0];
 }
 
+export async function getFeaturedProducts(limit = 8): Promise<Product[]> {
+  const { data } = await db()
+    .from("im_products")
+    .select("*")
+    .eq("status", "approved")
+    .eq("is_featured", true)
+    .order("updated_at", { ascending: false })
+    .limit(limit);
+  return hydrateImages(data ?? []);
+}
+
+// "Customers also viewed" — same category, excludes the current product.
+export async function getRelatedProducts(
+  category: string | null,
+  excludeId: number,
+  limit = 6
+): Promise<Product[]> {
+  if (!category) return [];
+  const { data } = await db()
+    .from("im_products")
+    .select("*")
+    .eq("status", "approved")
+    .eq("category", category)
+    .neq("id", excludeId)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  return hydrateImages(data ?? []);
+}
+
+export async function getVerifiedBuyerIds(productId: number): Promise<Set<number>> {
+  const { data: items } = await db()
+    .from("im_order_items")
+    .select("order_id")
+    .eq("product_id", productId);
+  const orderIds = [...new Set((items ?? []).map((i) => i.order_id))];
+  if (!orderIds.length) return new Set();
+
+  const { data: orders } = await db().from("im_orders").select("buyer_id").in("id", orderIds);
+  return new Set((orders ?? []).map((o) => o.buyer_id));
+}
+
 export async function getVariants(): Promise<ProductVariant[]> {
   const { data } = await db().from("im_product_variants").select("*").order("id");
   return data ?? [];
@@ -118,6 +163,16 @@ export async function getProfileById(id: number): Promise<Profile | null> {
   return data ?? null;
 }
 
+export async function getFeaturedSellers(): Promise<Profile[]> {
+  const { data } = await db()
+    .from("im_profiles")
+    .select("*")
+    .eq("role", "seller")
+    .eq("is_featured_seller", true)
+    .order("name");
+  return data ?? [];
+}
+
 export async function getProfileByEmail(email: string): Promise<Profile | null> {
   const { data } = await db()
     .from("im_profiles")
@@ -144,6 +199,64 @@ export async function getOrdersByBuyer(buyerId: number): Promise<Order[]> {
 export async function getOrderItems(): Promise<OrderItem[]> {
   const { data } = await db().from("im_order_items").select("*").order("id");
   return data ?? [];
+}
+
+export async function getOrderStatusHistoryForOrders(
+  orderIds: number[]
+): Promise<Record<number, OrderStatusHistoryEntry[]>> {
+  const map: Record<number, OrderStatusHistoryEntry[]> = {};
+  if (!orderIds.length) return map;
+  const { data } = await db()
+    .from("im_order_status_history")
+    .select("*")
+    .in("order_id", orderIds)
+    .order("created_at", { ascending: true });
+  (data ?? []).forEach((row) => {
+    (map[row.order_id] ||= []).push(row);
+  });
+  return map;
+}
+
+// Active flash sales (now within [starts_at, ends_at]) keyed by product id.
+export async function getActiveFlashSales(): Promise<Record<number, FlashSale>> {
+  const nowIso = new Date().toISOString();
+  const { data } = await db()
+    .from("im_flash_sales")
+    .select("*")
+    .lte("starts_at", nowIso)
+    .gte("ends_at", nowIso);
+  const map: Record<number, FlashSale> = {};
+  (data ?? []).forEach((f) => (map[f.product_id] = f));
+  return map;
+}
+
+export async function getConversationsForUser(
+  userId: number,
+  role: "buyer" | "seller"
+): Promise<Conversation[]> {
+  const col = role === "buyer" ? "buyer_id" : "seller_id";
+  const { data } = await db()
+    .from("im_conversations")
+    .select("*")
+    .eq(col, userId)
+    .order("updated_at", { ascending: false });
+  return data ?? [];
+}
+
+export async function getMessagesForConversations(
+  conversationIds: number[]
+): Promise<Record<number, Message[]>> {
+  const map: Record<number, Message[]> = {};
+  if (!conversationIds.length) return map;
+  const { data } = await db()
+    .from("im_messages")
+    .select("*")
+    .in("conversation_id", conversationIds)
+    .order("created_at", { ascending: true });
+  (data ?? []).forEach((m) => {
+    (map[m.conversation_id] ||= []).push(m);
+  });
+  return map;
 }
 
 export async function getTickets(): Promise<SupportTicket[]> {
@@ -194,10 +307,39 @@ export async function getThemeSettings(): Promise<ThemeSettings | null> {
   }
 }
 
+export async function getWishlistProductIds(userId: number): Promise<number[]> {
+  const { data } = await db().from("im_wishlists").select("product_id").eq("user_id", userId);
+  return (data ?? []).map((r) => r.product_id);
+}
+
+export async function getWishlistProducts(userId: number): Promise<Product[]> {
+  const { data: rows } = await db()
+    .from("im_wishlists")
+    .select("product_id")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false });
+  const ids = (rows ?? []).map((r) => r.product_id);
+  if (!ids.length) return [];
+
+  const { data: products } = await db().from("im_products").select("*").in("id", ids);
+  const byId = new Map((products ?? []).map((p) => [p.id, p]));
+  const ordered = ids.map((id) => byId.get(id)).filter((p): p is Product => Boolean(p));
+  return hydrateImages(ordered);
+}
+
 // ---- aggregation helpers ---------------------------------------------------
 export function stockByProduct(variants: ProductVariant[]): Record<number, number> {
   const map: Record<number, number> = {};
   for (const v of variants) map[v.product_id] = (map[v.product_id] || 0) + v.stock_qty;
+  return map;
+}
+
+export function popularityByProduct(orderItems: OrderItem[]): Record<number, number> {
+  const map: Record<number, number> = {};
+  for (const oi of orderItems) {
+    if (oi.product_id == null) continue;
+    map[oi.product_id] = (map[oi.product_id] || 0) + oi.quantity;
+  }
   return map;
 }
 

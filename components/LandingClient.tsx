@@ -12,7 +12,7 @@ import { ContrastToggle } from "@/components/HeaderActions";
 import type { Role } from "@/lib/types";
 
 const HOME_BY_ROLE: Record<Role, string> = {
-  buyer: "/buyer/home",
+  buyer: "/home",
   seller: "/seller/dashboard",
   admin: "/admin/users",
 };
@@ -130,7 +130,7 @@ export function LandingClient({
   }
 
   return (
-    <div className="page page--landing">
+    <div className="page page--landing" id="main" tabIndex={-1}>
       <a className="skip-link" href="#auth-title">
         Skip to sign in
       </a>
@@ -142,11 +142,11 @@ export function LandingClient({
           <div className="landing-hero__blob landing-hero__blob--yellow" aria-hidden="true" />
 
           <div className="landing-hero__content">
-            <a className="landing-brand" href="/" aria-label="InkluMarket home">
+            <a className="landing-brand" href="/" aria-label="IncluMarket home">
               <span className="landing-brand__mark" aria-hidden="true">
                 IM
               </span>
-              <span className="landing-brand__name">InkluMarket</span>
+              <span className="landing-brand__name">IncluMarket</span>
             </a>
 
             <p className="landing-eyebrow">
@@ -201,7 +201,7 @@ export function LandingClient({
           </div>
 
           <div className="landing-hero__foot">
-            <span className="muted">&copy; 2026 InkluMarket &middot; ZPPSU-CICS Capstone</span>
+            <span className="muted">&copy; 2026 IncluMarket &middot; ZPPSU-CICS Capstone</span>
             <span className="muted">RA 7277 &middot; RA 10173</span>
           </div>
         </aside>
@@ -329,7 +329,7 @@ export function LandingClient({
                 </div>
 
                 <button type="submit" className="btn btn--primary" disabled={busy}>
-                  Sign in to InkluMarket
+                  Sign in to IncluMarket
                 </button>
               </form>
             </div>
@@ -408,7 +408,7 @@ export function LandingClient({
                   <input type="checkbox" id="su-consent" name="consent" required />
                   <span>
                     I have read and agree to the Data Privacy notice (<strong>RA 10173</strong>). I consent
-                    to the collection and processing of my registration data for InkluMarket.
+                    to the collection and processing of my registration data for IncluMarket.
                   </span>
                 </label>
 
@@ -420,7 +420,7 @@ export function LandingClient({
           </div>
 
           <p className="landing-legal">
-            &copy; 2026 InkluMarket &middot; Aligned to <strong>RA 7277</strong> &amp;{" "}
+            &copy; 2026 IncluMarket &middot; Aligned to <strong>RA 7277</strong> &amp;{" "}
             <strong>RA 10173</strong>
           </p>
         </section>

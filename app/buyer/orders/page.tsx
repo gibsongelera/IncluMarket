@@ -5,6 +5,7 @@ import { OrdersClient } from "@/components/OrdersClient";
 import {
   getAllProducts,
   getOrderItems,
+  getOrderStatusHistoryForOrders,
   getOrdersByBuyer,
   getReviews,
   getVariants,
@@ -21,6 +22,7 @@ export default async function OrdersPage() {
     getVariants(),
     getReviews(),
   ]);
+  const history = await getOrderStatusHistoryForOrders(orders.map((o) => o.id));
 
   const reviewedProductIds = reviews
     .filter((r) => r.buyer_id === session.user_id)
@@ -29,7 +31,7 @@ export default async function OrdersPage() {
   return (
     <>
       <SiteHeader variant="buyer" active="orders" session={session} />
-      <main id="main" className="container main--orders">
+      <main id="main" tabIndex={-1} className="container main--orders">
         <h1>My orders</h1>
         <OrdersClient
           orders={orders}
@@ -46,6 +48,7 @@ export default async function OrdersPage() {
             size: v.size,
           }))}
           reviewedProductIds={reviewedProductIds}
+          history={history}
         />
       </main>
       <SiteFooter />

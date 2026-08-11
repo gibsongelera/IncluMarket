@@ -7,7 +7,8 @@ import { toast } from "@/lib/toast";
 import { Pill } from "./Pill";
 import { StarInput } from "./StarInput";
 import { addReview } from "@/lib/actions/shop";
-import type { Order, OrderItem, OrderStatus } from "@/lib/types";
+import { OrderTimeline } from "./OrderTimeline";
+import type { Order, OrderItem, OrderStatus, OrderStatusHistoryEntry } from "@/lib/types";
 
 type ProductLite = { id: number; title: string; image: string | null; images: string[] | null };
 type VariantLite = { id: number; color_name: string; size: string | null };
@@ -32,12 +33,14 @@ export function OrdersClient({
   products,
   variants,
   reviewedProductIds,
+  history,
 }: {
   orders: Order[];
   orderItems: OrderItem[];
   products: ProductLite[];
   variants: VariantLite[];
   reviewedProductIds: number[];
+  history: Record<number, OrderStatusHistoryEntry[]>;
 }) {
   const router = useRouter();
   const [filter, setFilter] = useState<string>("all");
@@ -157,6 +160,7 @@ export function OrdersClient({
                     );
                   })}
                 </div>
+                <OrderTimeline order={o} history={history[o.id] || []} />
                 <div className="order-card__foot">
                   <strong>Total: {money(o.total_amount)}</strong>
                 </div>

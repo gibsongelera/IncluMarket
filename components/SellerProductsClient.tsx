@@ -6,7 +6,7 @@ import { Icon } from "./Icon";
 import { Pill } from "./Pill";
 import { money, formatDate, productImageSrc } from "@/lib/format";
 import { toast } from "@/lib/toast";
-import { createProduct, updateProduct, deleteProduct } from "@/lib/actions/seller";
+import { createProduct, updateProduct, deleteProduct, createFlashSale } from "@/lib/actions/seller";
 import type { Category, Product, ProductVariant } from "@/lib/types";
 
 type VariantDraft = {
@@ -68,7 +68,13 @@ export function SellerProductsClient({
 }) {
   const router = useRouter();
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const flashDialogRef = useRef<HTMLDialogElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  const [flashProductId, setFlashProductId] = useState<number | null>(null);
+  const [flashDiscount, setFlashDiscount] = useState(20);
+  const [flashHours, setFlashHours] = useState(24);
+  const [flashBusy, setFlashBusy] = useState(false);
 
   const [editingId, setEditingId] = useState<number | null>(null);
   const [title, setTitle] = useState("");
@@ -189,6 +195,28 @@ export function SellerProductsClient({
     router.refresh();
   }
 
+  function openFlash(id: number) {
+    setFlashProductId(id);
+    setFlashDiscount(20);
+    setFlashHours(24);
+    flashDialogRef.current?.showModal();
+  }
+
+  async function submitFlash(e: React.MouseEvent) {
+    e.preventDefault();
+    if (flashProductId == null) return;
+    setFlashBusy(true);
+    const res = await createFlashSale(flashProductId, flashDiscount, flashHours);
+    setFlashBusy(false);
+    if (!res.ok) {
+      toast(res.error || "Could not start flash sale.", "error");
+      return;
+    }
+    toast("Flash sale started.", "success");
+    flashDialogRef.current?.close();
+    router.refresh();
+  }
+
   async function onDelete(id: number) {
     if (!confirm("Delete this product and all its variants?")) return;
     const res = await deleteProduct(id);
@@ -267,6 +295,14 @@ export function SellerProductsClient({
                     <td>
                       <button className="btn btn--ghost btn--sm" onClick={() => openModal(p)}>
                         Edit
+                      </button>{" "}
+                      <button
+                        className="btn btn--ghost btn--sm"
+                        disabled={p.status !== "approved"}
+                        title={p.status !== "approved" ? "Only approved products can run a flash sale." : undefined}
+                        onClick={() => openFlash(p.id)}
+                      >
+                        Flash sale
                       </button>{" "}
                       <button className="btn btn--danger btn--sm" onClick={() => onDelete(p.id)}>
                         Delete
@@ -442,6 +478,59 @@ export function SellerProductsClient({
             </button>
             <button value="submit" className="btn btn--primary" id="pm-save" disabled={busy} onClick={save}>
               Save product
+            </button>
+          </div>
+        </form>
+      </dialog>
+
+      <dialog id="flash-modal" className="modal" ref={flashDialogRef} aria-labelledby="flash-title">
+        <form method="dialog" className="modal-form" id="flash-form">
+          <h2 id="flash-title">Start a flash sale</h2>
+          <p className="hint">
+            Buyers who wishlisted this product get notified immediately.
+          </p>
+          <div className="row">
+            <div className="field">
+              <label htmlFor="flash-discount">Discount (%)</label>
+              <input
+                id="flash-discount"
+                type="number"
+                min={1}
+                max={90}
+                value={flashDiscount}
+                onChange={(e) => setFlashDiscount(Number(e.target.value))}
+              />
+            </div>
+            <div className="field">
+              <label htmlFor="flash-hours">Duration (hours)</label>
+              <input
+                id="flash-hours"
+                type="number"
+                min={1}
+                max={168}
+                value={flashHours}
+                onChange={(e) => setFlashHours(Number(e.target.value))}
+              />
+            </div>
+          </div>
+          <div className="form-actions">
+            <button
+              value="cancel"
+              className="btn btn--ghost"
+              onClick={(e) => {
+                e.preventDefault();
+                flashDialogRef.current?.close();
+              }}
+            >
+              Cancel
+            </button>
+            <button
+              value="submit"
+              className="btn btn--primary"
+              disabled={flashBusy}
+              onClick={submitFlash}
+            >
+              Start flash sale
             </button>
           </div>
         </form>

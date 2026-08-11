@@ -1,8 +1,8 @@
--- InkluMarket — core schema
+-- IncluMarket — core schema
 -- Domain: PWD livelihood marketplace (buyers, PWD sellers, administrators).
 --
 -- NOTE: This Supabase project is shared with the wider InkluTrack ecosystem, so
--- every InkluMarket table is namespaced with an `im_` prefix to avoid collisions
+-- every IncluMarket table is namespaced with an `im_` prefix to avoid collisions
 -- with other apps' tables (e.g. an existing public.profiles / public.orders).
 -- Integer primary keys mirror the original static-demo seed ids so all FKs line up.
 

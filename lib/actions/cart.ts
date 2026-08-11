@@ -14,7 +14,7 @@ export interface CartActionResult {
 function revalidateCart() {
   revalidatePath("/buyer/cart");
   revalidatePath("/buyer/checkout");
-  revalidatePath("/buyer/home");
+  revalidatePath("/home");
   revalidatePath("/buyer/product", "layout");
 }
 

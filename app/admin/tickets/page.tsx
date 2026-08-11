@@ -17,7 +17,7 @@ export default async function AdminTicketsPage() {
   return (
     <>
       <SiteHeader variant="admin" active="tickets" session={session} />
-      <main id="main" className="container main--admin">
+      <main id="main" tabIndex={-1} className="container main--admin">
         <h1>Support ticket resolution</h1>
         <AdminTicketsClient
           tickets={tickets}

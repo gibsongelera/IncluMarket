@@ -1,4 +1,4 @@
-# InkluMarket — Next.js + Supabase
+# IncluMarket — Next.js + Supabase
 
 Accessible PWD-livelihood marketplace for the **InkluTrack** ecosystem.
 Built with **Next.js (App Router) + TypeScript** and a **Supabase / PostgreSQL**
@@ -18,6 +18,7 @@ cp .env.example .env.local   # then fill in real values
 
 # 3. Apply database migrations (see Database below), then provision accounts
 node --env-file=.env.local scripts/provision-users.mjs
+node --env-file=.env.local scripts/seed-demo-products.mjs   # optional demo catalog
 
 # 4. Run the dev server
 npm run dev                  # http://localhost:3000
@@ -84,10 +85,22 @@ via public signup — only pre-provisioned.
 
 | Area   | Routes |
 | ------ | ------ |
-| Public | `/` (landing + sign in / sign up), `/auth/callback` |
-| Buyer  | `/buyer/home`, `/buyer/product/[id]`, `/buyer/cart`, `/buyer/checkout`, `/buyer/orders`, `/buyer/support` |
-| Seller | `/seller/dashboard`, `/seller/products`, `/seller/orders`, `/seller/reviews` |
-| Admin  | `/admin/users`, `/admin/products`, `/admin/tickets`, `/admin/compliance`, `/admin/theme` |
+| Public | `/` (redirects: signed-in → dashboard, guest → `/buyer/home`), `/login` (sign in / sign up), `/buyer/home` **and** `/buyer/product/[id]` (public storefront — browsable without an account, Shopee-style), `/auth/callback`, `/about`, `/contact`, `/faq`, `/privacy`, `/terms`, `/accessibility` |
+| Buyer  | `/buyer/wishlist`, `/buyer/cart`, `/buyer/checkout`, `/buyer/orders`, `/buyer/messages`, `/buyer/support` |
+| Seller | `/seller/dashboard`, `/seller/products`, `/seller/orders`, `/seller/messages`, `/seller/reviews` |
+| Admin  | `/admin/users`, `/admin/products`, `/admin/tickets`, `/admin/compliance`, `/admin/reports`, `/admin/theme` |
+
+A customer-service chat widget (bottom-right) and an accessibility widget
+(bottom-left — high contrast, text size, reduce motion) are both mounted
+site-wide, including on public pages.
+
+**Guest browsing (Shopee-style)**: `/buyer/home` and `/buyer/product/[id]`
+use `getSession()` instead of `requireRole()`, so anyone can browse the
+catalog and product details without an account. Only the transaction —
+Add to cart, Buy now, Message seller — requires signing in, at which point
+the user is sent to `/login`. Every other buyer route (cart, checkout,
+orders, wishlist, messages, support) still requires a real buyer session
+via `requireRole(["buyer"])`.
 
 Role guards live in `lib/session.ts` (`requireRole`) and resolve the signed-in
 user from Supabase Auth cookies + `im_profiles.role`.
@@ -97,7 +110,7 @@ user from Supabase Auth cookies + `im_profiles.role`.
 ## Architecture
 
 ```
-app/                 App Router pages + auth callback
+app/                 App Router pages + auth callback + static/marketing pages
 middleware.ts        Refreshes Supabase Auth cookies
 components/          UI + interactive client components
 lib/
@@ -105,13 +118,18 @@ lib/
   supabase/server.ts   request-scoped SSR client
   supabase/admin.ts    SERVER-ONLY service-role client
   data.ts              server-only read layer
-  actions/*.ts         server mutations (auth, cart, shop, seller, admin, theme)
+  actions/*.ts         server mutations (auth, cart, shop, seller, admin, theme,
+                        wishlist, search, newsletter, notifications, messages, chat)
+  chatbot/responder.ts pluggable chatbot responder (mock now; real LLM later)
   session.ts           Supabase session → profile role guards
 scripts/
-  provision-users.mjs  create/update the 3 production Auth users + profiles
+  provision-users.mjs      create/update the production Auth users + profiles
+  seed-demo-products.mjs   optional demo product catalog for the 3 demo sellers
 styles/              global CSS
 supabase/migrations/ 0001 schema · 0002 RLS · 0003 seed · 0004 cart + auth trigger
-docs/erd.md          mermaid ERD
+                      · 0005/0006 growth-rebuild schema + RLS
+docs/erd.md              mermaid ERD
+docs/REBUILD_PLAN.md     growth-rebuild plan + phase status
 ```
 
 ### Data flow
@@ -133,11 +151,17 @@ All tables use an `im_` prefix. See **[docs/erd.md](docs/erd.md)**.
 Tables: `im_profiles`, `im_categories`, `im_products`, `im_product_variants`,
 `im_product_images`, `im_cart_items`, `im_orders`, `im_order_items`,
 `im_product_reviews`, `im_support_tickets`, `im_ticket_responses`,
-`im_consent_logs`, `im_audit_logs`, `im_theme_settings`, `im_ui_prefs`.
+`im_consent_logs`, `im_audit_logs`, `im_theme_settings`, `im_ui_prefs`,
+`im_wishlists`, `im_order_status_history`, `im_flash_sales`,
+`im_notifications`, `im_newsletter_subscribers`, `im_conversations`,
+`im_messages`, `im_chat_sessions`, `im_chat_messages`.
 
 `0003_seed.sql` only seeds categories + theme. `0004_cart_auth.sql` adds the
 cart table/RLS, the `auth.users` → `im_profiles` trigger, and clears legacy
-demo rows.
+demo rows. `0005_growth_schema.sql` / `0006_growth_rls.sql` add the
+growth-rebuild tables (wishlist, order tracking, flash sales, notifications,
+newsletter, messaging, chatbot) — see
+**[docs/REBUILD_PLAN.md](docs/REBUILD_PLAN.md)**.
 
 ```bash
 supabase db push
@@ -167,3 +191,37 @@ Providers → Email so new signups must verify before login.
 Skip links, semantic landmarks, `:focus-visible` rings, `aria-live` regions,
 native `<dialog>` modals, keyboard-operable controls, a persisted **High
 contrast** toggle, and `prefers-reduced-motion` support.
+
+---
+
+## Growth rebuild
+
+IncluMarket was extended in place (schema, auth, RLS, and the original
+accessibility work were kept as the foundation, not rewritten) with:
+
+- **Wishlist**, **product sorting**, and **search suggestions** (typeahead).
+- **Reviews polish** (aggregate rating + verified-purchase badge) and
+  **featured / recommended product** rails.
+- **Order tracking** — a full status-history timeline, not just the current status.
+- **Notifications** (bell + unread badge) wired into real triggers: low
+  stock, new orders, shipping updates, new reviews, and **flash sales**
+  (seller-triggered, buyer-facing discounted pricing).
+- **Featured PWD sellers** — admin-curated homepage rail with a seller story
+  and a "shop this seller" filter.
+- **Footer static pages** (About/Contact/FAQ/Privacy/Terms/Accessibility
+  Statement) + **newsletter signup**.
+- **Buyer↔seller direct messaging**, separate from the admin support-ticket
+  system.
+- A **customer-service chatbot widget** (bottom-right, site-wide) with a
+  pluggable responder — ships on a rule-based mock, ready for a real LLM
+  provider via one file + an env var, zero UI changes needed.
+- An **accessibility hardening pass** (WCAG 2.2-oriented): sitewide skip
+  link, focus-into-panel on the notification bell and chat widget, and a
+  couple of real pre-existing bugs fixed along the way (a heading-hierarchy
+  violation on the homepage, a missing `aria-haspopup` on the search combobox).
+- **Admin Excel export** (`.xlsx`, one sheet per report or all of them).
+
+See **[docs/REBUILD_PLAN.md](docs/REBUILD_PLAN.md)** for the full phased
+plan, exact file lists, the conventions every new file follows, and the
+open items that still need real input from you (chatbot API key, real
+social media URLs, legal copy review).

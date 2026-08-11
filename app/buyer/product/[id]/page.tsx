@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { requireRole } from "@/lib/session";
+import { getSession } from "@/lib/session";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { ProductDetailClient } from "@/components/ProductDetailClient";
@@ -27,7 +27,9 @@ export default async function ProductPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const session = await requireRole(["buyer"]);
+  // Catalog product pages are public (guests + any role can view).
+  // Cart / wishlist / messaging still gate at the action level.
+  const session = await getSession();
   const { id } = await params;
   const productId = Number(id);
   const product = await getProductById(productId);
@@ -37,16 +39,19 @@ export default async function ProductPage({
       <SiteHeader variant="buyer" active="home" session={session} />
       <main id="main" className="container main--product">
         <nav className="breadcrumbs" aria-label="Breadcrumb">
-          <Link href="/buyer/home">Shop</Link> <span aria-hidden="true">/</span>{" "}
+          <Link href="/home">Shop</Link> <span aria-hidden="true">/</span>{" "}
           <span id="crumb-title">{product ? product.title : "Product"}</span>
         </nav>
 
         {!product ? (
           <p className="empty">
-            Product not found. <Link href="/buyer/home">Back to shop.</Link>
+            Product not found. <Link href="/home">Back to shop.</Link>
           </p>
         ) : (
-          <ProductDetail productId={productId} userId={session.user_id} />
+          <ProductDetail
+            productId={productId}
+            userId={session?.role === "buyer" ? session.user_id : undefined}
+          />
         )}
       </main>
       <SiteFooter />
@@ -59,7 +64,7 @@ async function ProductDetail({
   userId,
 }: {
   productId: number;
-  userId: number;
+  userId?: number;
 }) {
   const product = (await getProductById(productId))!;
   const [variants, reviews, categories, seller, profiles] = await Promise.all([

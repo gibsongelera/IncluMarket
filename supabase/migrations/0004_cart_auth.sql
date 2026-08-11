@@ -1,4 +1,4 @@
--- InkluMarket — DB cart, auth→profile trigger, wipe legacy demo rows.
+-- IncluMarket — DB cart, auth→profile trigger, wipe legacy demo rows.
 
 begin;
 

@@ -1,4 +1,4 @@
--- InkluMarket — baseline reference data (categories + theme).
+-- IncluMarket — baseline reference data (categories + theme).
 -- Production accounts are provisioned via scripts/provision-users.mjs
 -- (Supabase Auth Admin API). Products are created by sellers in-app.
 

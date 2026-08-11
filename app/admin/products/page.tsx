@@ -17,7 +17,7 @@ export default async function AdminProductsPage() {
   return (
     <>
       <SiteHeader variant="admin" active="products" session={session} />
-      <main id="main" className="container main--admin">
+      <main id="main" tabIndex={-1} className="container main--admin">
         <h1>Product verification queue</h1>
         <AdminProductsClient
           products={products}

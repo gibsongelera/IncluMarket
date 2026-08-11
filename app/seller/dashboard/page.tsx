@@ -105,7 +105,7 @@ export default async function SellerDashboardPage() {
   return (
     <>
       <SiteHeader variant="seller" active="dashboard" session={session} />
-      <main id="main" className="container main--seller">
+      <main id="main" tabIndex={-1} className="container main--seller">
         <h1>Merchant dashboard</h1>
 
         <section className="kpis" aria-label="Key metrics">

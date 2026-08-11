@@ -21,7 +21,7 @@ export default async function CheckoutPage() {
   return (
     <>
       <SiteHeader variant="buyer" active="home" session={session} />
-      <main id="main" className="container main--checkout">
+      <main id="main" tabIndex={-1} className="container main--checkout">
         <h1>Checkout</h1>
         <CheckoutClient
           userName={session.name}

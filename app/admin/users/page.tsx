@@ -37,7 +37,7 @@ export default async function AdminUsersPage() {
   return (
     <>
       <SiteHeader variant="admin" active="users" session={session} />
-      <main id="main" className="container main--admin">
+      <main id="main" tabIndex={-1} className="container main--admin">
         <AdminUsersClient users={users} currentAdminId={session.user_id} />
       </main>
       <SiteFooter />

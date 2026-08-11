@@ -6,22 +6,36 @@ import Link from "next/link";
 import type { Product, ProductVariant } from "@/lib/types";
 import { money, productImageSrc } from "@/lib/format";
 import { addToCartAction } from "@/lib/actions/cart";
+import { startConversation } from "@/lib/actions/messages";
 import { toast } from "@/lib/toast";
+import { StarRating } from "./StarRating";
 
 export function ProductDetailClient({
   product,
   variants,
   sellerName,
   categoryFolder,
+  userId,
+  rating = 0,
+  ratingCount = 0,
 }: {
   product: Product;
   variants: ProductVariant[];
   sellerName: string;
   categoryFolder: string;
   userId?: number;
+  rating?: number;
+  ratingCount?: number;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
+
+  function requireLogin(): boolean {
+    if (userId) return false;
+    toast("Sign in or create a free account to continue.", "info");
+    router.push("/login");
+    return true;
+  }
 
   const colors = useMemo(() => {
     const c: string[] = [];
@@ -42,6 +56,7 @@ export function ProductDetailClient({
   const [size, setSize] = useState<string | null>(sizes[0] || null);
   const [qty, setQty] = useState(1);
   const [gallery, setGallery] = useState(0);
+  const [messaging, setMessaging] = useState(false);
 
   const images =
     Array.isArray(product.images) && product.images.length > 0
@@ -76,6 +91,7 @@ export function ProductDetailClient({
   }
 
   async function addToCart() {
+    if (requireLogin()) return;
     if (!activeVariant || activeVariant.stock_qty <= 0 || busy) return;
     setBusy(true);
     const res = await addToCartAction(
@@ -93,7 +109,21 @@ export function ProductDetailClient({
     router.refresh();
   }
 
+  async function messageSeller() {
+    if (requireLogin()) return;
+    if (messaging) return;
+    setMessaging(true);
+    const res = await startConversation(product.seller_id, product.id);
+    setMessaging(false);
+    if (!res.ok) {
+      toast(res.error || "Could not start conversation.", "error");
+      return;
+    }
+    router.push(`/buyer/messages?c=${res.conversationId}`);
+  }
+
   async function buyNow() {
+    if (requireLogin()) return;
     if (!activeVariant || activeVariant.stock_qty <= 0 || busy) return;
     setBusy(true);
     const res = await addToCartAction(
@@ -143,6 +173,9 @@ export function ProductDetailClient({
         <h1 className="pd__title">{product.title}</h1>
         <p className="muted">
           Sold by <strong>{sellerName}</strong>
+        </p>
+        <p className="pd__rating">
+          <StarRating score={rating} /> <small>({ratingCount} review{ratingCount === 1 ? "" : "s"})</small>
         </p>
         <p className="pd__price">{money(product.base_price)}</p>
         <p className="pd__desc">{product.description}</p>
@@ -262,7 +295,10 @@ export function ProductDetailClient({
           >
             Buy now
           </button>
-          <Link href="/buyer/home" className="btn btn--ghost">
+          <button type="button" className="btn btn--ghost" disabled={messaging} onClick={messageSeller}>
+            Message seller
+          </button>
+          <Link href="/home" className="btn btn--ghost">
             Continue shopping
           </Link>
         </div>

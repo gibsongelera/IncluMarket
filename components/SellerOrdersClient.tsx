@@ -6,7 +6,8 @@ import { money, formatDate, maskEmail } from "@/lib/format";
 import { toast } from "@/lib/toast";
 import { Pill } from "./Pill";
 import { updateOrderStatus } from "@/lib/actions/seller";
-import type { Order, OrderItem, OrderStatus } from "@/lib/types";
+import { OrderTimeline } from "./OrderTimeline";
+import type { Order, OrderItem, OrderStatus, OrderStatusHistoryEntry } from "@/lib/types";
 
 type ProductLite = { id: number; title: string };
 type VariantLite = { id: number; color_name: string; size: string | null };
@@ -26,12 +27,14 @@ export function SellerOrdersClient({
   products,
   variants,
   buyers,
+  history,
 }: {
   orders: Order[];
   orderItems: OrderItem[];
   products: ProductLite[];
   variants: VariantLite[];
   buyers: BuyerLite[];
+  history: Record<number, OrderStatusHistoryEntry[]>;
 }) {
   const router = useRouter();
   const [filter, setFilter] = useState("all");
@@ -75,6 +78,7 @@ export function SellerOrdersClient({
               <th>Items</th>
               <th>Total</th>
               <th>Status</th>
+              <th>Tracking</th>
               <th>Advance</th>
             </tr>
           </thead>
@@ -114,6 +118,12 @@ export function SellerOrdersClient({
                   <td>{money(o.total_amount)}</td>
                   <td>
                     <Pill status={o.order_status} />
+                  </td>
+                  <td>
+                    <details>
+                      <summary className="muted small">History</summary>
+                      <OrderTimeline order={o} history={history[o.id] || []} />
+                    </details>
                   </td>
                   <td>
                     {next ? (

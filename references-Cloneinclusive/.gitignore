@@ -1,0 +1,35 @@
+# OS / editor
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.swp
+*~
+.vscode/
+.idea/
+*.code-workspace
+
+# Env / secrets (none used in this demo, but keep the habit)
+.env
+.env.*
+!.env.example
+credentials.json
+*.pem
+*.key
+
+# Local / temp
+tmp/
+tmp-*
+*.log
+.cache/
+
+# Optional local tooling
+node_modules/
+dist/
+build/
+
+# Next.js
+.next/
+/out/
+next-env.d.ts
+*.tsbuildinfo
+.vercel

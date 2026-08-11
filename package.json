@@ -1,18 +1,25 @@
 {
-  "name": "inklumarket-next",
+  "name": "IncluMarket-next",
   "version": "1.0.0",
   "private": true,
-  "description": "InkluMarket — PWD livelihood marketplace (Next.js + Supabase)",
+  "description": "IncluMarket — PWD livelihood marketplace (Next.js + Supabase)",
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "provision-users": "node --env-file=.env.local scripts/provision-users.mjs"
+    "smoke": "node scripts/smoke.mjs",
+    "smoke:loop": "node scripts/smoke-loop.mjs",
+    "provision-users": "node --env-file=.env.local scripts/provision-users.mjs",
+    "seed-demo-products": "node --env-file=.env.local scripts/seed-demo-products.mjs"
   },
   "dependencies": {
+    "@fortawesome/fontawesome-svg-core": "^7.3.1",
+    "@fortawesome/free-solid-svg-icons": "^7.3.1",
+    "@fortawesome/react-fontawesome": "^3.5.0",
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.45.4",
+    "exceljs": "^4.4.0",
     "next": "^15.1.6",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

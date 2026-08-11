@@ -17,7 +17,7 @@ export default async function SupportPage() {
   return (
     <>
       <SiteHeader variant="buyer" active="support" session={session} />
-      <main id="main" className="container main--support">
+      <main id="main" tabIndex={-1} className="container main--support">
         <h1>Help &amp; support</h1>
         <SupportClient
           tickets={tickets}

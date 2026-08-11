@@ -1,5 +1,5 @@
 /**
- * Provision the three production InkluMarket accounts via Supabase Auth Admin API.
+ * Provision the three production IncluMarket accounts via Supabase Auth Admin API.
  *
  * Usage (from repo root, with .env.local loaded):
  *   node --env-file=.env.local scripts/provision-users.mjs
@@ -18,6 +18,28 @@ const USERS = [
   { email: "buyer@gmail.com", password: "Admin123", role: "buyer", name: "Buyer Account" },
   { email: "seller@gmail.com", password: "Admin123", role: "seller", name: "Seller Account" },
   { email: "admin@gmail.com", password: "Admin123", role: "admin", name: "Admin Account" },
+  {
+    email: "seller2@gmail.com",
+    password: "Admin123",
+    role: "seller",
+    name: "Maria Santos",
+    featured: true,
+    story:
+      "Maria weaves bags and home textiles using a foot-pedal loom adapted for her limited hand mobility. " +
+      "What started as physical therapy after an accident became a full-time livelihood — every piece is " +
+      "handwoven in her home workshop in Laguna and sold directly through IncluMarket.",
+  },
+  {
+    email: "seller3@gmail.com",
+    password: "Admin123",
+    role: "seller",
+    name: "Juno Reyes",
+    featured: true,
+    story:
+      "Juno is a Deaf graphic designer and tailor who runs an adaptive-apparel line — magnetic closures, " +
+      "one-handed zippers, seated-fit cuts — designed from lived experience, not guesswork. Orders are " +
+      "confirmed entirely through in-app messaging so no phone call is ever required.",
+  },
 ];
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -46,7 +68,12 @@ async function findUserByEmail(email) {
   }
 }
 
-async function ensureProfile(authUserId, { email, role, name }) {
+async function ensureProfile(authUserId, { email, role, name, featured, story }) {
+  const featuredFields = {
+    ...(featured !== undefined ? { is_featured_seller: featured } : {}),
+    ...(story !== undefined ? { seller_story: story } : {}),
+  };
+
   const { data: existing } = await admin
     .from("im_profiles")
     .select("id")
@@ -61,6 +88,7 @@ async function ensureProfile(authUserId, { email, role, name }) {
         role,
         name,
         updated_at: new Date().toISOString(),
+        ...featuredFields,
       })
       .eq("id", existing.id);
     if (error) throw error;
@@ -69,7 +97,7 @@ async function ensureProfile(authUserId, { email, role, name }) {
 
   const { data, error } = await admin
     .from("im_profiles")
-    .insert({ auth_user_id: authUserId, email: email.toLowerCase(), role, name })
+    .insert({ auth_user_id: authUserId, email: email.toLowerCase(), role, name, ...featuredFields })
     .select("id")
     .single();
   if (error) throw error;

@@ -8,7 +8,7 @@ import type { Role, SessionUser } from "./types";
 const CONTRAST_COOKIE = "im_contrast";
 
 const HOME_BY_ROLE: Record<Role, string> = {
-  buyer: "/buyer/home",
+  buyer: "/home",
   seller: "/seller/dashboard",
   admin: "/admin/users",
 };

@@ -1,10 +1,10 @@
--- InkluMarket — Row Level Security (tables are `im_`-prefixed; shared project).
+-- IncluMarket — Row Level Security (tables are `im_`-prefixed; shared project).
 --
 -- Security model
 -- --------------
 -- * The public marketplace catalog (categories, approved products, variants,
 --   images, reviews) is world-readable so the storefront renders for anyone.
--- * Helper functions map the authenticated auth.uid() to its InkluMarket profile
+-- * Helper functions map the authenticated auth.uid() to its IncluMarket profile
 --   role/id. Buyers, sellers and admins get scoped access through them.
 -- * All privileged writes in the app are additionally funnelled through server
 --   actions that use the service-role key (which bypasses RLS) AFTER a

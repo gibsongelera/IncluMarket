@@ -18,7 +18,7 @@ export default async function SellerProductsPage() {
   return (
     <>
       <SiteHeader variant="seller" active="products" session={session} />
-      <main id="main" className="container main--seller">
+      <main id="main" tabIndex={-1} className="container main--seller">
         <SellerProductsClient
           products={products}
           variants={variants.filter((v) => myProductIds.has(v.product_id))}

@@ -1,4 +1,4 @@
-// InkluMarket domain types (mirror the im_* Postgres tables).
+// IncluMarket domain types (mirror the im_* Postgres tables).
 
 export type Role = "buyer" | "seller" | "admin";
 export type ProductStatus = "pending" | "approved" | "flagged";
@@ -19,6 +19,8 @@ export interface Profile {
   role: Role;
   disability_type: string | null;
   assistive_needs: string | null;
+  is_featured_seller: boolean;
+  seller_story: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -38,9 +40,68 @@ export interface Product {
   category: string | null;
   image: string | null;
   status: ProductStatus;
+  is_featured: boolean;
   created_at: string;
   updated_at: string;
   images?: string[];
+}
+
+export interface WishlistItem {
+  id: number;
+  user_id: number;
+  product_id: number;
+  created_at: string;
+}
+
+export type NotificationType =
+  | "low_stock"
+  | "new_order"
+  | "shipping_update"
+  | "new_review"
+  | "flash_sale"
+  | "order_status"
+  | "message"
+  | "chat_escalation"
+  | "system";
+
+export interface Notification {
+  id: number;
+  user_id: number;
+  type: NotificationType;
+  title: string;
+  body: string | null;
+  link: string | null;
+  is_read: boolean;
+  created_at: string;
+}
+
+export interface Conversation {
+  id: number;
+  buyer_id: number;
+  seller_id: number;
+  product_id: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Message {
+  id: number;
+  conversation_id: number;
+  sender_id: number | null;
+  sender_role: Role;
+  body: string;
+  created_at: string;
+  read_at: string | null;
+}
+
+export interface FlashSale {
+  id: number;
+  product_id: number;
+  discount_percent: number;
+  starts_at: string;
+  ends_at: string;
+  created_by: number | null;
+  created_at: string;
 }
 
 export interface ProductVariant {
@@ -57,6 +118,15 @@ export interface Order {
   buyer_id: number;
   total_amount: number;
   order_status: OrderStatus;
+  created_at: string;
+}
+
+export interface OrderStatusHistoryEntry {
+  id: number;
+  order_id: number;
+  status: OrderStatus;
+  note: string | null;
+  created_by: number | null;
   created_at: string;
 }
 

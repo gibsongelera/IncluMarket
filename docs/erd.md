@@ -1,6 +1,6 @@
-# InkluMarket — Entity Relationship Diagram
+# IncluMarket — Entity Relationship Diagram
 
-All InkluMarket tables are namespaced with an `im_` prefix because the Supabase
+All IncluMarket tables are namespaced with an `im_` prefix because the Supabase
 project is shared with the wider InkluTrack ecosystem (avoids collisions with an
 existing `public.profiles` / `public.orders`). Profiles link to Supabase Auth via
 `auth_user_id`. Cart lines live in `im_cart_items`.
@@ -164,7 +164,115 @@ erDiagram
         text    theme_preset
         timestamptz updated_at
     }
+
+    im_profiles ||--o{ im_wishlists          : "saves (user_id)"
+    im_profiles ||--o{ im_order_status_history : "logs (created_by)"
+    im_profiles ||--o{ im_flash_sales        : "creates (created_by)"
+    im_profiles ||--o{ im_notifications      : "receives (user_id)"
+    im_profiles ||--o{ im_conversations      : "buys in (buyer_id)"
+    im_profiles ||--o{ im_conversations      : "sells in (seller_id)"
+    im_profiles ||--o{ im_messages           : "sends (sender_id)"
+    im_profiles ||--o{ im_chat_sessions      : "opens (user_id)"
+
+    im_products ||--o{ im_wishlists         : "wishlisted (product_id)"
+    im_products ||--o{ im_flash_sales       : "on sale (product_id)"
+    im_products ||--o{ im_conversations     : "discussed (product_id)"
+
+    im_orders ||--o{ im_order_status_history : "history (order_id)"
+
+    im_support_tickets ||--o| im_chat_sessions : "escalated to (escalated_ticket_id)"
+
+    im_conversations ||--o{ im_messages : "thread (conversation_id)"
+
+    im_chat_sessions ||--o{ im_chat_messages : "transcript (session_id)"
+
+    im_wishlists {
+        bigint  id PK
+        bigint  user_id FK "im_profiles ON DELETE CASCADE"
+        bigint  product_id FK "im_products ON DELETE CASCADE, UNIQUE(user_id,product_id)"
+        timestamptz created_at
+    }
+
+    im_order_status_history {
+        bigint  id PK
+        bigint  order_id FK "im_orders ON DELETE CASCADE"
+        text    status "CHECK pending|processing|shipped|delivered|returned"
+        text    note
+        bigint  created_by FK "im_profiles ON DELETE SET NULL"
+        timestamptz created_at
+    }
+
+    im_flash_sales {
+        bigint  id PK
+        bigint  product_id FK "im_products ON DELETE CASCADE"
+        numeric discount_percent "CHECK 0 < x <= 90"
+        timestamptz starts_at
+        timestamptz ends_at "CHECK ends_at > starts_at"
+        bigint  created_by FK "im_profiles ON DELETE SET NULL"
+        timestamptz created_at
+    }
+
+    im_notifications {
+        bigint  id PK
+        bigint  user_id FK "im_profiles ON DELETE CASCADE"
+        text    type "CHECK low_stock|new_order|shipping_update|new_review|flash_sale|order_status|message|chat_escalation|system"
+        text    title
+        text    body
+        text    link
+        boolean is_read
+        timestamptz created_at
+    }
+
+    im_newsletter_subscribers {
+        bigint  id PK
+        text    email UK
+        timestamptz subscribed_at
+        timestamptz unsubscribed_at
+        text    source
+    }
+
+    im_conversations {
+        bigint  id PK
+        bigint  buyer_id FK "im_profiles ON DELETE CASCADE, UNIQUE(buyer_id,seller_id)"
+        bigint  seller_id FK "im_profiles ON DELETE CASCADE"
+        bigint  product_id FK "im_products ON DELETE SET NULL"
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    im_messages {
+        bigint  id PK
+        bigint  conversation_id FK "im_conversations ON DELETE CASCADE"
+        bigint  sender_id FK "im_profiles ON DELETE SET NULL"
+        text    sender_role "CHECK buyer|seller|admin"
+        text    body
+        timestamptz created_at
+        timestamptz read_at
+    }
+
+    im_chat_sessions {
+        bigint  id PK
+        bigint  user_id FK "im_profiles ON DELETE SET NULL, nullable"
+        text    guest_id "nullable; user_id or guest_id required"
+        text    status "CHECK open|escalated|closed"
+        bigint  escalated_ticket_id FK "im_support_tickets ON DELETE SET NULL"
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    im_chat_messages {
+        bigint  id PK
+        bigint  session_id FK "im_chat_sessions ON DELETE CASCADE"
+        text    role "CHECK user|bot|system"
+        text    body
+        timestamptz created_at
+    }
 ```
+
+`im_products.is_featured` (boolean, default false) and
+`im_profiles.is_featured_seller` / `im_profiles.seller_story` are new columns
+on existing tables (migration `0005_growth_schema.sql`), not shown as
+separate entities above.
 
 ## Referential integrity summary
 

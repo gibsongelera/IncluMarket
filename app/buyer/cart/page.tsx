@@ -19,7 +19,7 @@ export default async function CartPage() {
   return (
     <>
       <SiteHeader variant="buyer" active="home" session={session} />
-      <main id="main" className="container main--cart">
+      <main id="main" tabIndex={-1} className="container main--cart">
         <h1>Your cart</h1>
         <CartClient
           items={items}

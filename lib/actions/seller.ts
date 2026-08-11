@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getSession } from "@/lib/session";
+import { createNotification } from "@/lib/actions/notifications";
 
 export interface ActionResult {
   ok: boolean;
@@ -93,7 +94,7 @@ export async function createProduct(input: ProductInput): Promise<ActionResult> 
     target: `product:${product.id}`,
   });
   revalidatePath("/seller/products");
-  revalidatePath("/buyer/home");
+  revalidatePath("/home");
   return { ok: true, productId: product.id };
 }
 
@@ -159,12 +160,19 @@ export async function updateProduct(
     target: `product:${productId}`,
   });
   revalidatePath("/seller/products");
-  revalidatePath("/buyer/home");
+  revalidatePath("/home");
   return { ok: true, productId };
 }
 
 const ORDER_STATUSES = ["pending", "processing", "shipped", "delivered", "returned"] as const;
 type OrderStatusValue = (typeof ORDER_STATUSES)[number];
+
+const STATUS_MESSAGES: Partial<Record<OrderStatusValue, string>> = {
+  processing: "Your seller is preparing your order.",
+  shipped: "Your order is on its way.",
+  delivered: "Your order has been delivered.",
+  returned: "Your order was marked as returned.",
+};
 
 export async function updateOrderStatus(
   orderId: number,
@@ -192,15 +200,90 @@ export async function updateOrderStatus(
 
   const { error } = await db.from("im_orders").update({ order_status: status }).eq("id", orderId);
   if (error) return { ok: false, error: error.message };
+  await db.from("im_order_status_history").insert({
+    order_id: orderId,
+    status,
+    created_by: seller.user_id,
+  });
   await db.from("im_audit_logs").insert({
     actor_id: seller.user_id,
     actor_role: seller.role,
     action: `order_status_${status}`,
     target: `order:${orderId}`,
   });
+
+  const { data: order } = await db.from("im_orders").select("buyer_id").eq("id", orderId).maybeSingle();
+  if (order) {
+    await createNotification({
+      userId: order.buyer_id,
+      type: "shipping_update",
+      title: `Order #${orderId} is now ${status}`,
+      body: STATUS_MESSAGES[status] || undefined,
+      link: "/buyer/orders",
+    });
+  }
+
   revalidatePath("/seller/orders");
   revalidatePath("/buyer/orders");
   return { ok: true };
+}
+
+export async function createFlashSale(
+  productId: number,
+  discountPercent: number,
+  durationHours: number
+): Promise<ActionResult> {
+  const seller = await requireSeller();
+  if (!seller) return { ok: false, error: "Seller access required." };
+  if (!(discountPercent > 0 && discountPercent <= 90))
+    return { ok: false, error: "Discount must be between 1% and 90%." };
+  const db = createAdminClient();
+
+  const { data: product } = await db
+    .from("im_products")
+    .select("seller_id, title")
+    .eq("id", productId)
+    .maybeSingle();
+  if (!product) return { ok: false, error: "Product not found." };
+  if (seller.role !== "admin" && product.seller_id !== seller.user_id)
+    return { ok: false, error: "You can only run flash sales on your own products." };
+
+  const startsAt = new Date();
+  const endsAt = new Date(startsAt.getTime() + Math.max(1, durationHours) * 60 * 60 * 1000);
+  const { error } = await db.from("im_flash_sales").insert({
+    product_id: productId,
+    discount_percent: discountPercent,
+    starts_at: startsAt.toISOString(),
+    ends_at: endsAt.toISOString(),
+    created_by: seller.user_id,
+  });
+  if (error) return { ok: false, error: error.message };
+
+  await db.from("im_audit_logs").insert({
+    actor_id: seller.user_id,
+    actor_role: seller.role,
+    action: "started_flash_sale",
+    target: `product:${productId}`,
+  });
+
+  const { data: wishlists } = await db
+    .from("im_wishlists")
+    .select("user_id")
+    .eq("product_id", productId);
+  for (const w of wishlists ?? []) {
+    await createNotification({
+      userId: w.user_id,
+      type: "flash_sale",
+      title: `Flash sale: ${product.title}`,
+      body: `${discountPercent}% off for the next ${durationHours} hour${durationHours === 1 ? "" : "s"}.`,
+      link: `/buyer/product/${productId}`,
+    });
+  }
+
+  revalidatePath("/home");
+  revalidatePath("/buyer/product", "layout");
+  revalidatePath("/seller/products");
+  return { ok: true, productId };
 }
 
 export async function deleteProduct(productId: number): Promise<ActionResult> {

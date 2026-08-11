@@ -62,7 +62,7 @@ export default async function AdminCompliancePage() {
   return (
     <>
       <SiteHeader variant="admin" active="compliance" session={session} />
-      <main id="main" className="container main--admin">
+      <main id="main" tabIndex={-1} className="container main--admin">
         <h1>Ecosystem compliance monitor</h1>
         <p className="muted" style={{ color: "var(--canvas-white)" }}>
           RA 10173 (Data Privacy Act) alignment and audit trail visibility.
