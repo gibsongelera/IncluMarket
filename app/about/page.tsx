@@ -12,7 +12,7 @@ export default function AboutPage() {
         buyers, without a storefront being a barrier in itself.
       </p>
       <p>
-        IncluMarket is part of the wider <strong>InkluTrack</strong>{" "}
+        IncluMarket is part of the wider <strong>IncluTrack</strong>{" "}
         ecosystem. The platform runs three roles — buyers, sellers, and
         administrators — with every seller listing reviewed before it goes
         live, and every account protected by role-based access control at

@@ -17,7 +17,7 @@ export default function ContactPage() {
       </p>
       <h2>General inquiries</h2>
       <p>
-        <a href="mailto:hello@IncluMarket.example">hello@IncluMarket.example</a>
+        <a href="mailto:hello@inclumarket.example">hello@inclumarket.example</a>
       </p>
       <h2>Accessibility feedback</h2>
       <p>
@@ -26,8 +26,8 @@ export default function ContactPage() {
         directly into fixing it, not a queue.
       </p>
       <p>
-        <a href="mailto:accessibility@IncluMarket.example">
-          accessibility@IncluMarket.example
+        <a href="mailto:accessibility@inclumarket.example">
+          accessibility@inclumarket.example
         </a>
       </p>
       <h2>Selling on IncluMarket</h2>

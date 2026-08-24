@@ -66,7 +66,7 @@ export function applyReadingMode(on: boolean) {
   else document.documentElement.removeAttribute("data-reading-mode");
 }
 
-/** Match IncluMarket-style voice command phrases to routes / actions. */
+/** Match inclumarket-style voice command phrases to routes / actions. */
 export type VoiceAction =
   | { type: "navigate"; href: string }
   | { type: "speak"; text: string }

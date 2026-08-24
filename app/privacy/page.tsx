@@ -27,7 +27,7 @@ export default function PrivacyPage() {
       <p>
         Under RA 10173 you may request access to, correction of, or deletion
         of your personal data. Contact{" "}
-        <a href="mailto:privacy@IncluMarket.example">privacy@IncluMarket.example</a>{" "}
+        <a href="mailto:privacy@inclumarket.example">privacy@inclumarket.example</a>{" "}
         to exercise these rights. Some records — such as audit logs tied to a
         deleted account — are retained in de-identified form to preserve the
         integrity of the compliance trail.

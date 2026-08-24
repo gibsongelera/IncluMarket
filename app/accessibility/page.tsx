@@ -32,8 +32,8 @@ export default function AccessibilityPage() {
       <p>
         If any part of IncluMarket is difficult to use with a screen reader,
         keyboard, switch device, or magnification software, contact{" "}
-        <a href="mailto:accessibility@IncluMarket.example">
-          accessibility@IncluMarket.example
+        <a href="mailto:accessibility@inclumarket.example">
+          accessibility@inclumarket.example
         </a>
         . We treat accessibility reports as bugs, not feature requests.
       </p>
