@@ -9,6 +9,7 @@ import {
   getOrders,
   getProfiles,
 } from "@/lib/data";
+import { TableWrap } from "@/components/TableWrap";
 
 export const dynamic = "force-dynamic";
 
@@ -64,7 +65,7 @@ export default async function AdminCompliancePage() {
       <SiteHeader variant="admin" active="compliance" session={session} />
       <main id="main" tabIndex={-1} className="container main--admin">
         <h1>Ecosystem compliance monitor</h1>
-        <p className="muted" style={{ color: "var(--canvas-white)" }}>
+        <p className="muted">
           RA 10173 (Data Privacy Act) alignment and audit trail visibility.
         </p>
 
@@ -104,8 +105,8 @@ export default async function AdminCompliancePage() {
 
         <section>
           <h2>Audit trail (recent events)</h2>
-          <div className="table-wrap">
-            <table className="data-table" aria-label="Audit trail">
+          <TableWrap label="Audit log">
+            <table className="data-table data-table--cards" aria-label="Audit trail">
               <thead>
                 <tr>
                   <th>Timestamp</th>
@@ -138,11 +139,11 @@ export default async function AdminCompliancePage() {
                 )}
               </tbody>
             </table>
-          </div>
+          </TableWrap>
         </section>
 
         <section className="note">
-          <h2 style={{ color: "var(--muted)" }}>Security note</h2>
+          <h2>Security note</h2>
           <p>
             Authentication uses Supabase Auth with email confirmation for new signups.
             Passwords are verified by Supabase. AES-256-at-rest and TLS 1.2+ apply at the

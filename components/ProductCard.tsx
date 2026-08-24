@@ -74,7 +74,7 @@ export function ProductCard({
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={productImageSrc(product, 0)} alt={product.title} loading="lazy" />
           {product.is_featured ? (
-            <span className="badge badge--featured product-card__featured" aria-hidden="true">
+            <span className="badge badge--featured product-card__featured">
               <Icon name="sparkles" size={14} /> Featured
             </span>
           ) : null}
@@ -87,7 +87,7 @@ export function ProductCard({
         </div>
         <div className="product-card__body">
           <span className="product-card__cat">{categoryLabel}</span>
-          <div className="product-card__title">{product.title}</div>
+          <h3 className="product-card__title">{product.title}</h3>
           <div className="product-card__price">
             {flashSale ? (
               <>

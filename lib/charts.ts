@@ -16,14 +16,30 @@ function tokens() {
     muted: cs.getPropertyValue("--text-muted").trim() || "#5A6169",
     border: cs.getPropertyValue("--border").trim() || "#DEE2E6",
     surface: cs.getPropertyValue("--surface-gray").trim() || "#F8F9FA",
+    // Axis/label size derived from the root font, which the accessibility
+    // toolbar drives between 12 and 24px. These were hardcoded at 11px, so a
+    // user who scaled the interface to 24px still got 11px chart labels —
+    // roughly 6px of effective height once the canvas is squeezed onto a
+    // phone. Floor of 11 keeps dense axes readable at the smallest setting.
+    labelPx: Math.max(11, Math.round(parseFloat(cs.fontSize || "16") * 0.7)),
   };
+}
+
+/** Label font at the current accessibility scale. */
+export function labelFont(t: ReturnType<typeof tokens>, weight = ""): string {
+  return `${weight}${t.labelPx}px system-ui, -apple-system, sans-serif`.trim();
 }
 
 function resize(canvas: HTMLCanvasElement) {
   const dpr = window.devicePixelRatio || 1;
   const rect = canvas.getBoundingClientRect();
-  const w = Math.max(300, Math.round(rect.width));
-  const h = Math.round(w * (canvas.height / canvas.width || 0.4));
+  // No minimum width: a 300px floor pushed the canvas wider than a 320px
+  // viewport and forced the page to scroll horizontally. Fall back only when
+  // the element has not been laid out yet.
+  const w = Math.max(1, Math.round(rect.width) || 320);
+  // Taller aspect on phones, otherwise bars collapse to a few pixels.
+  const ratio = w < 480 ? 0.62 : 0.4;
+  const h = Math.round(w * ratio);
   canvas.width = w * dpr;
   canvas.height = h * dpr;
   canvas.style.width = w + "px";
@@ -99,7 +115,7 @@ export function bar(
   const { ctx, w, h } = resize(canvas);
   const t = tokens();
   ctx.clearRect(0, 0, w, h);
-  ctx.font = "11px system-ui, -apple-system, sans-serif";
+  ctx.font = labelFont(t);
   ctx.fillStyle = t.charcoal;
 
   const padL = 44,
@@ -155,7 +171,7 @@ export function line(
   const { ctx, w, h } = resize(canvas);
   const t = tokens();
   ctx.clearRect(0, 0, w, h);
-  ctx.font = "11px system-ui, -apple-system, sans-serif";
+  ctx.font = labelFont(t);
 
   const padL = 44,
     padR = 12,
@@ -245,7 +261,7 @@ export function pie(canvas: HTMLCanvasElement, data: Point[]) {
     start += slice;
   });
 
-  ctx.font = "12px system-ui, -apple-system, sans-serif";
+  ctx.font = labelFont(t);
   ctx.textAlign = "left";
   ctx.textBaseline = "middle";
   const lx = cx + r + 24,

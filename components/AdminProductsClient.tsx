@@ -8,6 +8,8 @@ import { Pill } from "./Pill";
 import { Icon } from "./Icon";
 import { setProductStatus, setProductFeatured } from "@/lib/actions/admin";
 import type { Category, Product, ProductStatus } from "@/lib/types";
+import { TableWrap } from "./TableWrap";
+import { Tabs, TabPanel } from "./Tabs";
 
 type SellerLite = { id: number; name: string; email: string };
 const TABS: { status: string; label: string }[] = [
@@ -56,22 +58,17 @@ export function AdminProductsClient({
 
   return (
     <>
-      <div className="tabs" role="tablist" id="prod-tabs" aria-label="Product status">
-        {TABS.map((t) => (
-          <button
-            key={t.status}
-            role="tab"
-            className={`tab ${filter === t.status ? "tab--active" : ""}`}
-            aria-selected={filter === t.status}
-            onClick={() => setFilter(t.status)}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
+      <Tabs
+        idPrefix="prod"
+        label="Product status"
+        value={filter}
+        onChange={setFilter}
+        items={TABS.map((t) => ({ value: t.status, label: t.label }))}
+      />
 
-      <div className="table-wrap">
-        <table className="data-table" aria-label="Products for verification">
+      <TabPanel idPrefix="prod" value={filter}>
+      <TableWrap label="Products awaiting review">
+        <table className="data-table data-table--cards" aria-label="Products for verification">
           <thead>
             <tr>
               <th>Product</th>
@@ -169,7 +166,8 @@ export function AdminProductsClient({
             })}
           </tbody>
         </table>
-      </div>
+      </TableWrap>
+      </TabPanel>
       {list.length === 0 ? <p className="empty">No products in this queue.</p> : null}
     </>
   );

@@ -6,6 +6,8 @@ import "@/styles/components.css";
 import "@/styles/layout.css";
 import "@/styles/shopee.css";
 import "@/styles/landing.css";
+// Imported last: owns every width media query and adjusts the layers above it.
+import "@/styles/responsive.css";
 
 import type { Metadata } from "next";
 import { getThemeSettings } from "@/lib/data";
@@ -15,6 +17,7 @@ import { Toaster } from "@/components/Toaster";
 import { ChatWidget } from "@/components/ChatWidget";
 import { AccessibilityWidget } from "@/components/AccessibilityWidget";
 import { VisualAlertHost } from "@/components/VisualAlert";
+import { HeaderMetrics } from "@/components/HeaderMetrics";
 
 export const metadata: Metadata = {
   title: "IncluMarket — PWD Livelihood Marketplace",
@@ -52,6 +55,7 @@ export default async function RootLayout({
           Skip to main content
         </a>
         {children}
+        <HeaderMetrics />
         <Toaster />
         <VisualAlertHost />
         <ChatWidget />

@@ -223,7 +223,7 @@
 }
 .hero-tile--blue   { background: var(--brand-blue);   color: #FFFFFF; grid-column: 1 / -1; }
 .hero-tile--yellow { background: var(--brand-yellow); color: var(--text-charcoal); } /* Guardrail 1 */
-.hero-tile--red    { background: var(--brand-red);    color: var(--text-charcoal); } /* Guardrail 1 */
+.hero-tile--red    { background: var(--brand-red);    color: #FFFFFF; } /* Guardrail 2: red is a dark surface */
 
 .login-panel {
   background: var(--canvas-white);
@@ -409,7 +409,7 @@
   position: absolute;
   top: 8px; left: 8px;
   background: var(--brand-red);
-  color: var(--text-charcoal); /* Guardrail 1 */
+  color: #FFFFFF; /* Guardrail 2: red is a dark surface, charcoal on it is 2.64:1 */
   border: 1px solid var(--brand-red-800);
   padding: 2px 8px;
   border-radius: 999px;

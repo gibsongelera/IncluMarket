@@ -4,6 +4,7 @@ import { useState } from "react";
 import { toast } from "@/lib/toast";
 import { exportReport, type ReportType } from "@/lib/actions/admin";
 import { Icon } from "./Icon";
+import { TableWrap } from "./TableWrap";
 
 const REPORTS: { type: ReportType; label: string; hint: string; filenameExample: string }[] = [
   {
@@ -83,8 +84,8 @@ export function AdminReportsClient() {
   }
 
   return (
-    <div className="table-wrap">
-      <table className="data-table" aria-label="Downloadable reports">
+    <TableWrap label="Report data">
+      <table className="data-table data-table--cards" aria-label="Downloadable reports">
         <thead>
           <tr>
             <th scope="col">Report</th>
@@ -117,6 +118,6 @@ export function AdminReportsClient() {
           ))}
         </tbody>
       </table>
-    </div>
+    </TableWrap>
   );
 }

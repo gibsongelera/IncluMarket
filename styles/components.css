@@ -183,10 +183,13 @@ fieldset {
   padding: .55rem 1rem;
   font: inherit;
   cursor: pointer;
-  color: var( --canvas-white);
+  /* --canvas-white is a BACKGROUND token. Using it here made every
+     inactive tab white on #F5F7FA (about 1.07:1), so users saw one
+     visible tab and blank gaps on four dashboard pages. */
+  color: var(--text-muted);
   border-radius: var(--radius-sm) var(--radius-sm) 0 0;
 }
-.tab:hover { color: var(--brand-blue); }
+.tab:hover { color: var(--brand-blue); background: var(--surface-gray-2); }
 .tab--active {
   background: var(--canvas-white);
   color: var(--brand-blue);

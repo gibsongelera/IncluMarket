@@ -1,0 +1,618 @@
+/* IncluMarket — responsive layer
+   ===========================================================================
+   Imported LAST, so it can adjust anything above it without a specificity war.
+
+   BREAKPOINTS — mobile-first, min-width only.
+
+     base (no query)  320px+   phone portrait. Write here FIRST.
+     sm               480px+   large phone
+     md               768px+   tablet portrait / small laptop
+     lg              1024px+   laptop
+     xl              1280px+   desktop; --container-max engages
+
+   RULES
+     1. Every new component gets its 320px styles with no media query at all.
+     2. Use min-width. The only acceptable max-width is one that undoes a
+        min-width rule declared in this same file (the table/card swap below).
+     3. All width media queries live in THIS file. Before this existed there
+        were six in the whole codebase, four of them landing-page-only — so
+        buyer, seller and all seven admin pages shared exactly two.
+     4. Test every layout at 320px wide AND at the 24px accessibility font
+        setting. That combination, not a narrow viewport alone, is what breaks
+        things: lib/a11y/prefs.ts scales the root font, so every rem grows
+        while any hardcoded px offset stays put.
+
+   TOUCH TARGETS
+     44x44px minimum everywhere, 56px for the tab bar and floating buttons.
+     WCAG 2.5.5 (AAA) rather than 2.5.8 (AA, 24px), because a large share of
+     this audience has limited hand mobility or tremor, and because the cost
+     of the stricter target here is a few pixels.
+   ========================================================================= */
+
+/* ---------------------------------------------------------------------------
+   1. Global guards against horizontal scroll
+   ------------------------------------------------------------------------ */
+html {
+  /* In-page anchors and the skip link must not land under the sticky header. */
+  scroll-padding-top: calc(var(--header-total) + var(--space-2));
+}
+
+body {
+  overflow-x: hidden;
+}
+
+/* Long product titles, SKUs and email addresses were the main overflow source
+   inside cards and table cells. */
+.product-card__title,
+.data-table td,
+.order-card__line,
+.thread .msg,
+.ticket-list button {
+  overflow-wrap: anywhere;
+}
+
+img,
+canvas,
+video,
+svg {
+  max-width: 100%;
+}
+
+/* Grid and flex children default to `min-width: auto`, which means they refuse
+   to shrink below their content's min-content width. At the 24px accessibility
+   font setting that made the buyer filter sidebar 351px wide inside a 320px
+   viewport and pushed the whole page into horizontal scroll — even though its
+   grid column had already collapsed to 1fr.
+
+   This is far and away the most common cause of overflow in this layout, and
+   chasing it container by container just moves the offender, so it is applied
+   broadly to layout elements inside the page body. Wrapped in :where() so it
+   carries zero specificity: any deliberate min-width declared elsewhere still
+   wins, and this only removes the *implicit* auto floor.
+
+   Deliberately excludes table, tr and td — the tables want their intrinsic
+   width and scroll inside TableWrap above 768px. */
+main
+  :where(
+    div,
+    section,
+    aside,
+    article,
+    fieldset,
+    form,
+    header,
+    footer,
+    nav,
+    ul,
+    ol,
+    li,
+    dl,
+    label
+  ) {
+  min-width: 0;
+}
+
+/* The feed header (title + sort control) is the one flex row that still needs
+   to wrap rather than shrink, because the select has a real minimum. */
+.feed-head {
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+/* Form controls must never be the thing that widens a column. */
+.filters input,
+.filters select,
+.filters fieldset,
+.field input,
+.field select,
+.field textarea {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* Reserve room for the mobile tab bar so it never covers the last row. */
+body {
+  padding-bottom: var(--bottom-inset);
+}
+
+/* ---------------------------------------------------------------------------
+   2. Sticky offsets driven by the real header height
+   --header-total is measured in JS (components/HeaderMetrics.tsx) and updated
+   on resize and on every accessibility font change. These were `top: 84px`
+   against a header that is ~92px at 16px root and over 120px at 24px, so the
+   filter panel and checkout summary sat tucked underneath it permanently.
+   ------------------------------------------------------------------------ */
+.filters,
+.checkout-summary {
+  top: calc(var(--header-total) + var(--space-2));
+}
+
+/* ---------------------------------------------------------------------------
+   3. Data tables become cards below md
+   Every .data-table carried `min-width: 720px`, which guaranteed horizontal
+   scrolling on every phone across all seven dashboard tables.
+
+   `display: block` on table elements destroys their implicit semantics, so
+   TableWrap/DataTable re-declare role="table|row|cell" explicitly — the
+   visually-hidden <thead> alone is not enough for a screen reader.
+   ------------------------------------------------------------------------ */
+.data-table {
+  min-width: 0;
+}
+
+@media (min-width: 768px) {
+  .data-table {
+    min-width: 720px;
+  }
+}
+
+@media (max-width: 767px) {
+  .data-table--cards,
+  .data-table--cards tbody,
+  .data-table--cards tr,
+  .data-table--cards td {
+    display: block;
+    width: auto;
+  }
+
+  .data-table--cards thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .data-table--cards tr {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--canvas-white);
+    margin-bottom: var(--space-3);
+    padding: var(--space-3);
+  }
+
+  .data-table--cards td {
+    display: grid;
+    grid-template-columns: minmax(6rem, 40%) 1fr;
+    gap: var(--space-2);
+    align-items: start;
+    border: 0;
+    border-bottom: 1px solid var(--surface-gray-2);
+    padding: var(--space-2) 0;
+  }
+
+  .data-table--cards td:last-child {
+    border-bottom: 0;
+    padding-bottom: 0;
+  }
+
+  /* The label comes from data-label on each <td>. */
+  .data-table--cards td::before {
+    content: attr(data-label);
+    font-weight: 700;
+    color: var(--text-muted);
+    font-size: 0.875rem;
+  }
+
+  /* Action cells have no label and span the full card width. */
+  .data-table--cards td[data-label=""] {
+    grid-template-columns: 1fr;
+  }
+  .data-table--cards td[data-label=""]::before {
+    content: none;
+  }
+
+  .data-table--cards .row-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+  .data-table--cards .row-actions .btn {
+    flex: 1 1 auto;
+    min-height: 44px;
+  }
+}
+
+/* Scrollable regions must be reachable by keyboard (WCAG 2.1.1). The wrappers
+   scroll horizontally but had no tabindex and no accessible name, so a
+   keyboard-only user could never reach the Actions column. TableWrap now sets
+   tabindex="0"; this makes the focus visible. */
+.table-wrap:focus-visible,
+.scroll-region:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+/* ---------------------------------------------------------------------------
+   4. Floating controls
+   Before: .a11y-widget pinned bottom-left and .chat-widget bottom-right, both
+   z-index 60, with the sticky cart bar at 20 and toasts at 100. On a 375px
+   cart screen the two round buttons physically covered the two ends of the
+   "Proceed to checkout" bar, and toasts painted over the chat button.
+
+   Now both live in one dock on the right, stacked vertically, offset above
+   whatever occupies the bottom edge.
+   ------------------------------------------------------------------------ */
+.a11y-widget,
+.chat-widget {
+  z-index: var(--z-fab);
+  bottom: calc(var(--space-3) + var(--bottom-inset) + env(safe-area-inset-bottom, 0px));
+}
+
+.toast-region {
+  z-index: var(--z-toast);
+  bottom: calc(var(--space-4) + var(--bottom-inset) + env(safe-area-inset-bottom, 0px));
+}
+
+.site-header {
+  z-index: var(--z-header);
+}
+
+.cart-summary--sticky {
+  z-index: var(--z-sticky-bar);
+}
+
+/* Below md the two floating buttons share the right edge, stacked, so they
+   occupy one column instead of blocking both corners. */
+@media (max-width: 767px) {
+  .a11y-widget {
+    left: auto;
+    right: var(--space-3);
+    bottom: calc(
+      var(--space-3) + 64px + var(--bottom-inset) + env(safe-area-inset-bottom, 0px)
+    );
+  }
+
+  /* A sticky action bar owns the bottom edge; lift the dock above it. */
+  body:has(.cart-summary--sticky) .chat-widget {
+    bottom: calc(72px + var(--bottom-inset) + env(safe-area-inset-bottom, 0px));
+  }
+  body:has(.cart-summary--sticky) .a11y-widget {
+    bottom: calc(72px + 64px + var(--bottom-inset) + env(safe-area-inset-bottom, 0px));
+  }
+  body:has(.cart-summary--sticky) .toast-region {
+    bottom: calc(72px + 64px + 64px + var(--bottom-inset) + env(safe-area-inset-bottom, 0px));
+  }
+
+  .a11y-widget__fab,
+  .chat-widget__fab {
+    min-width: 56px;
+    min-height: 56px;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   5. Mobile tab bar
+   SiteHeader had no mobile variant at all: on a 375px admin screen its seven
+   nav links plus the bell, contrast toggle and logout all flex-wrapped into a
+   multi-line sticky block, then the user strip below that.
+
+   A bottom bar rather than a hamburger drawer: it puts targets in the thumb
+   arc, allows full 56px hit areas without a hidden state, and matches the
+   Shopee pattern this project is modelled on. Labels stay visible — icon-only
+   navigation is a known barrier for cognitive disabilities.
+   ------------------------------------------------------------------------ */
+.mobile-nav {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .mobile-nav {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: var(--z-fab);
+    display: flex;
+    justify-content: stretch;
+    gap: 0;
+    background: var(--canvas-white);
+    border-top: 1px solid var(--border);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    box-shadow: 0 -2px 8px rgba(0, 40, 122, 0.08);
+  }
+
+  .mobile-nav__item {
+    flex: 1 1 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    min-height: 56px;
+    padding: var(--space-2) var(--space-1);
+    color: var(--text-muted);
+    text-decoration: none;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    line-height: 1.2;
+    text-align: center;
+    background: none;
+    border: 0;
+    cursor: pointer;
+    font-family: inherit;
+  }
+
+  .mobile-nav__item[aria-current="page"] {
+    color: var(--brand-blue);
+    font-weight: 800;
+    box-shadow: inset 0 3px 0 var(--brand-blue);
+  }
+
+  .mobile-nav__icon {
+    font-size: 1.15rem;
+    line-height: 1;
+  }
+
+  .mobile-nav__badge {
+    position: absolute;
+    transform: translate(14px, -10px);
+    background: var(--brand-red);
+    color: #ffffff;
+    border-radius: 999px;
+    font-size: 0.625rem;
+    font-weight: 800;
+    padding: 1px 5px;
+    min-width: 16px;
+  }
+
+  /* The header keeps brand, search and the bell; the tab bar owns navigation. */
+  .site-header .header-nav .nav-link {
+    display: none;
+  }
+  .site-header .user-strip {
+    display: none;
+  }
+  .header-row {
+    gap: var(--space-2);
+    padding-top: var(--space-2);
+    padding-bottom: var(--space-2);
+  }
+  .brand-word small {
+    display: none;
+  }
+}
+
+/* The "More" sheet uses a native <dialog>, so focus trapping and Esc are free. */
+.mobile-more[open] {
+  border: 0;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  padding: var(--space-5);
+  width: min(100%, 480px);
+  margin: auto auto 0;
+  background: var(--canvas-white);
+  color: var(--text-charcoal);
+}
+
+.mobile-more::backdrop {
+  background: rgba(0, 20, 61, 0.45);
+}
+
+.mobile-more__list {
+  display: grid;
+  gap: var(--space-2);
+  margin: var(--space-4) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mobile-more__list a,
+.mobile-more__list button {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 48px;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--canvas-white);
+  color: var(--text-charcoal);
+  text-decoration: none;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+}
+
+.mobile-more__list a:hover,
+.mobile-more__list button:hover {
+  background: var(--surface-gray);
+}
+
+/* ---------------------------------------------------------------------------
+   6. Forms and dense editors
+   ------------------------------------------------------------------------ */
+.variant-row {
+  grid-template-columns: 1fr;
+  gap: var(--space-3);
+}
+
+@media (min-width: 768px) {
+  .variant-row {
+    grid-template-columns: 1fr 1fr 90px 1fr auto;
+    gap: var(--space-2);
+  }
+}
+
+/* Inputs at least 44px tall and 16px text — anything under 16px makes iOS
+   Safari zoom the viewport on focus, which strands the user mid-form. */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="search"],
+input[type="tel"],
+input[type="number"],
+select,
+textarea {
+  min-height: 44px;
+  font-size: max(1rem, 16px);
+}
+
+.btn {
+  min-height: 44px;
+}
+
+.btn--sm {
+  min-height: 36px;
+}
+
+@media (max-width: 767px) {
+  .btn--sm {
+    min-height: 44px;
+  }
+  .form-actions {
+    display: flex;
+    flex-direction: column-reverse;
+    gap: var(--space-3);
+  }
+  .form-actions .btn {
+    width: 100%;
+  }
+  .filter-bar {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--space-2);
+  }
+  .page-head {
+    display: grid;
+    gap: var(--space-3);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   7. Dashboard calm
+   The dashboards were dense and busy: a shadow on every card over a gradient
+   background, arbitrary vertical rhythm, and body copy running the full
+   1200px container.
+   ------------------------------------------------------------------------ */
+.main--admin,
+.main--seller {
+  /* Flat surface behind dense data. The 3-stop gradient stays on the
+     storefront, where it is atmosphere rather than a backdrop for tables. */
+  background: var(--color-body);
+}
+
+.main--admin > * + *,
+.main--seller > * + * {
+  margin-top: var(--space-6);
+}
+
+.card,
+.kpi,
+.chart-card {
+  box-shadow: none;
+  border: 1px solid var(--border);
+}
+
+/* Shadow is reserved for things that genuinely float. */
+.modal,
+.a11y-panel,
+.chat-panel,
+.notification-panel,
+.toast {
+  box-shadow: var(--shadow-lg);
+}
+
+.lede,
+.note p,
+.card > p,
+.static-page p {
+  max-width: var(--measure);
+}
+
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--space-4);
+}
+
+.kpi {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  justify-content: space-between;
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--canvas-white);
+}
+
+.kpi__label {
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.kpi__value {
+  /* Neutral, not brand blue: a saturated hue at 30px across a row of tiles is
+     what makes a dashboard tiring. Colour is reserved for status meaning. */
+  color: var(--text-charcoal);
+  font-size: var(--step-4);
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+h1 {
+  font-size: var(--step-4);
+}
+h2 {
+  font-size: var(--step-3);
+}
+h3 {
+  font-size: var(--step-2);
+}
+h1,
+h2,
+h3 {
+  line-height: 1.25;
+  text-wrap: balance;
+}
+
+/* ---------------------------------------------------------------------------
+   8. Charts
+   Canvas is sized from its container in lib/charts.ts; this keeps it from
+   forcing the page wider and gives it a taller ratio on phones so bars are
+   not two pixels tall.
+   ------------------------------------------------------------------------ */
+.chart-card canvas {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.chart-data-table {
+  margin-top: var(--space-3);
+}
+
+.chart-data-table summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--brand-blue);
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+}
+
+.chart-data-table table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: var(--space-2);
+  font-size: 0.875rem;
+}
+
+.chart-data-table th,
+.chart-data-table td {
+  text-align: left;
+  padding: var(--space-2);
+  border-bottom: 1px solid var(--border);
+}
+
+/* ---------------------------------------------------------------------------
+   9. Wide-screen comfort
+   ------------------------------------------------------------------------ */
+@media (min-width: 1280px) {
+  .container {
+    max-width: var(--container-max);
+  }
+}

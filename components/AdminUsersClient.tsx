@@ -7,6 +7,7 @@ import { toast } from "@/lib/toast";
 import { createUser, updateUser, deleteUser, updateUserRole, setSellerFeatured } from "@/lib/actions/admin";
 import { Icon } from "./Icon";
 import type { Profile, Role } from "@/lib/types";
+import { TableWrap } from "./TableWrap";
 
 type UserRow = Profile & {
   footprint: { products: number; orders: number; reviews: number; tickets: number; consents: number };
@@ -223,8 +224,8 @@ export function AdminUsersClient({
         </span>
       </div>
 
-      <div className="table-wrap">
-        <table className="data-table" aria-label="Registered users">
+      <TableWrap label="Users">
+        <table className="data-table data-table--cards" aria-label="Registered users">
           <thead>
             <tr>
               <th scope="col">Name</th>
@@ -305,7 +306,7 @@ export function AdminUsersClient({
             })}
           </tbody>
         </table>
-      </div>
+      </TableWrap>
       {filtered.length === 0 ? <p className="empty">No users match.</p> : null}
 
       <dialog id="user-modal" className="modal modal--wide" ref={modalRef} aria-labelledby="um-title">

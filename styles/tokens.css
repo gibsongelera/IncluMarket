@@ -1,9 +1,35 @@
 /* IncluMarket Design Tokens
    Default brand: DSWD Blue / Red / Yellow-Gold / White (accessibility-first).
-   Guardrails:
-     1) Prefer dark text on light / gold highlight surfaces.
-     2) White typography is reserved for dark blue / red / green surfaces
-        (.btn--primary, .btn--danger, nav on --color-nav, success chips).
+
+   CONTRAST GUARDRAILS
+     1) Dark text on LIGHT and GOLD surfaces.
+        Applies to: --canvas-white, --surface-gray, --brand-yellow,
+        --palette-primary, and every *-100 tint.
+     2) WHITE text on DARK surfaces.
+        Applies to: --brand-blue, --brand-blue-800, --brand-red, --success,
+        --color-nav, --color-footer.
+
+     Red is a Guardrail 2 surface. --text-charcoal on --brand-red measures
+     2.64:1 and fails AA at every size. Three rules had it, commented
+     "Guardrail 1"; they are now white.
+
+   BACKGROUND-ONLY TOKENS — never use these for `color:`
+     --canvas-white, --surface-gray, --surface-gray-2, --color-body,
+     --color-body-bg, --bg-rainbow
+     `.tab { color: var(--canvas-white) }` shipped white-on-white text to four
+     dashboard pages. If you need light text, write #FFFFFF explicitly so the
+     intent is visible in review.
+
+   TEXT TOKENS
+     --text-charcoal (body), --text-muted (secondary), --color-nav-text,
+     --color-footer-text.
+     There is no `--muted` token. Two files referenced one; it silently
+     resolved to nothing. An alias is defined below so the mistake degrades
+     to correct rather than to invisible.
+
+   LAYOUT SCALE
+     Breakpoints are min-width and mobile-first. See styles/responsive.css,
+     which owns every width media query.
 */
 :root {
   /* DSWD-aligned core palette */
@@ -91,8 +117,43 @@
   --step-4: 1.875rem;
   --step-5: 2.25rem;
 
+  /* Spacing scale. There was a type scale but no spacing scale, so padding and
+     gaps were ad-hoc literals (.35rem / .5rem / .7rem / .75rem / 1rem / 1.25rem)
+     — the main reason the dashboards read as visually noisy. All rem-based, so
+     everything scales together with the 12-24px accessibility font setting. */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+  --space-8: 4rem;
+
+  /* Comfortable reading measure. Admin body copy ran the full 1200px container. */
+  --measure: 68ch;
+
+  /* Stacking order, named. These were literals scattered across three files,
+     which is how the toast region ended up painting over the chat button and
+     both floating buttons ended up over the checkout bar. */
+  --z-sticky-bar: 20;
+  --z-header: 40;
+  --z-fab: 60;
+  --z-alert: 80;
+  --z-toast: 100;
+
   --container-max: 1200px;
   --header-h: 64px;
+  /* Real rendered header height, including the user strip. Set from JS on mount,
+     on resize, and on every accessibility font change — a hardcoded offset is
+     wrong at 16px and badly wrong at 24px. The fallback matches the default. */
+  --header-total: 92px;
+  /* Space reserved at the bottom of the viewport by the mobile tab bar and any
+     sticky action bar, so floating buttons can sit clear of both. */
+  --bottom-inset: 0px;
+
+  /* Defensive alias: `--muted` is not a real token, but two files used it. */
+  --muted: var(--text-muted);
 }
 
 /* High-contrast override toggled via data attribute on <html> */

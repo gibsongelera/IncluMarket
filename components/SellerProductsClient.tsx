@@ -8,6 +8,7 @@ import { money, formatDate, productImageSrc } from "@/lib/format";
 import { toast } from "@/lib/toast";
 import { createProduct, updateProduct, deleteProduct, createFlashSale } from "@/lib/actions/seller";
 import type { Category, Product, ProductVariant } from "@/lib/types";
+import { TableWrap } from "./TableWrap";
 
 type VariantDraft = {
   id?: number | null;
@@ -237,8 +238,8 @@ export function SellerProductsClient({
         </button>
       </div>
 
-      <div className="table-wrap">
-        <table className="data-table" aria-label="My products">
+      <TableWrap label="My products">
+        <table className="data-table data-table--cards" aria-label="My products">
           <thead>
             <tr>
               <th scope="col">Product</th>
@@ -314,7 +315,7 @@ export function SellerProductsClient({
             )}
           </tbody>
         </table>
-      </div>
+      </TableWrap>
 
       <dialog id="product-modal" className="modal modal--wide" ref={dialogRef} aria-labelledby="pm-title">
         <form method="dialog" className="modal-form" id="product-form" noValidate>

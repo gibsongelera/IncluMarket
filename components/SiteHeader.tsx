@@ -8,6 +8,7 @@ import { CartBadge } from "./CartBadge";
 import { SearchBox } from "./SearchBox";
 import { NotificationBell } from "./NotificationBell";
 import { ContrastToggle, LogoutButton } from "./HeaderActions";
+import { MobileNav } from "./MobileNav";
 
 type NavItem = { href: string; label: string; key: string };
 
@@ -133,6 +134,14 @@ export async function SiteHeader({
           </span>
         </div>
       </div>
+
+      {/* Phone navigation. Rendered here so every page that shows a header
+          gets it, without editing all 20 of them. Hidden above 768px. */}
+      <MobileNav
+        variant={variant}
+        cartCount={cartCount}
+        unreadMessages={unreadMessages}
+      />
     </header>
   );
 }

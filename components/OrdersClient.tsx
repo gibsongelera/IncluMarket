@@ -9,6 +9,7 @@ import { StarInput } from "./StarInput";
 import { addReview } from "@/lib/actions/shop";
 import { OrderTimeline } from "./OrderTimeline";
 import type { Order, OrderItem, OrderStatus, OrderStatusHistoryEntry } from "@/lib/types";
+import { Tabs, TabPanel } from "./Tabs";
 
 type ProductLite = { id: number; title: string; image: string | null; images: string[] | null };
 type VariantLite = { id: number; color_name: string; size: string | null };
@@ -88,20 +89,15 @@ export function OrdersClient({
 
   return (
     <>
-      <div className="tabs" role="tablist" id="order-tabs" aria-label="Order status">
-        {TABS.map((t) => (
-          <button
-            key={t.status}
-            role="tab"
-            className={`tab ${filter === t.status ? "tab--active" : ""}`}
-            aria-selected={filter === t.status}
-            onClick={() => setFilter(t.status)}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
+      <Tabs
+        idPrefix="order"
+        label="Order status"
+        value={filter}
+        onChange={setFilter}
+        items={TABS.map((t) => ({ value: t.status, label: t.label }))}
+      />
 
+      <TabPanel idPrefix="order" value={filter}>
       {filtered.length === 0 ? (
         <p className="empty">No orders yet.</p>
       ) : (
@@ -211,6 +207,7 @@ export function OrdersClient({
           </div>
         </form>
       </dialog>
+      </TabPanel>
     </>
   );
 }

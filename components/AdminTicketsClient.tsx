@@ -7,6 +7,7 @@ import { toast } from "@/lib/toast";
 import { Pill } from "./Pill";
 import { addAdminTicketResponse, setTicketStatus } from "@/lib/actions/admin";
 import type { SupportTicket, TicketResponse, TicketStatus } from "@/lib/types";
+import { Tabs, TabPanel } from "./Tabs";
 
 type UserLite = { id: number; name: string; email: string };
 const TABS = [
@@ -75,25 +76,31 @@ export function AdminTicketsClient({
 
   return (
     <>
-      <div className="tabs" role="tablist" id="tk-tabs" aria-label="Ticket status">
-        {TABS.map((t) => (
-          <button
-            key={t.status}
-            role="tab"
-            className={`tab ${filter === t.status ? "tab--active" : ""}`}
-            aria-selected={filter === t.status}
-            onClick={() => {
-              setFilter(t.status);
-              setActiveId(null);
-            }}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
+      <Tabs
+        idPrefix="tk"
+        label="Ticket status"
+        value={filter}
+        onChange={(next) => {
+          setFilter(next);
+          setActiveId(null);
+        }}
+        items={TABS.map((t) => ({ value: t.status, label: t.label }))}
+      />
 
+      <TabPanel idPrefix="tk" value={filter}>
       <div className="ticket-workspace">
-        <div className="ticket-list" id="ticket-list" role="list">
+        {/* Was role="list" with <button> children, which is invalid — children
+            of a list must be listitem, and putting listitem on a button would
+            strip the button role. It is really a scrollable panel of controls,
+            so it is a named, focusable region instead (it has max-height with
+            overflow-y, and was previously unreachable by keyboard). */}
+        <div
+          className="ticket-list scroll-region"
+          id="ticket-list"
+          tabIndex={0}
+          role="region"
+          aria-label="Tickets"
+        >
           {list.length === 0 ? (
             <p className="empty">No tickets in this status.</p>
           ) : (
@@ -195,6 +202,7 @@ export function AdminTicketsClient({
           )}
         </section>
       </div>
+      </TabPanel>
     </>
   );
 }

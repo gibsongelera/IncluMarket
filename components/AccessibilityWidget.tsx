@@ -132,6 +132,40 @@ export function AccessibilityWidget() {
     };
   }, [open, contrast, tts, speechRate]);
 
+  /**
+   * Keep Tab inside the panel while it is open.
+   *
+   * The panel declares role="dialog" but had no aria-modal and no trap, so Tab
+   * walked straight out into the page behind it — leaving a screen reader or
+   * keyboard user navigating content they cannot see, with no way back except
+   * Shift+Tab counting backwards. Esc and focus-restore-to-FAB already worked;
+   * this completes the pattern.
+   */
+  function trapFocus(e: React.KeyboardEvent<HTMLDivElement>) {
+    if (e.key !== "Tab") return;
+    const panel = panelRef.current;
+    if (!panel) return;
+
+    const focusable = Array.from(
+      panel.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      )
+    ).filter((el) => el.offsetParent !== null);
+
+    if (!focusable.length) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    const active = document.activeElement;
+
+    if (e.shiftKey && (active === first || active === panel)) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && active === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  }
+
   useEffect(() => {
     if (!readingMode || !tts) return;
     function onOver(e: MouseEvent) {
@@ -323,9 +357,11 @@ export function AccessibilityWidget() {
         <div
           className="a11y-panel a11y-panel--rich"
           role="dialog"
+          aria-modal="true"
           aria-label="Accessibility settings"
           ref={panelRef}
           tabIndex={-1}
+          onKeyDown={trapFocus}
         >
           <div className="a11y-panel__head">
             <strong>Accessibility</strong>
@@ -343,21 +379,38 @@ export function AccessibilityWidget() {
           </div>
 
           <div className="a11y-tabs" role="tablist" aria-label="Accessibility sections">
-            {tabs.map((t) => (
+            {tabs.map((t, i) => (
               <button
                 key={t.id}
                 type="button"
                 role="tab"
+                id={`a11y-tab-${t.id}`}
+                aria-controls="a11y-tabpanel"
                 aria-selected={tab === t.id}
+                tabIndex={tab === t.id ? 0 : -1}
                 className={`a11y-tab${tab === t.id ? " is-active" : ""}`}
                 onClick={() => setTab(t.id)}
+                onKeyDown={(e) => {
+                  if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+                  e.preventDefault();
+                  const next =
+                    (i + (e.key === "ArrowRight" ? 1 : -1) + tabs.length) % tabs.length;
+                  setTab(tabs[next].id);
+                  const el = document.getElementById(`a11y-tab-${tabs[next].id}`);
+                  el?.focus();
+                }}
               >
                 {t.label}
               </button>
             ))}
           </div>
 
-          <div className="a11y-panel__body" role="tabpanel">
+          <div
+            className="a11y-panel__body"
+            id="a11y-tabpanel"
+            role="tabpanel"
+            aria-labelledby={`a11y-tab-${tab}`}
+          >
             {tab === "display" ? (
               <>
                 <div className="a11y-font-row">

@@ -8,6 +8,8 @@ import { Pill } from "./Pill";
 import { updateOrderStatus } from "@/lib/actions/seller";
 import { OrderTimeline } from "./OrderTimeline";
 import type { Order, OrderItem, OrderStatus, OrderStatusHistoryEntry } from "@/lib/types";
+import { TableWrap } from "./TableWrap";
+import { Tabs, TabPanel } from "./Tabs";
 
 type ProductLite = { id: number; title: string };
 type VariantLite = { id: number; color_name: string; size: string | null };
@@ -56,21 +58,19 @@ export function SellerOrdersClient({
 
   return (
     <>
-      <div className="tabs" role="tablist" id="order-tabs" aria-label="Order status">
-        {TABS.map((s) => (
-          <button
-            key={s}
-            role="tab"
-            className={`tab ${filter === s ? "tab--active" : ""}`}
-            aria-selected={filter === s}
-            onClick={() => setFilter(s)}
-          >
-            {s === "all" ? "All" : s.charAt(0).toUpperCase() + s.slice(1)}
-          </button>
-        ))}
-      </div>
-      <div className="table-wrap">
-        <table className="data-table" aria-label="Seller orders">
+      <Tabs
+        idPrefix="sorder"
+        label="Order status"
+        value={filter}
+        onChange={setFilter}
+        items={TABS.map((t) => ({
+          value: t,
+          label: t === "all" ? "All" : t.charAt(0).toUpperCase() + t.slice(1),
+        }))}
+      />
+      <TabPanel idPrefix="sorder" value={filter}>
+      <TableWrap label="Orders">
+        <table className="data-table data-table--cards" aria-label="Seller orders">
           <thead>
             <tr>
               <th>Order</th>
@@ -160,7 +160,8 @@ export function SellerOrdersClient({
             })}
           </tbody>
         </table>
-      </div>
+      </TableWrap>
+      </TabPanel>
       {filtered.length === 0 ? <p className="empty">No orders in this status.</p> : null}
     </>
   );

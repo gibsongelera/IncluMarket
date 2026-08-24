@@ -11,6 +11,7 @@ import {
   getProfiles,
   getVariants,
 } from "@/lib/data";
+import { TableWrap } from "@/components/TableWrap";
 
 export const dynamic = "force-dynamic";
 
@@ -148,8 +149,8 @@ export default async function SellerDashboardPage() {
           {mineOrders.length === 0 ? (
             <p className="empty">No recent orders.</p>
           ) : (
-            <div className="table-wrap">
-              <table className="data-table" aria-label="Recent orders">
+            <TableWrap label="Recent orders">
+              <table className="data-table data-table--cards" aria-label="Recent orders">
                 <thead>
                   <tr>
                     <th>Order</th>
@@ -173,7 +174,7 @@ export default async function SellerDashboardPage() {
                   ))}
                 </tbody>
               </table>
-            </div>
+            </TableWrap>
           )}
         </section>
       </main>

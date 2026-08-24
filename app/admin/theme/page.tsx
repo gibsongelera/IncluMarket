@@ -34,7 +34,7 @@ export default async function AdminThemePage() {
       <main id="main" tabIndex={-1} className="container main--admin">
         <div className="page-head">
           <h1>Theme &amp; appearance</h1>
-          <p className="lede muted" style={{ color: "var(--canvas-white)" }}>
+          <p className="lede muted">
             Customize nav, body, and footer colors. Presets sync live across buyer, seller, and admin
             pages.
           </p>

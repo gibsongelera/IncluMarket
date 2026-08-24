@@ -37,7 +37,7 @@ export default async function ProductPage({
   return (
     <>
       <SiteHeader variant="buyer" active="home" session={session} />
-      <main id="main" className="container main--product">
+      <main id="main" tabIndex={-1} className="container main--product">
         <nav className="breadcrumbs" aria-label="Breadcrumb">
           <Link href="/home">Shop</Link> <span aria-hidden="true">/</span>{" "}
           <span id="crumb-title">{product ? product.title : "Product"}</span>
