@@ -1,4 +1,5 @@
 import "server-only";
+import { OpenRouterResponder } from "./openrouter";
 
 export interface ChatMessage {
   role: "user" | "bot" | "system";
@@ -77,17 +78,29 @@ class MockResponder implements ChatResponder {
 }
 
 /**
- * Provider selection for the chat widget. Defaults to the rule-based mock
- * responder above. To go live with a real LLM: implement a ChatResponder
- * (e.g. `class OpenAIResponder implements ChatResponder`) reading its API
- * key from a server-only env var, add a case below keyed off CHAT_PROVIDER,
- * and set that env var. No changes needed anywhere else — the widget UI and
- * lib/actions/chat.ts only ever call getChatResponder().respond(...).
+ * Provider selection for the chat widget.
+ *
+ * Unset CHAT_PROVIDER (the default) keeps the rule-based responder above: no
+ * API key, no network call, no cost. CHAT_PROVIDER=openrouter switches to the
+ * LLM, which still wraps this responder as its fallback — so a missing key, a
+ * retired model id, a timeout or a filtered reply degrades to the rules rather
+ * than to an error message.
+ *
+ * The escalation check runs in MockResponder BEFORE any model call would
+ * happen for that path, so "talk to a human" keeps working deterministically
+ * even when the provider is down.
  */
 export function getChatResponder(): ChatResponder {
-  const provider = process.env.CHAT_PROVIDER;
-  switch (provider) {
+  const mock = new MockResponder();
+  switch (process.env.CHAT_PROVIDER) {
+    case "openrouter": {
+      if (!process.env.OPENROUTER_API_KEY) {
+        console.warn("[chat] CHAT_PROVIDER=openrouter but OPENROUTER_API_KEY is unset.");
+        return mock;
+      }
+      return new OpenRouterResponder(mock);
+    }
     default:
-      return new MockResponder();
+      return mock;
   }
 }

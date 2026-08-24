@@ -73,15 +73,23 @@ export async function sendChatMessage(
 
   await db.from("im_chat_messages").insert({ session_id: chatSessionId, role: "user", body: text });
 
+  // Only the tail of the conversation. This used to select the entire session
+  // with no limit, which is fine for a rule-based matcher that ignores history
+  // but becomes an unbounded, caller-controlled prompt (and bill) the moment a
+  // real model is behind it: a visitor could grow one session indefinitely and
+  // have every message re-sent on every turn.
   const { data: priorRows } = await db
     .from("im_chat_messages")
     .select("role, body")
     .eq("session_id", chatSessionId)
-    .order("created_at", { ascending: true });
-  const history = (priorRows ?? []).map((r) => ({
-    role: r.role as "user" | "bot" | "system",
-    body: r.body as string,
-  }));
+    .order("created_at", { ascending: false })
+    .limit(16);
+  const history = (priorRows ?? [])
+    .reverse()
+    .map((r) => ({
+      role: r.role as "user" | "bot" | "system",
+      body: r.body as string,
+    }));
 
   const responder = getChatResponder();
   const { reply, escalate } = await responder.respond(history, text);

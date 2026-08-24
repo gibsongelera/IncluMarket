@@ -61,23 +61,39 @@ The root layout soft-fails theme loading when the service-role key is missing at
 
 ## Accounts
 
-Three production accounts are created by `scripts/provision-users.mjs` via the
-Supabase Auth Admin API (`email_confirm: true` so they can sign in without
-clicking a confirmation link):
+Demo accounts are created by `scripts/provision-users.mjs` via the Supabase
+Auth Admin API (`email_confirm: true` so they can sign in without clicking a
+confirmation link). **No credentials are stored in this repository.**
 
-| Role   | Email             | Password  |
-| ------ | ----------------- | --------- |
-| Buyer  | `buyer@gmail.com` | `Admin123` |
-| Seller | `seller@gmail.com`| `Admin123` |
-| Admin  | `admin@gmail.com` | `Admin123` |
+Set these in `.env.local` first (see `.env.example`), then run the script:
 
-**Rotate these credentials** before any shared or public deployment.
+```bash
+npm run provision-users
+```
 
-New self-serve signups (buyer/seller only) use real Supabase Auth with **email
-confirmation**. After signup, users must confirm via the link
-(`app/auth/callback`) before signing in. Unconfirmed login attempts show
-“Please confirm your email first” with a resend option. Admin is not available
-via public signup — only pre-provisioned.
+| Variable                | Purpose                                    |
+| ----------------------- | ------------------------------------------ |
+| `SEED_ACCOUNT_PASSWORD` | Shared password. Minimum 12 characters.    |
+| `SEED_ADMIN_EMAIL`      | Admin account address                      |
+| `SEED_SELLER_EMAIL`     | Seller account address (plus `SEED_SELLER2_EMAIL`, `SEED_SELLER3_EMAIL`) |
+| `SEED_BUYER_EMAIL`      | Buyer account address (plus `SEED_BUYER2_EMAIL`) |
+
+The script refuses to run without `SEED_ACCOUNT_PASSWORD`, rejects passwords
+shorter than 12 characters, and refuses to seed against a non-localhost
+`NEXT_PUBLIC_SITE_URL` unless `ALLOW_SEED_IN_PROD=1` is set explicitly.
+
+> Earlier revisions of this file published six working accounts — including an
+> admin — that all shared the password `Admin123`, against a live deployment.
+> If you deployed from a commit before this change, rotate those accounts.
+
+New self-serve signups use real Supabase Auth with **email confirmation**.
+After signup, users must confirm via the link (`app/auth/callback`) before
+signing in. Unconfirmed login attempts show “Please confirm your email first”
+with a resend option.
+
+**Admin cannot be self-registered.** The signup trigger only ever mints
+`buyer` or `seller`, regardless of what the client sends in user metadata —
+see `supabase/migrations/0009_security_hardening.sql`.
 
 ---
 

@@ -25,15 +25,21 @@ const db = createClient(url, serviceKey, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
 
-const SELLER_EMAILS = ["seller@gmail.com", "seller2@gmail.com", "seller3@gmail.com"];
+// Seller/buyer identities come from the same env vars provision-users.mjs uses,
+// so the two scripts always agree on which accounts exist.
+const S1 = process.env.SEED_SELLER_EMAIL || "seller@example.test";
+const S2 = process.env.SEED_SELLER2_EMAIL || "seller2@example.test";
+const S3 = process.env.SEED_SELLER3_EMAIL || "seller3@example.test";
+
+const SELLER_EMAILS = [S1, S2, S3];
 
 // One demo buyer review per product keeps rating aggregates non-empty.
-const BUYER_EMAIL = "buyer@gmail.com";
+const BUYER_EMAIL = process.env.SEED_BUYER_EMAIL || "buyer@example.test";
 
 const PRODUCTS = [
-  // ---- seller@gmail.com --------------------------------------------------
+  // ---- seller 1 --------------------------------------------------
   {
-    seller: "seller@gmail.com",
+    seller: S1,
     title: "Rattan Market Tote — Handwoven",
     description:
       "A sturdy everyday tote handwoven from sustainably harvested rattan, finished with a canvas-lined " +
@@ -49,7 +55,7 @@ const PRODUCTS = [
     review: { rating: 5, comment: "Beautifully made and the strap is so comfortable. Fast shipping too!" },
   },
   {
-    seller: "seller@gmail.com",
+    seller: S1,
     title: "Crossbody Sling with Magnetic Clasp",
     description:
       "A one-handed-friendly crossbody bag with a magnetic snap closure instead of a buckle — quick to open " +
@@ -61,7 +67,7 @@ const PRODUCTS = [
     review: { rating: 4, comment: "Love the magnetic clasp, so much easier than a zipper." },
   },
   {
-    seller: "seller@gmail.com",
+    seller: S1,
     title: "Banana-Fiber Coin Pouch (Set of 2)",
     description: "Two small zip pouches woven from banana fiber (abaca), perfect for coins, earbuds, or meds.",
     category: "accessories",
@@ -70,7 +76,7 @@ const PRODUCTS = [
     variants: [{ color_name: "Mixed Natural", size: "One Size", stock_qty: 30, sku_code: "ACC-POUCH-MIX" }],
   },
   {
-    seller: "seller@gmail.com",
+    seller: S1,
     title: "Sensory-Friendly Weighted Lap Pad",
     description:
       "A 1.5kg weighted lap pad with a brushed-cotton cover, hand-sewn in small batches. Helps with focus " +
@@ -83,9 +89,9 @@ const PRODUCTS = [
     review: { rating: 5, comment: "This has genuinely helped my son focus on homework. Worth every peso." },
   },
 
-  // ---- seller2@gmail.com (Maria Santos) ----------------------------------
+  // ---- seller 2 (Maria Santos) ----------------------------------
   {
-    seller: "seller2@gmail.com",
+    seller: S2,
     title: "Foot-Loom Table Runner",
     description:
       "Handwoven on a foot-pedal loom adapted for limited hand mobility — every runner has slightly unique " +
@@ -101,7 +107,7 @@ const PRODUCTS = [
     review: { rating: 5, comment: "The colors are even richer in person. Bought a second one as a gift." },
   },
   {
-    seller: "seller2@gmail.com",
+    seller: S2,
     title: "Handwoven Placemats (Set of 4)",
     description: "Four matching placemats from the same loom run as the table runner — durable, washable cotton weave.",
     category: "crafts",
@@ -110,7 +116,7 @@ const PRODUCTS = [
     variants: [{ color_name: "Ocean Stripe", size: "Set of 4", stock_qty: 10, sku_code: "CRF-MAT-OCN4" }],
   },
   {
-    seller: "seller2@gmail.com",
+    seller: S2,
     title: "Adaptive Cushion Cover — Easy-Grip Zip",
     description:
       "A throw-pillow cover with an oversized zip pull that's easy to grip with limited dexterity, made from " +
@@ -121,7 +127,7 @@ const PRODUCTS = [
     variants: [{ color_name: "Sunset Stripe", size: "45x45cm", stock_qty: 16, sku_code: "CRF-CUSH-SUN" }],
   },
   {
-    seller: "seller2@gmail.com",
+    seller: S2,
     title: "Loomed Laptop Sleeve, 13\"",
     description: "Padded 13-inch laptop sleeve with a handwoven outer shell and water-resistant lining.",
     category: "accessories",
@@ -131,9 +137,9 @@ const PRODUCTS = [
     review: { rating: 4, comment: "Snug fit for my 13-inch laptop and the padding is solid." },
   },
 
-  // ---- seller3@gmail.com (Juno Reyes) ------------------------------------
+  // ---- seller 3 (Juno Reyes) ------------------------------------
   {
-    seller: "seller3@gmail.com",
+    seller: S3,
     title: "Adaptive Button-Down — Magnetic Placket",
     description:
       "A tailored button-down shirt where every button is replaced with a hidden magnetic placket — the look " +
@@ -149,7 +155,7 @@ const PRODUCTS = [
     review: { rating: 5, comment: "First dress shirt I've put on by myself in years. Life-changing." },
   },
   {
-    seller: "seller3@gmail.com",
+    seller: S3,
     title: "One-Handed Zip Hoodie",
     description: "A pull-cord zipper extension makes this hoodie easy to zip one-handed, without sacrificing fit.",
     category: "apparel",
@@ -158,7 +164,7 @@ const PRODUCTS = [
     variants: [{ color_name: "Charcoal", size: "L", stock_qty: 15, sku_code: "APP-HOOD-CHR-L" }],
   },
   {
-    seller: "seller3@gmail.com",
+    seller: S3,
     title: "Seated-Fit Trousers, Adjustable Waist",
     description:
       "Cut higher in the back and lower in the front for a cleaner seated silhouette, with a hook-and-loop " +
@@ -170,7 +176,7 @@ const PRODUCTS = [
     review: { rating: 4, comment: "So much more comfortable for long days in my chair." },
   },
   {
-    seller: "seller3@gmail.com",
+    seller: S3,
     title: "Deaf-Owned Studio Tote Bag",
     description: "A canvas tote screen-printed in-studio with original line art. Every order is confirmed via in-app messaging only.",
     category: "bags",
@@ -179,7 +185,7 @@ const PRODUCTS = [
     variants: [{ color_name: "Natural Canvas", size: "Standard", stock_qty: 20, sku_code: "BAG-TOTE-CAN" }],
   },
   {
-    seller: "seller3@gmail.com",
+    seller: S3,
     title: "Custom Tailoring Consultation (30 min)",
     description:
       "A 30-minute adaptive-clothing fitting consultation, conducted over in-app chat or captioned video call — " +
@@ -190,7 +196,7 @@ const PRODUCTS = [
     variants: [{ color_name: "Standard", size: "30 min", stock_qty: 99, sku_code: "SVC-CONSULT-30" }],
   },
   {
-    seller: "seller3@gmail.com",
+    seller: S3,
     title: "Adaptive Pouch Bag — Wide Mouth Snap",
     description: "A wide-mouth accessory pouch with an oversized snap tab, easy to open and close one-handed.",
     category: "accessories",
@@ -283,7 +289,7 @@ async function main() {
       discount_percent: 20,
       starts_at: startsAt.toISOString(),
       ends_at: endsAt.toISOString(),
-      created_by: sellerIdByEmail["seller@gmail.com"],
+      created_by: sellerIdByEmail[S1],
     });
     if (fErr) throw fErr;
     console.log(`  flash sale: product:${firstFeaturedId} (20% off, 3 days)`);

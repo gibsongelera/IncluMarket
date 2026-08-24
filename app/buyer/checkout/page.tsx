@@ -5,6 +5,7 @@ import { SiteFooter } from "@/components/SiteFooter";
 import { CheckoutClient } from "@/components/CheckoutClient";
 import { getCartItems } from "@/lib/actions/cart";
 import { getAllProducts, getVariants } from "@/lib/data";
+import { isPayMongoConfigured } from "@/lib/payments/paymongo";
 
 export const dynamic = "force-dynamic";
 
@@ -25,6 +26,7 @@ export default async function CheckoutPage() {
         <h1>Checkout</h1>
         <CheckoutClient
           userName={session.name}
+          onlinePaymentEnabled={isPayMongoConfigured()}
           items={items}
           products={products.map((p) => ({
             id: p.id,

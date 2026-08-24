@@ -6,12 +6,11 @@ import Link from "next/link";
 import { money, svgPlaceholder } from "@/lib/format";
 import { toast } from "@/lib/toast";
 import { placeOrder } from "@/lib/actions/shop";
+import { SHIPPING_FEE } from "@/lib/pricing";
 import type { CartItem } from "@/lib/types";
 
 type ProductLite = { id: number; title: string; image: string | null; images: string[] | null };
 type VariantLite = { id: number; color_name: string; size: string | null };
-
-const SHIPPING = 60;
 
 function imgSrc(p?: ProductLite): string {
   if (p?.images && p.images.length) return p.images[0];
@@ -23,11 +22,13 @@ export function CheckoutClient({
   items,
   products,
   variants,
+  onlinePaymentEnabled,
 }: {
   userName: string;
   items: CartItem[];
   products: ProductLite[];
   variants: VariantLite[];
+  onlinePaymentEnabled: boolean;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -41,7 +42,7 @@ export function CheckoutClient({
   }
 
   const sub = items.reduce((n, it) => n + it.unit_price * it.quantity, 0);
-  const total = sub + SHIPPING;
+  const total = sub + SHIPPING_FEE;
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -50,13 +51,33 @@ export function CheckoutClient({
       form.reportValidity();
       return;
     }
+
+    // These fields used to be collected, validated in the browser, and then
+    // thrown away — placeOrder() was called with no arguments at all.
+    const data = new FormData(form);
     setBusy(true);
-    const res = await placeOrder();
-    setBusy(false);
+    const res = await placeOrder({
+      shippingName: String(data.get("name") ?? ""),
+      shippingAddress: String(data.get("address") ?? ""),
+      shippingCity: String(data.get("city") ?? ""),
+      shippingPhone: String(data.get("phone") ?? ""),
+      paymentMethod: data.get("payment") === "paymongo" ? "paymongo" : "cod",
+    });
+
     if (!res.ok) {
+      setBusy(false);
       toast(res.error || "Could not place order.", "error");
       return;
     }
+
+    if (res.redirectUrl) {
+      // Full navigation, not router.push — the destination is PayMongo, off-origin.
+      toast("Redirecting you to the secure payment page…", "info");
+      window.location.href = res.redirectUrl;
+      return;
+    }
+
+    setBusy(false);
     toast(`Order ${res.orderId} placed. Thank you!`, "success");
     setTimeout(() => router.push("/buyer/orders"), 500);
   }
@@ -95,10 +116,21 @@ export function CheckoutClient({
           </div>
           <div className="field">
             <label>
-              <input type="radio" name="payment" value="ewallet" /> E-wallet
+              <input
+                type="radio"
+                name="payment"
+                value="paymongo"
+                disabled={!onlinePaymentEnabled}
+                aria-describedby="pay-online-hint"
+              />{" "}
+              Pay online — GCash, Maya, GrabPay or card
             </label>
+            <p id="pay-online-hint" className="hint">
+              {onlinePaymentEnabled
+                ? "You will be taken to PayMongo's secure page to pay, then brought back here. We never see or store your card details."
+                : "Online payment is not configured on this deployment yet."}
+            </p>
           </div>
-          <p className="hint">Payment is recorded with the order; no card data is stored.</p>
         </fieldset>
 
         <div className="form-actions">
@@ -163,7 +195,7 @@ export function CheckoutClient({
           </div>
           <div>
             <dt>Shipping</dt>
-            <dd>{money(SHIPPING)}</dd>
+            <dd>{money(SHIPPING_FEE)}</dd>
           </div>
           <div className="grand">
             <dt>Total</dt>
