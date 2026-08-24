@@ -3,32 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getSession } from "@/lib/session";
-import type { Notification, NotificationType } from "@/lib/types";
+import type { Notification } from "@/lib/types";
 
 export interface ActionResult {
   ok: boolean;
   error?: string;
-}
-
-export interface NotifyInput {
-  userId: number;
-  type: NotificationType;
-  title: string;
-  body?: string;
-  link?: string;
-}
-
-// Internal helper — called directly from other server actions (shop.ts,
-// seller.ts) after their own mutation succeeds. Not a client-facing action.
-export async function createNotification(input: NotifyInput): Promise<void> {
-  const db = createAdminClient();
-  await db.from("im_notifications").insert({
-    user_id: input.userId,
-    type: input.type,
-    title: input.title,
-    body: input.body || null,
-    link: input.link || null,
-  });
 }
 
 export async function getMyNotifications(limit = 20): Promise<Notification[]> {

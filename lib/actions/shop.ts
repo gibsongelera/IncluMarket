@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getSession } from "@/lib/session";
 import { clearCartAction, getCartItems } from "@/lib/actions/cart";
-import { createNotification } from "@/lib/actions/notifications";
+import { createNotification } from "@/lib/notify";
 import type { Priority } from "@/lib/types";
 
 const LOW_STOCK_THRESHOLD = 5;

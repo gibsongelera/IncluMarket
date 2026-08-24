@@ -192,15 +192,43 @@ export async function createUser(input: UserInput, consent: boolean): Promise<Ac
   const { data: existing } = await db.from("im_profiles").select("id").ilike("email", email).maybeSingle();
   if (existing) return { ok: false, error: "Another user already uses that email." };
 
+  // Create the AUTH user first, and let the on_auth_user_created trigger create
+  // the matching profile.
+  //
+  // This used to insert a bare im_profiles row with no auth_user_id. Combined
+  // with the signup trigger's old `on conflict (email) do update set
+  // auth_user_id = excluded.auth_user_id`, that was a profile-takeover primitive:
+  // an admin pre-creating an admin profile for an address meant whoever signed
+  // up with that address inherited it. Migration 0009 closed the trigger side;
+  // this closes the other half by never producing an unlinked profile at all.
+  //
+  // An invite (rather than a password we choose) means no admin ever handles
+  // another person's credentials.
+  const { data: invited, error: inviteErr } = await db.auth.admin.inviteUserByEmail(email, {
+    data: { name },
+  });
+  if (inviteErr || !invited?.user) {
+    return {
+      ok: false,
+      error:
+        inviteErr?.message ||
+        "Could not send the invitation. Check that email delivery is configured for this project.",
+    };
+  }
+
+  // The trigger only ever mints 'buyer' or 'seller' from metadata, so the
+  // intended role is applied here, through the service-role client, after the
+  // admin check above.
   const { data: created, error } = await db
     .from("im_profiles")
-    .insert({
+    .update({
       name,
-      email,
       role: input.role,
       disability_type: input.disability_type || null,
       assistive_needs: input.assistive_needs || null,
+      updated_at: new Date().toISOString(),
     })
+    .eq("auth_user_id", invited.user.id)
     .select("*")
     .single();
   if (error || !created) return { ok: false, error: error?.message || "Could not create user." };
@@ -256,10 +284,27 @@ export async function deleteUser(userId: number): Promise<ActionResult> {
   if (userId === admin.user_id)
     return { ok: false, error: "You cannot delete the account you are signed in with." };
   const db = createAdminClient();
-  const { data: user } = await db.from("im_profiles").select("role").eq("id", userId).maybeSingle();
+  const { data: user } = await db
+    .from("im_profiles")
+    .select("role, auth_user_id")
+    .eq("id", userId)
+    .maybeSingle();
   if (!user) return { ok: false, error: "User not found." };
   const { error } = await db.from("im_profiles").delete().eq("id", userId);
   if (error) return { ok: false, error: error.message };
+
+  // Delete the auth user too. Deleting only the profile used to leave a live
+  // credential behind that could still authenticate (it now resolves to a null
+  // session, but it also blocked the address from ever being re-registered).
+  // A failure here must not undo the profile deletion the admin asked for, so
+  // it is logged rather than surfaced as an error.
+  if (user.auth_user_id) {
+    const { error: authErr } = await db.auth.admin.deleteUser(user.auth_user_id);
+    if (authErr) {
+      await audit(admin.user_id, "delete_auth_user_failed", `user:${userId}:${authErr.message}`);
+    }
+  }
+
   await audit(admin.user_id, `deleted_user_${user.role}`, `user:${userId}`);
   revalidatePath("/admin/users");
   return { ok: true };

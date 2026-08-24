@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getSession, homeForRole } from "@/lib/session";
+import { guardByIp, rateLimit, RATE_LIMITED_MESSAGE } from "@/lib/security/rate-limit";
 import type { Role } from "@/lib/types";
 
 export interface AuthResult {
@@ -34,6 +35,17 @@ export async function loginAction(email: string, password: string): Promise<Auth
   const normalized = String(email || "").trim().toLowerCase();
   if (!normalized) return { ok: false, error: "Please enter your email." };
   if (!password) return { ok: false, error: "Please enter your password." };
+
+  // Two buckets: per-IP stops a single host spraying many accounts, per-email
+  // stops a distributed attempt against one account. Supabase applies its own
+  // throttling, but nothing here did.
+  const ipGuard = await guardByIp("login", { limit: 10, windowSeconds: 900 });
+  if (ipGuard) return ipGuard;
+  const byEmail = await rateLimit("login_email", `email:${normalized}`, {
+    limit: 5,
+    windowSeconds: 900,
+  });
+  if (!byEmail.ok) return { ok: false, error: RATE_LIMITED_MESSAGE };
 
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase.auth.signInWithPassword({
@@ -92,6 +104,9 @@ export async function signupAction(
   if (role !== "buyer" && role !== "seller")
     return { ok: false, error: "Please choose a valid role." };
 
+  const signupGuard = await guardByIp("signup", { limit: 5, windowSeconds: 3600 });
+  if (signupGuard) return signupGuard;
+
   const origin = await siteOrigin();
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase.auth.signUp({
@@ -135,6 +150,14 @@ export async function signupAction(
 export async function resendConfirmationAction(email: string): Promise<AuthResult> {
   const normalized = String(email || "").trim().toLowerCase();
   if (!normalized) return { ok: false, error: "Please enter your email." };
+
+  // Unauthenticated and it sends mail, so it is both an abuse vector and a way
+  // to burn the project's email quota.
+  const resend = await rateLimit("resend_confirm", `email:${normalized}`, {
+    limit: 3,
+    windowSeconds: 3600,
+  });
+  if (!resend.ok) return { ok: false, error: RATE_LIMITED_MESSAGE };
 
   const origin = await siteOrigin();
   const supabase = await createSupabaseServerClient();

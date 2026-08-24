@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getSession } from "@/lib/session";
-import { createNotification } from "@/lib/actions/notifications";
+import { createNotification } from "@/lib/notify";
 
 export interface ActionResult {
   ok: boolean;

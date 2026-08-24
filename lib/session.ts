@@ -27,31 +27,22 @@ export async function getSession(): Promise<SessionUser | null> {
   const admin = createAdminClient();
   const { data: profile } = await admin
     .from("im_profiles")
-    .select("id, role, email, name, auth_user_id")
+    .select("id, role, email, name, auth_user_id, account_status")
     .eq("auth_user_id", user.id)
     .maybeSingle();
 
-  if (!profile) {
-    // Fallback: link by email if trigger lagged or profile was provisioned first.
-    const { data: byEmail } = await admin
-      .from("im_profiles")
-      .select("id, role, email, name, auth_user_id")
-      .ilike("email", user.email)
-      .maybeSingle();
-    if (!byEmail) return null;
-    if (!byEmail.auth_user_id) {
-      await admin
-        .from("im_profiles")
-        .update({ auth_user_id: user.id, updated_at: new Date().toISOString() })
-        .eq("id", byEmail.id);
-    }
-    return {
-      user_id: byEmail.id,
-      role: byEmail.role as Role,
-      email: byEmail.email,
-      name: byEmail.name,
-    };
-  }
+  // A session is ONLY ever resolved through auth_user_id. There used to be an
+  // email-based fallback here that back-filled auth_user_id onto any unlinked
+  // profile matching the address — which meant anyone who signed up with the
+  // email of an admin-created profile inherited that profile, role and all.
+  // Linking an auth user to a pre-existing profile is a privileged operation
+  // and now belongs to the admin tooling, never to a login.
+  if (!profile) return null;
+
+  // account_status has existed since migration 0007 and was never read, so a
+  // suspended account signed in exactly like an active one. Suspension now
+  // terminates the session (FR-12).
+  if (profile.account_status === "suspended") return null;
 
   return {
     user_id: profile.id,

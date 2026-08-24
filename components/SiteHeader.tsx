@@ -76,7 +76,7 @@ export async function SiteHeader({
     );
   }
 
-  const cartCount = variant === "buyer" ? await getCartCount(session.user_id) : 0;
+  const cartCount = variant === "buyer" ? await getCartCount() : 0;
   const [unread, notifications, unreadMessages] = await Promise.all([
     getMyUnreadCount(),
     getMyNotifications(),

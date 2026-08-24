@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getSession } from "@/lib/session";
+import { THEME_PRESETS } from "@/lib/theme";
 
 export interface ActionResult {
   ok: boolean;
@@ -50,6 +51,16 @@ export async function saveThemeChrome(
 export async function applyThemePreset(presetId: string): Promise<ActionResult> {
   const admin = await requireAdmin();
   if (!admin) return { ok: false, error: "Admin access required." };
+
+  // Allowlist against the known presets. This accepted any string and wrote it
+  // straight to im_theme_settings.theme_preset; getThemePreset() falls back
+  // safely on an unknown id, so the effect was a silently broken theme rather
+  // than an injection — but an unvalidated write to a column that feeds the
+  // global <style> block should not exist in the first place.
+  if (!Object.prototype.hasOwnProperty.call(THEME_PRESETS, presetId)) {
+    return { ok: false, error: "Unknown theme preset." };
+  }
+
   const db = createAdminClient();
   await db
     .from("im_theme_settings")

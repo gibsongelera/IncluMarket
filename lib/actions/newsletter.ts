@@ -1,6 +1,7 @@
 "use server";
 
 import { createAdminClient } from "@/lib/supabase/admin";
+import { guardByIp } from "@/lib/security/rate-limit";
 
 export interface ActionResult {
   ok: boolean;
@@ -14,6 +15,11 @@ function isValidEmail(email: string): boolean {
 export async function subscribeNewsletter(email: string): Promise<ActionResult> {
   const clean = email.trim().toLowerCase();
   if (!isValidEmail(clean)) return { ok: false, error: "Enter a valid email address." };
+
+  // Fully unauthenticated write with a `with check (true)` RLS policy: anyone
+  // could flood the subscriber list with arbitrary addresses.
+  const guard = await guardByIp("newsletter", { limit: 5, windowSeconds: 3600 });
+  if (guard) return guard;
 
   const db = createAdminClient();
   const { error } = await db

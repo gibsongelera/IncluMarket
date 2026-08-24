@@ -3,7 +3,12 @@
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getSession } from "@/lib/session";
-import { createNotification } from "@/lib/actions/notifications";
+import { createNotification } from "@/lib/notify";
+import {
+  boundedText,
+  validateImageDataUrls,
+  validateImageToken,
+} from "@/lib/validation/data-url";
 
 export interface ActionResult {
   ok: boolean;
@@ -55,16 +60,21 @@ export async function createProduct(input: ProductInput): Promise<ActionResult> 
   if (!input.title?.trim()) return { ok: false, error: "Title is required." };
   if (!(input.base_price >= 0)) return { ok: false, error: "Price must be 0 or more." };
 
+  // The 1 MB / image-only check in SellerProductsClient runs in the browser and
+  // is therefore advisory. This is the enforcing one.
+  const imageCheck = validateImageDataUrls(input.images);
+  if (!imageCheck.ok) return { ok: false, error: imageCheck.error };
+
   const db = createAdminClient();
   const { data: product, error } = await db
     .from("im_products")
     .insert({
       seller_id: seller.user_id,
-      title: input.title.trim(),
-      description: input.description?.trim() || null,
+      title: boundedText(input.title, 200) ?? "",
+      description: boundedText(input.description, 5000),
       base_price: input.base_price,
       category: input.category || null,
-      image: input.image || "\u{1F6CD}\u{FE0F}",
+      image: validateImageToken(input.image, "\u{1F6CD}\u{FE0F}"),
       status: "pending",
     })
     .select("*")
@@ -85,7 +95,7 @@ export async function createProduct(input: ProductInput): Promise<ActionResult> 
     if (vErr) return { ok: false, error: vErr.message };
   }
 
-  if (input.images) await replaceImages(db, product.id, input.images);
+  if (imageCheck.value) await replaceImages(db, product.id, imageCheck.value);
 
   await db.from("im_audit_logs").insert({
     actor_id: seller.user_id,
@@ -104,6 +114,10 @@ export async function updateProduct(
 ): Promise<ActionResult> {
   const seller = await requireSeller();
   if (!seller) return { ok: false, error: "Seller access required." };
+
+  const imageCheck = validateImageDataUrls(input.images);
+  if (!imageCheck.ok) return { ok: false, error: imageCheck.error };
+
   const db = createAdminClient();
 
   const { data: existing } = await db
@@ -116,11 +130,13 @@ export async function updateProduct(
     return { ok: false, error: "You can only edit your own products." };
 
   const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
-  if (input.title !== undefined) patch.title = input.title.trim();
-  if (input.description !== undefined) patch.description = input.description?.trim() || null;
+  if (input.title !== undefined) patch.title = boundedText(input.title, 200) ?? "";
+  if (input.description !== undefined) patch.description = boundedText(input.description, 5000);
   if (input.base_price !== undefined) patch.base_price = input.base_price;
   if (input.category !== undefined) patch.category = input.category || null;
-  if (input.image !== undefined) patch.image = input.image;
+  if (input.image !== undefined) {
+    patch.image = validateImageToken(input.image, "\u{1F6CD}\u{FE0F}");
+  }
 
   const { error } = await db.from("im_products").update(patch).eq("id", productId);
   if (error) return { ok: false, error: error.message };
@@ -151,7 +167,7 @@ export async function updateProduct(
     }
   }
 
-  if (input.images) await replaceImages(db, productId, input.images);
+  if (imageCheck.value) await replaceImages(db, productId, imageCheck.value);
 
   await db.from("im_audit_logs").insert({
     actor_id: seller.user_id,

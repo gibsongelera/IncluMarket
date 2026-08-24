@@ -4,10 +4,35 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { homeForRole } from "@/lib/session";
 import type { Role } from "@/lib/types";
 
+/**
+ * Only allow same-origin, path-relative redirect targets.
+ *
+ * `next` used to be concatenated straight onto `origin`, so `?next=@evil.com`
+ * produced `https://oursite.com@evil.com` — which URL-parses to host
+ * `evil.com`. That turns our own email-confirmation link into a credential
+ * phishing vector. `?next=//evil.com` and `?next=/\evil.com` are the same trick.
+ *
+ * Belt and braces: shape-check the string, then resolve it against the origin
+ * and assert the origin survived.
+ */
+function safeNext(next: string | null, origin: string): string | null {
+  if (!next) return null;
+  // Must start with exactly one slash, and contain no backslashes (which some
+  // browsers normalise to forward slashes when resolving authority).
+  if (!next.startsWith("/") || next.startsWith("//") || next.includes("\\")) return null;
+  try {
+    const resolved = new URL(next, origin);
+    if (resolved.origin !== new URL(origin).origin) return null;
+    return `${resolved.pathname}${resolved.search}${resolved.hash}`;
+  } catch {
+    return null;
+  }
+}
+
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
-  const next = searchParams.get("next");
+  const next = safeNext(searchParams.get("next"), origin);
 
   if (code) {
     const supabase = await createSupabaseServerClient();

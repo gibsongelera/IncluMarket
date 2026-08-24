@@ -384,8 +384,38 @@ export function resolveThemeVars(
 // Selector `html:root` (specificity 0,1,1) intentionally outranks tokens.css's
 // plain `:root` (0,1,0) so the active theme wins regardless of stylesheet order,
 // while `:root[data-contrast="high"]` (0,2,0) still overrides for a11y mode.
+// Custom-property names are always `--kebab-case` from THEME_VAR_KEYS.
+const SAFE_VAR_NAME = /^--[a-z0-9-]+$/;
+// Values are colours, gradients and numbers. Everything needed by the presets
+// fits this set: hex, rgb()/hsl()/linear-gradient(), percentages, keywords.
+const SAFE_VAR_VALUE = /^[#a-zA-Z0-9(),.%\s/-]+$/;
+
+/**
+ * Serialize resolved vars into a CSS string for the layout's <style> tag.
+ *
+ * Selector `html:root` (specificity 0,1,1) intentionally outranks tokens.css's
+ * plain `:root` (0,1,0) so the active theme wins regardless of stylesheet order,
+ * while `:root[data-contrast="high"]` (0,2,0) still overrides for a11y mode.
+ *
+ * Values reaching here originate in im_theme_settings, i.e. the database. They
+ * are concatenated into raw CSS that the root layout injects into the document
+ * head on every page, so an unsanitised value containing `</style><script>`
+ * would be site-wide stored XSS. saveThemeChrome() hex-validates the three
+ * chrome colours, but color_nav_text and color_footer_text have no validator
+ * and the columns are writable — so the escape is enforced here instead, at the
+ * single choke point every theme value must pass through. Anything that does
+ * not look like a plain CSS colour value is dropped rather than emitted.
+ */
 export function themeVarsToCss(vars: Record<string, string>): string {
   const body = Object.entries(vars)
+    .filter(
+      ([k, v]) =>
+        typeof v === "string" &&
+        v.length > 0 &&
+        v.length <= 200 &&
+        SAFE_VAR_NAME.test(k) &&
+        SAFE_VAR_VALUE.test(v)
+    )
     .map(([k, v]) => `${k}:${v};`)
     .join("");
   return `html:root{${body}}`;

@@ -3,6 +3,10 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getSession } from "@/lib/session";
 import { getChatResponder } from "@/lib/chatbot/responder";
+import { guardByIp, rateLimit } from "@/lib/security/rate-limit";
+
+/** Hard cap on a single chat turn, before it reaches the model or the DB. */
+const MAX_MESSAGE_CHARS = 1000;
 
 export interface ChatActionResult {
   ok: boolean;
@@ -19,6 +23,20 @@ export async function sendChatMessage(
 ): Promise<ChatActionResult> {
   const text = message.trim();
   if (!text) return { ok: false, error: "Message cannot be empty." };
+  if (text.length > MAX_MESSAGE_CHARS) {
+    return { ok: false, error: "That message is too long. Please shorten it." };
+  }
+
+  // sendChatMessage is fully unauthenticated and writes two rows per call, and
+  // guest_id is client-generated (so forgeable). Limit per session AND per IP,
+  // plus a global daily ceiling so the LLM provider bill / free-tier quota
+  // cannot be drained by one caller rotating guest ids.
+  const ipGuard = await guardByIp("chat", { limit: 30, windowSeconds: 3600 });
+  if (ipGuard) return ipGuard;
+  const global = await rateLimit("chat_global", "all", { limit: 2000, windowSeconds: 86400 });
+  if (!global.ok) {
+    return { ok: false, error: "Chat is very busy right now. Please try again later." };
+  }
 
   const db = createAdminClient();
   const authSession = await getSession();

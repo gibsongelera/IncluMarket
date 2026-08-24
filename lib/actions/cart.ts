@@ -48,12 +48,17 @@ export async function getCartItems(): Promise<CartItem[]> {
   }));
 }
 
-export async function getCartCount(userId?: number): Promise<number> {
+// Every export of a "use server" module is a public HTTP endpoint, so this
+// deliberately takes no user id: a caller-supplied id used to win over the
+// session id, which let any buyer enumerate other buyers' cart counts.
+export async function getCartCount(): Promise<number> {
   const session = await getSession();
   if (!session || session.role !== "buyer") return 0;
-  const id = userId ?? session.user_id;
   const db = createAdminClient();
-  const { data } = await db.from("im_cart_items").select("quantity").eq("user_id", id);
+  const { data } = await db
+    .from("im_cart_items")
+    .select("quantity")
+    .eq("user_id", session.user_id);
   return (data || []).reduce((n, r) => n + Number(r.quantity || 0), 0);
 }
 
@@ -96,7 +101,7 @@ export async function addToCartAction(
   }
 
   revalidateCart();
-  return { ok: true, count: await getCartCount(session.user_id) };
+  return { ok: true, count: await getCartCount() };
 }
 
 export async function setCartQuantityAction(
@@ -122,7 +127,7 @@ export async function setCartQuantityAction(
   if (error) return { ok: false, error: error.message };
 
   revalidateCart();
-  return { ok: true, count: await getCartCount(session.user_id) };
+  return { ok: true, count: await getCartCount() };
 }
 
 export async function removeFromCartAction(
@@ -144,7 +149,7 @@ export async function removeFromCartAction(
   if (error) return { ok: false, error: error.message };
 
   revalidateCart();
-  return { ok: true, count: await getCartCount(session.user_id) };
+  return { ok: true, count: await getCartCount() };
 }
 
 export async function clearCartAction(): Promise<CartActionResult> {

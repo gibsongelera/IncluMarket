@@ -13,7 +13,12 @@ export type PaymentProviderRow = {
   public_key: string | null;
 };
 
+// Admin-only: returns configuration state, including the stored public key and
+// the dashboard URL. This was an unauthenticated export, i.e. a public endpoint
+// leaking provider config for every provider including disabled ones.
 export async function listPaymentProviders(): Promise<PaymentProviderRow[]> {
+  const session = await getSession();
+  if (!session || session.role !== "admin") return [];
   const db = createAdminClient();
   const { data } = await db
     .from("im_payment_providers")
@@ -22,9 +27,22 @@ export async function listPaymentProviders(): Promise<PaymentProviderRow[]> {
   return (data ?? []) as PaymentProviderRow[];
 }
 
-export async function listEnabledPaymentProviders(): Promise<PaymentProviderRow[]> {
-  const all = await listPaymentProviders();
-  return all.filter((p) => p.enabled);
+/**
+ * Checkout needs to know which methods to offer and nothing else, so this
+ * deliberately selects only the two non-sensitive columns rather than reusing
+ * listPaymentProviders(). It stays callable without a session because the
+ * checkout page renders before payment selection.
+ */
+export async function listEnabledPaymentProviders(): Promise<
+  Pick<PaymentProviderRow, "id" | "display_name">[]
+> {
+  const db = createAdminClient();
+  const { data } = await db
+    .from("im_payment_providers")
+    .select("id, display_name")
+    .eq("enabled", true)
+    .order("id");
+  return (data ?? []) as Pick<PaymentProviderRow, "id" | "display_name">[];
 }
 
 export async function updatePaymentProvider(input: {
