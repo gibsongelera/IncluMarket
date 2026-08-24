@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { formatDate, formatDateTime, maskEmail } from "@/lib/format";
 import { toast } from "@/lib/toast";
 import { Pill } from "./Pill";
-import { addAdminTicketResponse, setTicketStatus } from "@/lib/actions/admin";
+import { addAdminTicketResponse, assignTicket, setTicketStatus } from "@/lib/actions/admin";
 import type { SupportTicket, TicketResponse, TicketStatus } from "@/lib/types";
 import { Tabs, TabPanel } from "./Tabs";
 
@@ -60,6 +60,20 @@ export function AdminTicketsClient({
     }
     toast("Reply sent.", "success");
     setReply("");
+    router.refresh();
+  }
+
+  // assignTicket has existed since the first admin build with no control
+  // anywhere in the UI — an exported server action, and therefore a public
+  // endpoint, that no part of the product could reach.
+  async function claimTicket() {
+    if (!active) return;
+    const res = await assignTicket(active.id);
+    if (!res.ok) {
+      toast(res.error || "Could not assign the ticket.", "error");
+      return;
+    }
+    toast(`Ticket #${active.id} assigned to you.`, "success");
     router.refresh();
   }
 
@@ -186,6 +200,9 @@ export function AdminTicketsClient({
                 <div className="form-actions">
                   <button className="btn btn--primary" id="reply-send" disabled={busy} onClick={sendReply}>
                     Send reply
+                  </button>
+                  <button className="btn btn--ghost" onClick={claimTicket}>
+                    Assign to me
                   </button>
                   <button className="btn btn--ghost" onClick={() => changeStatus("in_progress")}>
                     Mark in-progress

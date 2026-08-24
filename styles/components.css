@@ -70,7 +70,7 @@
 }
 .badge--blue    { background: var(--brand-blue);   color: #FFFFFF; border-color: var(--brand-blue); }
 .badge--yellow  { background: var(--brand-yellow); color: var(--text-charcoal); border-color: var(--brand-yellow-800); } /* Guardrail 1 */
-.badge--red     { background: var(--brand-red);    color: var(--canvas-white); border-color: var(--brand-red-800); }   /* Guardrail 1 */
+.badge--red     { background: var(--brand-red);    color: #FFFFFF; border-color: var(--brand-red-800); }   /* Guardrail 2: red is a dark surface */
 .badge--success { background: var(--success-100);  color: var(--success); border-color: var(--success); }
 .badge--muted   { background: var(--surface-gray); color: var(--text-muted); }
 
@@ -316,7 +316,7 @@ fieldset {
   position: absolute;
   top: calc(100% + 8px);
   right: 0;
-  z-index: 30;
+  z-index: var(--z-header);
   width: min(360px, 90vw);
   background: var(--canvas-white);
   color: var(--text-charcoal);
@@ -356,9 +356,11 @@ fieldset {
 /* Accessibility widget (fixed bottom-left, mirrors the chat widget) */
 .a11y-widget {
   position: fixed;
-  left: 20px;
-  bottom: 20px;
-  z-index: 60;
+  left: var(--space-5);
+  /* Offset is a token, not a literal: responsive.css lifts this above the
+     mobile tab bar and any sticky action bar via --bottom-inset. */
+  bottom: calc(var(--space-3) + var(--bottom-inset));
+  z-index: var(--z-fab);
 }
 .a11y-fab {
   display: inline-flex;
@@ -488,7 +490,7 @@ fieldset {
   position: fixed;
   inset: 0 auto auto 0;
   width: 100%;
-  z-index: 80;
+  z-index: var(--z-alert);
   padding: 1rem 1.25rem;
   text-align: center;
   font-weight: 700;
@@ -510,9 +512,9 @@ fieldset {
 /* Customer-service chat widget (fixed bottom-right) */
 .chat-widget {
   position: fixed;
-  right: 20px;
-  bottom: 20px;
-  z-index: 60;
+  right: var(--space-5);
+  bottom: calc(var(--space-3) + var(--bottom-inset));
+  z-index: var(--z-fab);
 }
 .chat-fab {
   display: inline-flex;

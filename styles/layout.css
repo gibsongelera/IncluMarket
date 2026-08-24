@@ -72,7 +72,7 @@
   top: calc(100% + 4px);
   left: 0;
   right: 0;
-  z-index: 20;
+  z-index: var(--z-header);
   margin: 0;
   padding: .25rem;
   list-style: none;
@@ -274,7 +274,9 @@
   padding: 1rem;
   align-self: start;
   position: sticky;
-  top: 84px;
+  /* Measured header height; a literal is wrong at every font size but the
+     default, and badly wrong at the 24px accessibility setting. */
+  top: calc(var(--header-total) + var(--space-2));
 }
 .filters h2 { font-size: 1rem; margin-bottom: .5rem; }
 .rating-row { display: flex; flex-wrap: wrap; gap: .5rem; }
@@ -567,7 +569,7 @@
 /* Checkout */
 .checkout-grid { display: grid; grid-template-columns: 1.5fr 1fr; gap: 1.5rem; }
 .checkout-form { background: var(--canvas-white); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 1rem; display: grid; gap: 1rem; }
-.checkout-summary { background: var(--canvas-white); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 1rem; align-self: start; position: sticky; top: 84px; }
+.checkout-summary { background: var(--canvas-white); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 1rem; align-self: start; position: sticky; top: calc(var(--header-total) + var(--space-2)); }
 .checkout-summary .totals { display: grid; gap: .35rem; margin-top: .75rem; padding-top: .75rem; border-top: 1px solid var(--border); }
 .checkout-summary .totals > div { display: flex; justify-content: space-between; }
 .checkout-summary .totals .grand { font-weight: 800; font-size: 1.05rem; color: var(--brand-red); }
@@ -697,17 +699,5 @@
 .msg header { display: flex; justify-content: space-between; font-size: .8rem; color: var(--text-muted); margin-bottom: .25rem; }
 
 /* Responsive */
-@media (max-width: 900px) {
-  .main--buyer { grid-template-columns: 1fr; }
-  .filters { position: static; }
-  .product-detail { grid-template-columns: 1fr; }
-  .checkout-grid { grid-template-columns: 1fr; }
-  .chart-grid { grid-template-columns: 1fr; }
-  .support-grid { grid-template-columns: 1fr; }
-  .ticket-workspace { grid-template-columns: 1fr; }
-  .hero { grid-template-columns: 1fr; }
-  .row { grid-template-columns: 1fr; }
-  .variant-row { grid-template-columns: 1fr 1fr; }
-  .cart-item { grid-template-columns: 60px 1fr; gap: .5rem; }
-  .cart-item > *:nth-child(n+3) { grid-column: 1 / -1; }
-}
+
+/* Width media queries live in styles/responsive.css. */

@@ -438,7 +438,7 @@
   letter-spacing: .05em;
 }
 .landing-auth .quick-account.qa-admin::before { background: var(--brand-red-100); color: var(--brand-red-800); }
-.landing-auth .quick-account.qa-seller::before { background: #FFF7B0; color: var(--warning); }
+.landing-auth .quick-account.qa-seller::before { background: #FFF7B0; color: var(--text-charcoal); } /* Guardrail 1: gold surface takes dark text (was 2.97:1) */
 
 .landing-legal {
   text-align: center;

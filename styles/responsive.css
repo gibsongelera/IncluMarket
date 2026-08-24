@@ -616,3 +616,33 @@ h3 {
     max-width: var(--container-max);
   }
 }
+
+/* ---------------------------------------------------------------------------
+   10. Legacy breakpoints, relocated
+   These two blocks were the only width media queries serving the entire
+   authenticated app before this file existed. They are kept verbatim so the
+   move is behaviour-preserving, and now live alongside every other breakpoint
+   instead of being buried at the bottom of layout.css and shopee.css.
+   ------------------------------------------------------------------------ */
+@media (max-width: 900px) {
+  .main--buyer { grid-template-columns: 1fr; }
+  .filters { position: static; }
+  .product-detail { grid-template-columns: 1fr; }
+  .checkout-grid { grid-template-columns: 1fr; }
+  .chart-grid { grid-template-columns: 1fr; }
+  .support-grid { grid-template-columns: 1fr; }
+  .ticket-workspace { grid-template-columns: 1fr; }
+  .hero { grid-template-columns: 1fr; }
+  .row { grid-template-columns: 1fr; }
+  .variant-row { grid-template-columns: 1fr 1fr; }
+  .cart-item { grid-template-columns: 60px 1fr; gap: .5rem; }
+  .cart-item > *:nth-child(n+3) { grid-column: 1 / -1; }
+}
+
+@media (max-width: 480px) {
+  .product-grid { grid-template-columns: repeat(2, 1fr); gap: .5rem; }
+  .product-card__title { font-size: .85rem; }
+  .product-card__price { font-size: .95rem; }
+  .header-row { flex-wrap: wrap; }
+  .search { order: 3; width: 100%; }
+}

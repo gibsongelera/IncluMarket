@@ -36,9 +36,12 @@ const csp = [
   "frame-ancestors 'none'",
   "form-action 'self'",
   "script-src 'self' 'unsafe-inline'",
-  "style-src 'self' 'unsafe-inline'",
+  // fonts.googleapis.com serves the @import in styles/base.css; the font files
+  // themselves come from fonts.gstatic.com. Caught by the report-only policy
+  // on first run, which is exactly why it ships report-only first.
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "img-src 'self' data: blob:",
-  "font-src 'self' data:",
+  "font-src 'self' data: https://fonts.gstatic.com",
   `connect-src 'self' ${supabaseOrigin}`.trim(),
   "media-src 'self' data:",
   "worker-src 'self' blob:",

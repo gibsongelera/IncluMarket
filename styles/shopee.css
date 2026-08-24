@@ -7,7 +7,7 @@
 .site-header {
   position: sticky;
   top: 0;
-  z-index: 40;
+  z-index: var(--z-header);
 }
 
 /* Inline SVG icon defaults */
@@ -372,7 +372,7 @@ button[disabled], .btn[disabled], .variant-btn[disabled] {
   gap: 1rem;
   flex-wrap: wrap;
   box-shadow: 0 -8px 20px rgba(33, 37, 41, .06);
-  z-index: 20;
+  z-index: var(--z-sticky-bar);
 }
 .cart-summary--sticky .total {
   font-size: 1.1rem;
@@ -395,15 +395,7 @@ a, .nav-link, .quick-account {
 /* Landing hero shadow polish */
 .hero { box-shadow: var(--shadow-sm); }
 
-/* Utility for compact grids on narrow phones */
-@media (max-width: 480px) {
-  .product-grid { grid-template-columns: repeat(2, 1fr); gap: .5rem; }
-  .product-card__title { font-size: .85rem; }
-  .product-card__price { font-size: .95rem; }
-  .header-row { flex-wrap: wrap; }
-  .search { order: 3; width: 100%; }
-}
-
+/* Width media queries live in styles/responsive.css. */
 /* ==========================================================================
    Admin governance polish (users page)
    ========================================================================== */

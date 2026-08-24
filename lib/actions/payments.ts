@@ -27,24 +27,6 @@ export async function listPaymentProviders(): Promise<PaymentProviderRow[]> {
   return (data ?? []) as PaymentProviderRow[];
 }
 
-/**
- * Checkout needs to know which methods to offer and nothing else, so this
- * deliberately selects only the two non-sensitive columns rather than reusing
- * listPaymentProviders(). It stays callable without a session because the
- * checkout page renders before payment selection.
- */
-export async function listEnabledPaymentProviders(): Promise<
-  Pick<PaymentProviderRow, "id" | "display_name">[]
-> {
-  const db = createAdminClient();
-  const { data } = await db
-    .from("im_payment_providers")
-    .select("id, display_name")
-    .eq("enabled", true)
-    .order("id");
-  return (data ?? []) as Pick<PaymentProviderRow, "id" | "display_name">[];
-}
-
 export async function updatePaymentProvider(input: {
   id: string;
   enabled: boolean;

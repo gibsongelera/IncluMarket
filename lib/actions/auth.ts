@@ -4,7 +4,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getSession, homeForRole } from "@/lib/session";
+import { getSession } from "@/lib/session";
 import { guardByIp, rateLimit, RATE_LIMITED_MESSAGE } from "@/lib/security/rate-limit";
 import type { Role } from "@/lib/types";
 
@@ -183,7 +183,3 @@ export async function logoutAction(): Promise<void> {
   redirect("/");
 }
 
-export async function redirectHomeForSession(): Promise<string | null> {
-  const session = await getSession();
-  return session ? homeForRole(session.role) : null;
-}
