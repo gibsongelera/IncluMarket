@@ -85,63 +85,67 @@ export async function SiteHeader({
   ]);
 
   return (
-    <header
-      className={`site-header site-header--${variant}`}
-      role="banner"
-    >
-      <div className="container header-row">
-        <Link className="brand" href={BRAND_HREF[variant]} aria-label="IncluMarket home">
-          <span className="brand-mark" aria-hidden="true">
-            IM
-          </span>
-          <span className="brand-word">
-            IncluMarket{variant !== "buyer" ? <small>{variant === "admin" ? "Admin" : "Seller"}</small> : null}
-          </span>
-        </Link>
+    <>
+      <header className={`site-header site-header--${variant}`} role="banner">
+        <div className="container header-row">
+          <Link className="brand" href={BRAND_HREF[variant]} aria-label="IncluMarket home">
+            <span className="brand-mark" aria-hidden="true">
+              IM
+            </span>
+            <span className="brand-word">
+              IncluMarket{variant !== "buyer" ? <small>{variant === "admin" ? "Admin" : "Seller"}</small> : null}
+            </span>
+          </Link>
 
-        {variant === "buyer" ? <SearchBox /> : null}
+          {variant === "buyer" ? <SearchBox /> : null}
 
-        <nav className="header-nav" aria-label="Primary">
-          {NAV[variant].map((item) => (
-            <Link
-              key={item.key}
-              className={`nav-link${active === item.key ? " nav-link--active" : ""}`}
-              href={item.href}
-            >
-              {item.label}
-              {item.key === "messages" && unreadMessages > 0 ? (
-                <CartBadge count={unreadMessages} />
-              ) : null}
-            </Link>
-          ))}
-          {variant === "buyer" ? (
-            <Link className="nav-link nav-link--cart" href="/buyer/cart" aria-label="Cart">
-              Cart <CartBadge count={cartCount} />
-            </Link>
-          ) : null}
-          <NotificationBell initialUnread={unread} initialNotifications={notifications} />
-          <ContrastToggle />
-          <LogoutButton />
-        </nav>
-      </div>
-
-      <div className="user-strip" id="user-strip" aria-live="polite">
-        <div className="container">
-          <span>
-            Signed in as <strong>{session.name}</strong> &middot;{" "}
-            <span className="role-tag">{session.role}</span> &middot;{" "}
-            <span title="Email masked in shared views">{maskEmail(session.email)}</span>
-          </span>
+          <nav className="header-nav" aria-label="Primary">
+            {NAV[variant].map((item) => (
+              <Link
+                key={item.key}
+                className={`nav-link${active === item.key ? " nav-link--active" : ""}`}
+                href={item.href}
+              >
+                {item.label}
+                {item.key === "messages" && unreadMessages > 0 ? (
+                  <CartBadge count={unreadMessages} />
+                ) : null}
+              </Link>
+            ))}
+            {variant === "buyer" ? (
+              <Link className="nav-link nav-link--cart" href="/buyer/cart" aria-label="Cart">
+                Cart <CartBadge count={cartCount} />
+              </Link>
+            ) : null}
+            <NotificationBell initialUnread={unread} initialNotifications={notifications} />
+            <ContrastToggle />
+            <LogoutButton />
+          </nav>
         </div>
-      </div>
 
-      {/* Phone navigation. Rendered here so every page that shows a header
-          gets it, without editing all 20 of them. Hidden above 768px. */}
+        <div className="user-strip" id="user-strip" aria-live="polite">
+          <div className="container">
+            <span>
+              Signed in as <strong>{session.name}</strong> &middot;{" "}
+              <span className="role-tag">{session.role}</span> &middot;{" "}
+              <span title="Email masked in shared views">{maskEmail(session.email)}</span>
+            </span>
+          </div>
+        </div>
+      </header>
+
+      {/* Phone navigation. Rendered here so every page that shows a header gets
+          it without editing all 20 of them — but deliberately OUTSIDE <header>.
+          .site-header is position:sticky with a z-index, which makes it a
+          stacking context; a fixed child of it cannot paint above anything
+          outside that context no matter how high its own z-index is. Nested
+          inside, the tab bar sat underneath the floating accessibility and chat
+          buttons. */}
       <MobileNav
         variant={variant}
         cartCount={cartCount}
         unreadMessages={unreadMessages}
       />
-    </header>
+    </>
   );
 }

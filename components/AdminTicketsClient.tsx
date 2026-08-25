@@ -167,7 +167,12 @@ export function AdminTicketsClient({
                 &middot; Opened {formatDateTime(active.created_at)}
               </p>
 
-              <div className="thread">
+              <div
+                className="thread scroll-region"
+                tabIndex={0}
+                role="log"
+                aria-label="Conversation"
+              >
                 {responses.filter((r) => r.ticket_id === active.id).length === 0 ? (
                   <p className="muted">No messages yet.</p>
                 ) : (

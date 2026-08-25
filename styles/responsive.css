@@ -324,6 +324,9 @@ body {
 
   .mobile-nav__item {
     flex: 1 1 0;
+    /* Without this, a long label refuses to shrink and the later tabs are
+       pushed off the edge. The global min-width:0 rule only covers <main>. */
+    min-width: 0;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -343,9 +346,22 @@ body {
     font-family: inherit;
   }
 
+  .mobile-nav__item > span:last-child {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
   .mobile-nav__item[aria-current="page"] {
     color: var(--brand-blue);
     font-weight: 800;
+    /* Three non-colour cues, deliberately. The active theme redefines
+       --text-muted to a saturated blue, so the inactive and active hues can
+       compute to the same value — and hue alone would fail WCAG 1.4.1 for
+       colour-blind users regardless. Weight, the top bar and the tinted
+       background each carry the state on their own. */
+    background: var(--brand-blue-100);
     box-shadow: inset 0 3px 0 var(--brand-blue);
   }
 
@@ -840,8 +856,11 @@ h3 {
 
 /* --- Section rails: horizontal scroll ----------------------------------- */
 @media (max-width: 767px) {
-  .seller-rail,
-  .rail {
+  /* ONLY .seller-rail scrolls. .rail is the section WRAPPER around a heading
+     plus a grid — turning it into a horizontal flex track laid the <h2> and
+     the grid side by side at 78% each, which is what pushed the cards off to
+     the right with an empty column beside the heading. */
+  .seller-rail {
     display: flex;
     flex-wrap: nowrap;
     gap: var(--space-3);
@@ -852,14 +871,17 @@ h3 {
     padding-bottom: var(--space-2);
     scrollbar-width: none;
   }
-  .seller-rail::-webkit-scrollbar,
-  .rail::-webkit-scrollbar {
+  .seller-rail::-webkit-scrollbar {
     display: none;
   }
-  .seller-rail > *,
-  .rail > * {
+  .seller-rail > * {
     flex: 0 0 78%;
     scroll-snap-align: start;
+  }
+
+  /* The wrapper stays a plain block. */
+  .rail {
+    display: block;
   }
 }
 
@@ -1058,6 +1080,24 @@ h3 {
      full width and the list is capped so the detail is reachable. */
   .ticket-list {
     max-height: 45vh;
+  }
+
+  /* .filter-bar select/input pin these to 36px at a higher specificity than
+     the global 44px rule, so admin and seller filter controls stayed below
+     the touch-target minimum on phones. */
+  .filter-bar {
+    width: 100%;
+  }
+  .filter-bar select,
+  .filter-bar input {
+    min-height: 44px;
+    flex: 1 1 auto;
+  }
+
+  /* The message thread is a capped scroll region like the ticket list; on a
+     phone it should not eat half the screen. */
+  .thread {
+    max-height: 50vh;
   }
 
   .chart-card {

@@ -14,6 +14,22 @@
 .icon {
   flex-shrink: 0;
   vertical-align: middle;
+  /* Overrides the stroke-width attribute Icon.tsx renders. */
+  stroke-width: var(--icon-stroke);
+  /* Rounded joins read as heavier at the same nominal width. */
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Anything drawn as a light icon on a saturated surface needs more weight to
+   stay perceptible: the floating buttons, the phone tab bar, and header
+   controls. */
+.a11y-fab .icon,
+.chat-fab .icon,
+.mobile-nav__icon .icon,
+.icon-btn .icon,
+.site-header .icon {
+  stroke-width: var(--icon-stroke-bold);
 }
 .btn .icon { margin-right: -.15rem; }
 .nav-link .icon { margin-right: .15rem; }

@@ -157,6 +157,17 @@
      and grows with the 12-24px accessibility font scale. */
   --commit-bar-h: 0px;
 
+  /* Inline-SVG icon stroke weight. components/Icon.tsx sets stroke-width as a
+     presentation ATTRIBUTE, which CSS always outranks, so this is the single
+     place to tune icon weight.
+
+     1.75 is too light for white-on-saturated icons at FAB and tab-bar sizes —
+     the strokes were legible in theory and invisible in practice, which is a
+     real problem for a low-vision audience. Chrome that sits on a coloured
+     circle gets the bold value below. */
+  --icon-stroke: 1.75;
+  --icon-stroke-bold: 2.4;
+
   /* Defensive alias: `--muted` is not a real token, but two files used it. */
   --muted: var(--text-muted);
 }
@@ -179,6 +190,9 @@
   --shadow-sm: 0 0 0 1px #000;
   --shadow-md: 0 0 0 2px #000;
   --shadow-lg: 0 0 0 3px #000;
+  /* High contrast asks for weight, not just colour separation. */
+  --icon-stroke: 2.25;
+  --icon-stroke-bold: 2.75;
 }
 
 /* Font size set precisely by accessibility toolbar (12–24px) */
