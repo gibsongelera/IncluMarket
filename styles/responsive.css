@@ -266,13 +266,22 @@ body {
 
   /* A sticky action bar owns the bottom edge; lift the dock above it. */
   body:has(.cart-summary--sticky) .chat-widget {
-    bottom: calc(72px + var(--bottom-inset) + env(safe-area-inset-bottom, 0px));
+    bottom: calc(
+      var(--commit-bar-h) + var(--space-3) + var(--bottom-inset) +
+        env(safe-area-inset-bottom, 0px)
+    );
   }
   body:has(.cart-summary--sticky) .a11y-widget {
-    bottom: calc(72px + 64px + var(--bottom-inset) + env(safe-area-inset-bottom, 0px));
+    bottom: calc(
+      var(--commit-bar-h) + var(--space-3) + 64px + var(--bottom-inset) +
+        env(safe-area-inset-bottom, 0px)
+    );
   }
   body:has(.cart-summary--sticky) .toast-region {
-    bottom: calc(72px + 64px + 64px + var(--bottom-inset) + env(safe-area-inset-bottom, 0px));
+    bottom: calc(
+      var(--commit-bar-h) + var(--space-3) + 128px + var(--bottom-inset) +
+        env(safe-area-inset-bottom, 0px)
+    );
   }
 
   .a11y-widget__fab,
@@ -645,4 +654,466 @@ h3 {
   .product-card__price { font-size: .95rem; }
   .header-row { flex-wrap: wrap; }
   .search { order: 3; width: 100%; }
+}
+
+/* ---------------------------------------------------------------------------
+   11. Shopee-style phone layout
+   Applies to buyer, seller and admin below md. The reference is the Shopee
+   mobile app: a compact app bar, a bottom tab bar, chips instead of dropdowns
+   where possible, cards instead of tables, and a fixed action bar for the
+   primary commitment on each screen.
+
+   Two IncluMarket-specific departures from that reference, both deliberate:
+     - every tab bar item keeps a visible text label, because icon-only
+       navigation is a barrier for cognitive disabilities
+     - targets are 44px minimum and 48-56px for primary actions, rather than
+       the ~32px Shopee uses
+   ------------------------------------------------------------------------ */
+
+/* --- Compact app bar ---------------------------------------------------- */
+@media (max-width: 767px) {
+  .site-header {
+    box-shadow: var(--shadow-sm);
+  }
+
+  .header-row {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    min-height: 0;
+  }
+
+  /* Brand collapses to the mark so the search field can take the width, the
+     way the Shopee app bar is laid out. */
+  .brand-word {
+    display: none;
+  }
+  .brand-mark {
+    font-size: 1rem;
+  }
+
+  .search {
+    order: 0;
+    width: auto;
+    min-width: 0;
+  }
+  .search input {
+    min-height: 40px;
+    border-radius: 999px;
+  }
+
+  .header-nav {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+  }
+}
+
+/* --- Category chips: one horizontal scroll row -------------------------- */
+@media (max-width: 767px) {
+  .category-chips {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: var(--space-2);
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x proximity;
+    padding-bottom: var(--space-2);
+    /* Bleed to the screen edges so the row reads as scrollable. */
+    margin-inline: calc(var(--space-3) * -1);
+    padding-inline: var(--space-3);
+    scrollbar-width: none;
+  }
+  .category-chips::-webkit-scrollbar {
+    display: none;
+  }
+  .category-chips > * {
+    flex: 0 0 auto;
+    scroll-snap-align: start;
+    min-height: 44px;
+  }
+  .category-folder-hint {
+    display: none;
+  }
+}
+
+/* --- Collapsible filter panel ------------------------------------------- */
+.filters__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.filters__toggle {
+  display: none;
+}
+
+.filters__count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  margin-left: var(--space-2);
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--brand-blue);
+  color: #ffffff;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+@media (max-width: 767px) {
+  .filters {
+    /* A single compact bar above the grid, rather than a full-height column
+       that pushed every product below the fold. */
+    position: sticky;
+    top: var(--header-total);
+    z-index: var(--z-sticky-bar);
+    padding: var(--space-2) var(--space-3);
+    margin-bottom: var(--space-3);
+    border-radius: 0;
+    border-inline: 0;
+  }
+  .filters__toggle {
+    display: inline-flex;
+    align-items: center;
+  }
+  .filters--collapsed .filters__body {
+    display: none;
+  }
+  /* Sticky only while collapsed. Expanded, the full form pinned to the top
+     would cover most of a phone screen. */
+  .filters:not(.filters--collapsed) {
+    position: static;
+  }
+  .filters__head h2 {
+    font-size: var(--step-0);
+    margin: 0;
+  }
+  .filters__body {
+    padding-top: var(--space-3);
+  }
+}
+
+/* --- Product grid: 2-up from the smallest screen ------------------------ */
+@media (max-width: 767px) {
+  .product-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-2);
+  }
+  .product-card__body {
+    padding: var(--space-2);
+    gap: 2px;
+  }
+  .product-card__title {
+    font-size: 0.85rem;
+    line-height: 1.3;
+    /* Two lines then ellipsis: Shopee card behaviour, and it keeps every card
+       in a row the same height. */
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .product-card__price {
+    font-size: 0.95rem;
+  }
+  .product-card__cat {
+    font-size: 0.62rem;
+  }
+  .product-card__meta {
+    font-size: 0.7rem;
+  }
+}
+
+/* Three across once there is room, before the desktop grid takes over. */
+@media (min-width: 480px) and (max-width: 767px) {
+  .product-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* --- Section rails: horizontal scroll ----------------------------------- */
+@media (max-width: 767px) {
+  .seller-rail,
+  .rail {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: var(--space-3);
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    margin-inline: calc(var(--space-3) * -1);
+    padding-inline: var(--space-3);
+    padding-bottom: var(--space-2);
+    scrollbar-width: none;
+  }
+  .seller-rail::-webkit-scrollbar,
+  .rail::-webkit-scrollbar {
+    display: none;
+  }
+  .seller-rail > *,
+  .rail > * {
+    flex: 0 0 78%;
+    scroll-snap-align: start;
+  }
+}
+
+/* --- Product detail: fixed commit bar ----------------------------------- */
+/* The signature Shopee pattern. Below md the buy actions leave the flow and
+   pin to the bottom edge, so Add to cart stays reachable without scrolling
+   back up past the description and reviews. */
+@media (max-width: 767px) {
+  .pd__actions {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: var(--bottom-inset);
+    z-index: var(--z-sticky-bar);
+    /* Wrap, do not force one row. This page has four actions (Add to cart,
+       Buy now, Message seller, Continue shopping); grid-auto-flow: column
+       squeezed them to ~64px each and wrapped every label onto three lines. */
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin: 0;
+    padding: var(--space-2) var(--space-3)
+      calc(var(--space-2) + env(safe-area-inset-bottom, 0px));
+    background: var(--canvas-white);
+    border-top: 1px solid var(--border);
+    box-shadow: 0 -2px 10px rgba(0, 40, 122, 0.1);
+  }
+  .pd__actions .btn {
+    /* Two per row, so labels stay on one line at 375px. A single remaining
+       button on the last row stretches to full width. */
+    flex: 1 1 calc(50% - var(--space-2));
+    min-width: 0;
+    min-height: 48px;
+    white-space: nowrap;
+  }
+
+  /* Reserve the height of that bar so the end of the description is not
+     hidden underneath it. */
+  .main--product {
+    padding-bottom: calc(var(--commit-bar-h) + var(--bottom-inset) + var(--space-4));
+  }
+
+  .pd__gallery {
+    margin-inline: calc(var(--space-3) * -1);
+    border-radius: 0;
+  }
+  .pd__title {
+    font-size: var(--step-2);
+  }
+  .pd__price {
+    font-size: var(--step-3);
+  }
+  .variant-list,
+  .size-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+  .variant-btn {
+    min-height: 44px;
+  }
+  .qty-ctrl button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  .qty-ctrl input {
+    min-height: 44px;
+    width: 64px;
+  }
+}
+
+/* --- Cart: Shopee-style rows plus a commit bar -------------------------- */
+@media (max-width: 767px) {
+  .cart-item {
+    grid-template-columns: 64px 1fr;
+    gap: var(--space-2);
+    align-items: start;
+    padding: var(--space-3) 0;
+  }
+  .cart-item > *:nth-child(n + 3) {
+    grid-column: 2 / -1;
+  }
+  .cart-item__thumb {
+    width: 64px;
+    height: 64px;
+  }
+  .cart-item__title {
+    font-size: 0.9rem;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .cart-summary--sticky {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: var(--bottom-inset);
+    border-radius: 0;
+    padding: var(--space-2) var(--space-3)
+      calc(var(--space-2) + env(safe-area-inset-bottom, 0px));
+    border-top: 1px solid var(--border);
+    box-shadow: 0 -2px 10px rgba(0, 40, 122, 0.1);
+  }
+  .main--cart,
+  .main--checkout {
+    padding-bottom: calc(var(--commit-bar-h) + var(--bottom-inset) + var(--space-4));
+  }
+
+  /* Every remaining page still needs clearance for the tab bar itself. */
+  .main--buyer,
+  .main--orders,
+  .main--wishlist,
+  .main--messages,
+  .main--support,
+  .main--seller,
+  .main--admin {
+    padding-bottom: calc(var(--space-5) + var(--bottom-inset));
+  }
+}
+
+/* --- Orders: card list -------------------------------------------------- */
+@media (max-width: 767px) {
+  .order-card__head {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    align-items: baseline;
+  }
+  .order-card__line {
+    grid-template-columns: 48px 1fr;
+    gap: var(--space-2);
+    row-gap: var(--space-1);
+  }
+  .order-card__line > *:nth-child(n + 3) {
+    grid-column: 2 / -1;
+  }
+  .order-card__thumb {
+    width: 48px;
+    height: 48px;
+  }
+}
+
+/* --- Dashboards: seller and admin --------------------------------------- */
+@media (max-width: 767px) {
+  /* Two KPI tiles per row still reads as a dashboard. One per row reads as a
+     list and buries the charts three screens down. */
+  .kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-2);
+  }
+  .kpi {
+    padding: var(--space-3);
+  }
+  .kpi__value {
+    font-size: var(--step-2);
+  }
+  .kpi__label {
+    font-size: 0.75rem;
+  }
+
+  .page-head {
+    gap: var(--space-2);
+  }
+  .page-head h1 {
+    font-size: var(--step-3);
+  }
+  .page-head__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+  .page-head__actions .btn {
+    flex: 1 1 auto;
+  }
+
+  /* Tabs scroll sideways instead of wrapping into three cramped rows. */
+  .tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    margin-inline: calc(var(--space-3) * -1);
+    padding-inline: var(--space-3);
+  }
+  .tabs::-webkit-scrollbar {
+    display: none;
+  }
+  .tab {
+    flex: 0 0 auto;
+    min-height: 44px;
+  }
+
+  /* The ticket workspace is a two-pane layout; on a phone each pane gets the
+     full width and the list is capped so the detail is reachable. */
+  .ticket-list {
+    max-height: 45vh;
+  }
+
+  .chart-card {
+    padding: var(--space-3);
+  }
+  .detail-grid,
+  .detail-metrics {
+    grid-template-columns: 1fr;
+    gap: var(--space-3);
+  }
+}
+
+/* --- Modals become bottom sheets ---------------------------------------- */
+/* Native <dialog> keeps the focus trap and Esc handling; only the presentation
+   changes. A sheet is easier to reach and dismiss one-handed than a centred
+   box. */
+@media (max-width: 767px) {
+  dialog.modal[open],
+  dialog.modal--wide[open] {
+    width: 100%;
+    max-width: 100%;
+    max-height: 92dvh;
+    margin: auto auto 0;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    padding: var(--space-4);
+    padding-bottom: calc(var(--space-4) + env(safe-area-inset-bottom, 0px));
+    overflow-y: auto;
+  }
+  .modal-form .form-actions {
+    position: sticky;
+    bottom: 0;
+    background: var(--canvas-white);
+    padding-top: var(--space-3);
+    margin-top: var(--space-3);
+    border-top: 1px solid var(--border);
+  }
+}
+
+/* --- Floating buttons step above any commit bar ------------------------- */
+@media (max-width: 767px) {
+  body:has(.pd__actions) .chat-widget {
+    bottom: calc(
+      var(--commit-bar-h) + var(--space-3) + var(--bottom-inset) +
+        env(safe-area-inset-bottom, 0px)
+    );
+  }
+  body:has(.pd__actions) .a11y-widget {
+    bottom: calc(
+      var(--commit-bar-h) + var(--space-3) + 64px + var(--bottom-inset) +
+        env(safe-area-inset-bottom, 0px)
+    );
+  }
+  body:has(.pd__actions) .toast-region {
+    bottom: calc(
+      var(--commit-bar-h) + var(--space-3) + 128px + var(--bottom-inset) +
+        env(safe-area-inset-bottom, 0px)
+    );
+  }
 }

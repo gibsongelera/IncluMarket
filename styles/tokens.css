@@ -148,9 +148,14 @@
      on resize, and on every accessibility font change — a hardcoded offset is
      wrong at 16px and badly wrong at 24px. The fallback matches the default. */
   --header-total: 92px;
-  /* Space reserved at the bottom of the viewport by the mobile tab bar and any
-     sticky action bar, so floating buttons can sit clear of both. */
+  /* Space reserved at the bottom of the viewport by the mobile tab bar, so
+     floating buttons and page content can sit clear of it. */
   --bottom-inset: 0px;
+  /* Measured height of a fixed bottom action bar (product detail, cart,
+     checkout) on phones, or 0px. Set by components/HeaderMetrics.tsx —
+     never guess it: the bar wraps to two rows once its buttons no longer fit,
+     and grows with the 12-24px accessibility font scale. */
+  --commit-bar-h: 0px;
 
   /* Defensive alias: `--muted` is not a real token, but two files used it. */
   --muted: var(--text-muted);

@@ -1,15 +1,9 @@
 import ExcelJS from "exceljs";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { maskEmail } from "@/lib/format";
+import type { ReportType } from "@/lib/types";
 
-export type ReportType =
-  | "users"
-  | "products"
-  | "orders"
-  | "reviews"
-  | "tickets"
-  | "audit_logs"
-  | "all";
+
 
 type Db = ReturnType<typeof createAdminClient>;
 

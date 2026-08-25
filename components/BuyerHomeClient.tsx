@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Category, FlashSale, Product } from "@/lib/types";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
@@ -103,6 +103,27 @@ export function BuyerHomeClient({
     seller: initialSeller || 0,
   });
 
+  // Rendered expanded on the server so a no-JS visitor still sees the whole
+  // panel; collapsed on mount only when the viewport is narrow. Setting it in
+  // an effect rather than in useState keeps the first client render identical
+  // to the server render, so there is no hydration mismatch.
+  const [filtersOpen, setFiltersOpen] = useState(true);
+  useEffect(() => {
+    if (window.matchMedia("(max-width: 767px)").matches) setFiltersOpen(false);
+  }, []);
+
+  // Shown on the collapsed toggle so a phone user can tell at a glance that
+  // filters are narrowing the results.
+  const activeFilterCount = useMemo(() => {
+    let n = 0;
+    if (applied.category) n++;
+    if (applied.min > 0) n++;
+    if (applied.max !== Infinity) n++;
+    if (applied.rating > 0) n++;
+    if (applied.seller) n++;
+    return n;
+  }, [applied]);
+
   const catLabel = useMemo(() => {
     const map: Record<string, string> = {};
     categories.forEach((c) => (map[c.id] = c.folder || c.label));
@@ -201,8 +222,29 @@ export function BuyerHomeClient({
 
   return (
     <>
-      <aside className="filters" aria-labelledby="filters-title">
-        <h2 id="filters-title">Filters</h2>
+      <aside
+        className={`filters${filtersOpen ? "" : " filters--collapsed"}`}
+        aria-labelledby="filters-title"
+      >
+        <div className="filters__head">
+          <h2 id="filters-title">Filters</h2>
+          {/* Visible only below md. On a phone the panel used to render above
+              the product grid at full height, pushing every product off
+              screen. */}
+          <button
+            type="button"
+            className="filters__toggle btn btn--ghost btn--sm"
+            aria-expanded={filtersOpen}
+            aria-controls="filters-body"
+            onClick={() => setFiltersOpen((v) => !v)}
+          >
+            {filtersOpen ? "Hide" : "Show"}
+            {activeFilterCount > 0 ? (
+              <span className="filters__count">{activeFilterCount}</span>
+            ) : null}
+          </button>
+        </div>
+        <div className="filters__body" id="filters-body">
         <div className="field">
           <label htmlFor="filter-category">Category</label>
           <select
@@ -256,13 +298,14 @@ export function BuyerHomeClient({
             ))}
           </div>
         </fieldset>
-        <div className="form-actions">
-          <button type="button" className="btn btn--primary" onClick={apply}>
-            Apply
-          </button>
-          <button type="button" className="btn btn--ghost" onClick={clearAll}>
-            Clear
-          </button>
+          <div className="form-actions">
+            <button type="button" className="btn btn--primary" onClick={apply}>
+              Apply
+            </button>
+            <button type="button" className="btn btn--ghost" onClick={clearAll}>
+              Clear
+            </button>
+          </div>
         </div>
       </aside>
 

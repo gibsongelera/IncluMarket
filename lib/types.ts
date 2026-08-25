@@ -214,3 +214,22 @@ export interface SessionUser {
   email: string;
   name: string;
 }
+
+/**
+ * Report kinds for the admin Excel export.
+ *
+ * Lives here rather than in lib/reports/excel.ts so that client components can
+ * import it without reaching into a module that pulls in ExcelJS and the
+ * service-role client, and so that lib/actions/admin.ts does not have to
+ * re-export it. A `"use server"` module may only export async functions, and a
+ * type re-export there is not reliably erased before the server-action
+ * transform runs.
+ */
+export type ReportType =
+  | "users"
+  | "products"
+  | "orders"
+  | "reviews"
+  | "tickets"
+  | "audit_logs"
+  | "all";

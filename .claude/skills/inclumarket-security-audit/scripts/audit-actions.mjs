@@ -65,8 +65,7 @@ for (const file of files) {
 
   if (!isServerModule) continue;
 
-  // A "use server" module may only export async functions. An exported const
-  // or type-less value is a build error in Next.js, and worth catching early.
+  // A "use server" module may only export async functions.
   for (const m of source.matchAll(/^export\s+(const|let|var|class)\s+(\w+)/gm)) {
     findings.push({
       file: `lib/actions/${file}`,
@@ -74,6 +73,30 @@ for (const file of files) {
       level: "error",
       message: `"use server" modules may only export async functions; \`export ${m[1]} ${m[2]}\` will fail the build. Move it to a plain module.`,
     });
+  }
+
+  // A type-only RE-EXPORT is the subtler version of the same rule, and it does
+  // not fail the type check — it fails at runtime.
+  //
+  //   export type { ReportType };   ->  ReferenceError: ReportType is not defined
+  //
+  // Turbopack's server-action transform enumerates the module's exports before
+  // the type-only re-export is erased, so it emits a real binding for a name
+  // that only ever existed as a type. Declaring types inline (`export interface
+  // Foo {}` / `export type Foo = ...`) is fine; re-exporting an imported type
+  // is not. Put shared types in lib/types.ts and import them from there.
+  for (const m of source.matchAll(/^export\s+type\s*\{([^}]*)\}/gm)) {
+    for (const name of m[1].split(",").map((n) => n.trim()).filter(Boolean)) {
+      findings.push({
+        file: `lib/actions/${file}`,
+        symbol: name,
+        level: "error",
+        message:
+          'type-only re-export from a "use server" module. This survives tsc but throws ' +
+          `"ReferenceError: ${name} is not defined" at runtime. Move the type to lib/types.ts ` +
+          "and import it directly wherever it is needed.",
+      });
+    }
   }
 
   // Locate each exported async function and take its body up to the next

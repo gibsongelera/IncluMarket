@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { toast } from "@/lib/toast";
-import { exportReport, type ReportType } from "@/lib/actions/admin";
+import { exportReport } from "@/lib/actions/admin";
+import type { ReportType } from "@/lib/types";
 import { Icon } from "./Icon";
 import { TableWrap } from "./TableWrap";
 

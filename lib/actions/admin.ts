@@ -3,13 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getSession } from "@/lib/session";
-import {
-  buildReportWorkbook,
-  type ReportType,
-} from "@/lib/reports/excel";
-import type { ProductStatus, TicketStatus } from "@/lib/types";
-
-export type { ReportType };
+import { buildReportWorkbook } from "@/lib/reports/excel";
+import type { ProductStatus, ReportType, TicketStatus } from "@/lib/types";
 
 export interface ActionResult {
   ok: boolean;
