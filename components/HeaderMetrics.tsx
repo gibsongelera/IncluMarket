@@ -46,6 +46,14 @@ export function HeaderMetrics() {
     measure();
 
     window.addEventListener("resize", measure);
+    window.addEventListener("orientationchange", measure);
+
+    // Crossing the md breakpoint changes the bar from fixed to static without
+    // changing its box, so neither `resize` on some platforms nor
+    // ResizeObserver reliably fires. Rotating a phone to landscape is the real
+    // case: without this the stale phone-height value persists.
+    const mq = window.matchMedia("(max-width: 767px)");
+    mq.addEventListener("change", measure);
 
     // The header and the bar reflow when the font scale changes or their
     // buttons wrap; ResizeObserver catches both without polling.
@@ -66,6 +74,8 @@ export function HeaderMetrics() {
 
     return () => {
       window.removeEventListener("resize", measure);
+      window.removeEventListener("orientationchange", measure);
+      mq.removeEventListener("change", measure);
       resizeObserver.disconnect();
       mutationObserver.disconnect();
       root.style.setProperty("--commit-bar-h", "0px");

@@ -226,13 +226,19 @@ body {
 
 /* ---------------------------------------------------------------------------
    4. Floating controls
-   Before: .a11y-widget pinned bottom-left and .chat-widget bottom-right, both
-   z-index 60, with the sticky cart bar at 20 and toasts at 100. On a 375px
-   cart screen the two round buttons physically covered the two ends of the
-   "Proceed to checkout" bar, and toasts painted over the chat button.
+   The accessibility button sits bottom-LEFT and the chat button bottom-RIGHT,
+   on every screen size. Opposite corners keep the accessibility control in a
+   fixed, predictable place, which matters more than tidiness for a control
+   this audience reaches for constantly.
 
-   Now both live in one dock on the right, stacked vertically, offset above
-   whatever occupies the bottom edge.
+   That layout originally collided with the sticky cart bar: both buttons
+   covered the two ends of "Proceed to checkout" on a 375px screen, because
+   their offsets were literals (z-index 60 over a bar at 20). The collision is
+   now solved vertically instead of horizontally — every bottom offset derives
+   from --bottom-inset (the phone tab bar) and --commit-bar-h (a fixed action
+   bar), both measured in components/HeaderMetrics.tsx — so the buttons sit
+   ABOVE whatever owns the bottom edge rather than on top of it, and can keep
+   their corners.
    ------------------------------------------------------------------------ */
 .a11y-widget,
 .chat-widget {
@@ -253,39 +259,36 @@ body {
   z-index: var(--z-sticky-bar);
 }
 
-/* Below md the two floating buttons share the right edge, stacked, so they
-   occupy one column instead of blocking both corners. */
 @media (max-width: 767px) {
+  /* Bottom-left, matching the desktop position. */
   .a11y-widget {
-    left: auto;
-    right: var(--space-3);
-    bottom: calc(
-      var(--space-3) + 64px + var(--bottom-inset) + env(safe-area-inset-bottom, 0px)
-    );
+    left: var(--space-3);
+    right: auto;
   }
 
-  /* A sticky action bar owns the bottom edge; lift the dock above it. */
+  .chat-widget {
+    right: var(--space-3);
+    left: auto;
+  }
+
+  /* A fixed action bar owns the bottom edge; both buttons clear it. They are
+     in opposite corners, so they rise together rather than stacking. */
+  body:has(.cart-summary--sticky) .a11y-widget,
   body:has(.cart-summary--sticky) .chat-widget {
     bottom: calc(
       var(--commit-bar-h) + var(--space-3) + var(--bottom-inset) +
         env(safe-area-inset-bottom, 0px)
     );
   }
-  body:has(.cart-summary--sticky) .a11y-widget {
-    bottom: calc(
-      var(--commit-bar-h) + var(--space-3) + 64px + var(--bottom-inset) +
-        env(safe-area-inset-bottom, 0px)
-    );
-  }
   body:has(.cart-summary--sticky) .toast-region {
     bottom: calc(
-      var(--commit-bar-h) + var(--space-3) + 128px + var(--bottom-inset) +
+      var(--commit-bar-h) + 64px + var(--space-4) + var(--bottom-inset) +
         env(safe-area-inset-bottom, 0px)
     );
   }
 
-  .a11y-widget__fab,
-  .chat-widget__fab {
+  .a11y-fab,
+  .chat-fab {
     min-width: 56px;
     min-height: 56px;
   }
@@ -1138,21 +1141,16 @@ h3 {
 
 /* --- Floating buttons step above any commit bar ------------------------- */
 @media (max-width: 767px) {
+  body:has(.pd__actions) .a11y-widget,
   body:has(.pd__actions) .chat-widget {
     bottom: calc(
       var(--commit-bar-h) + var(--space-3) + var(--bottom-inset) +
         env(safe-area-inset-bottom, 0px)
     );
   }
-  body:has(.pd__actions) .a11y-widget {
-    bottom: calc(
-      var(--commit-bar-h) + var(--space-3) + 64px + var(--bottom-inset) +
-        env(safe-area-inset-bottom, 0px)
-    );
-  }
   body:has(.pd__actions) .toast-region {
     bottom: calc(
-      var(--commit-bar-h) + var(--space-3) + 128px + var(--bottom-inset) +
+      var(--commit-bar-h) + 64px + var(--space-4) + var(--bottom-inset) +
         env(safe-area-inset-bottom, 0px)
     );
   }
