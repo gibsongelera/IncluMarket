@@ -30,6 +30,8 @@ import { buildSystemPrompt, PROMPT_FINGERPRINT } from "./system-prompt";
 const API_URL = "https://openrouter.ai/api/v1/chat/completions";
 const DEFAULT_MODEL = "nvidia/nemotron-3-ultra-550b-a55b:free";
 const HISTORY_TURNS = 8;
+/** OpenRouter rejects a fallback array longer than this with a 400. */
+const MAX_FALLBACK_MODELS = 3;
 const MAX_TURN_CHARS = 500;
 
 interface OpenRouterResponse {
@@ -52,10 +54,15 @@ export class OpenRouterResponder implements ChatResponder {
     // upstream pool and return 429 whenever it is saturated, which has nothing
     // to do with your key — so naming more than one lets OpenRouter route to
     // the next available instead of failing the turn.
+    // Capped at MAX_FALLBACK_MODELS: OpenRouter rejects a longer `models` array
+    // outright ("'models' array must have 3 items or fewer", HTTP 400), which
+    // would fail EVERY request rather than degrading — the opposite of what a
+    // fallback chain is for. Extra entries in the env are ignored, not fatal.
     const models = (process.env.OPENROUTER_MODEL || DEFAULT_MODEL)
       .split(",")
       .map((m) => m.trim())
-      .filter(Boolean);
+      .filter(Boolean)
+      .slice(0, MAX_FALLBACK_MODELS);
     const model = models[0] || DEFAULT_MODEL;
     const maxTokens = Number(process.env.OPENROUTER_MAX_TOKENS || 400);
     const timeoutMs = Number(process.env.OPENROUTER_TIMEOUT_MS || 8000);
@@ -146,19 +153,66 @@ export class OpenRouterResponder implements ChatResponder {
  * Returns an empty string when the reply should be discarded in favour of the
  * rule-based responder.
  */
+function discard(reason: string, sample: string): string {
+  console.warn(
+    `[openrouter] reply discarded (${reason}); answering from the rule-based ` +
+      `responder instead. Model said: ${JSON.stringify(sample.slice(0, 140))}`
+  );
+  return "";
+}
+
 export function sanitizeReply(raw: string, context?: ChatContext): string {
   let text = raw.trim();
+
+  // Reasoning models wrap their scratchpad in tags. Drop those outright — what
+  // follows is the actual answer.
+  text = text
+    .replace(/<think(?:ing)?>[\s\S]*?<\/think(?:ing)?>/gi, "")
+    .replace(/<\|?(?:begin_of_thought|reasoning)\|?>[\s\S]*?<\|?(?:end_of_thought|\/reasoning)\|?>/gi, "")
+    .trim();
 
   // Strip a leading role label if the model imitates the transcript format.
   text = text.replace(/^(system|assistant|ai|bot)\s*:\s*/i, "");
 
-  // Refuse anything that looks like the prompt coming back out.
-  if (text.toLowerCase().includes(PROMPT_FINGERPRINT.toLowerCase())) return "";
-  if (/RULES YOU MUST FOLLOW|HOW TO ANSWER|WHO YOU ARE TALKING TO|END CONTEXT/i.test(text)) {
-    return "";
+  // Untagged chain-of-thought. Observed in practice: a reply that opened
+  // "Here's a thinking process: 1. **Analyze User Input:** ..." and then
+  // quoted the system prompt and the live context back at the visitor.
+  //
+  // Discard rather than try to extract the answer buried inside it: a botched
+  // extraction still leaks, and the rule-based fallback gives a correct short
+  // answer instead. Better a plain answer than a transcript of the model
+  // reasoning about its own instructions.
+  if (
+    /here(?:'s| is)\s+(?:a\s+|my\s+)?(?:thinking|thought)\s+process|^\s*\*\*\s*analy|let me (?:think|analyz)|i (?:need|have) to (?:answer|respond|be careful|check the)/i.test(
+      text
+    )
+  ) {
+    return discard("chain of thought", text);
   }
+
+  // Refuse anything that looks like the prompt coming back out.
+  if (text.toLowerCase().includes(PROMPT_FINGERPRINT.toLowerCase()))
+    return discard("echoed the system prompt", text);
+  if (/RULES YOU MUST FOLLOW|HOW TO ANSWER|WHO YOU ARE TALKING TO|END CONTEXT/i.test(text)) {
+    return discard("quoted a prompt heading", text);
+  }
+
+  // The same leak PARAPHRASED. The checks above only catch verbatim
+  // reproduction, and a model that reformats — "VISITOR CONTEXT:" with a colon
+  // where the prompt has a newline, "Rules:" instead of "RULES YOU MUST
+  // FOLLOW" — slipped straight through them. Match on the model TALKING ABOUT
+  // its instructions, not on the exact bytes.
+  if (
+    /\b(?:system prompt|context block|my instructions|the instructions (?:say|state)|the rules (?:say|state)|(?:visitor|buyer|seller|admin) context)\b/i.test(
+      text
+    )
+  ) {
+    return discard("described its instructions", text);
+  }
+
   // Or the live data block verbatim.
-  if (context && text.includes(context.summary.slice(0, 40))) return "";
+  if (context && text.includes(context.summary.slice(0, 40)))
+    return discard("echoed the live context", text);
 
   // A reply that claims a completed state change is worse than an unhelpful
   // one: a buyer who believes their order was cancelled acts on it. The system
@@ -170,7 +224,7 @@ export function sanitizeReply(raw: string, context?: ChatContext): string {
       text
     )
   ) {
-    return "";
+    return discard("claimed a completed action", text);
   }
 
   // Drop links to anywhere that is not this site.
