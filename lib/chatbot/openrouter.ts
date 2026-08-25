@@ -130,18 +130,41 @@ export function sanitizeReply(raw: string, context?: ChatContext): string {
   // Or the live data block verbatim.
   if (context && text.includes(context.summary.slice(0, 40))) return "";
 
-  // Drop links to anywhere that is not this site.
-  const site = process.env.OPENROUTER_SITE_URL || "";
-  let siteHost = "";
-  try {
-    siteHost = site ? new URL(site).host : "";
-  } catch {
-    siteHost = "";
+  // A reply that claims a completed state change is worse than an unhelpful
+  // one: a buyer who believes their order was cancelled acts on it. The system
+  // prompt forbids this, but the perfect tense is a narrow, reliable signal, so
+  // it is also enforced here. "I cannot cancel" and "you can cancel" do not
+  // match — only a first-person claim that it is already done.
+  if (
+    /\bI(?:'ve| have)\s+(?:cancelled|canceled|refunded|shipped|approved|rejected|deleted|processed|updated|issued)\b/i.test(
+      text
+    )
+  ) {
+    return "";
   }
+
+  // Drop links to anywhere that is not this site.
+  //
+  // The allow-list is built from every origin this app answers on, not just
+  // OPENROUTER_SITE_URL — that variable is optional, and when it was unset the
+  // host comparison matched nothing, so the bot silently stripped links to its
+  // OWN pages. Pointing people at the right page is most of what it does.
+  const allowedHosts = new Set<string>(["inclumarket.vercel.app"]);
+  for (const candidate of [process.env.OPENROUTER_SITE_URL, process.env.NEXT_PUBLIC_SITE_URL]) {
+    if (!candidate) continue;
+    try {
+      allowedHosts.add(new URL(candidate).host);
+    } catch {
+      /* ignore an unparseable value */
+    }
+  }
+
   text = text.replace(/https?:\/\/[^\s)>\]]+/gi, (url) => {
     try {
-      const host = new URL(url).host;
-      if (host === siteHost || host.endsWith("inclumarket.vercel.app")) return url;
+      const { host, hostname } = new URL(url);
+      if (allowedHosts.has(host)) return url;
+      // Local development, where the port varies.
+      if (hostname === "localhost" || hostname === "127.0.0.1") return url;
     } catch {
       /* fall through */
     }
