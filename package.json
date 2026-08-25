@@ -12,7 +12,8 @@
     "verify": "node .claude/skills/inclumarket-design/scripts/check-contrast.mjs && node .claude/skills/inclumarket-security-audit/scripts/audit-actions.mjs && node .claude/skills/inclumarket-responsive/scripts/audit-responsive.mjs && node .claude/skills/inclumarket-feature-review/scripts/inventory.mjs && npm run smoke",
     "smoke:loop": "node scripts/smoke-loop.mjs",
     "provision-users": "node --env-file=.env.local scripts/provision-users.mjs",
-    "seed-demo-products": "node --env-file=.env.local scripts/seed-demo-products.mjs"
+    "seed-demo-products": "node --env-file=.env.local scripts/seed-demo-products.mjs",
+    "bench-chat": "node --env-file=.env.local scripts/bench-chat-models.mjs"
   },
   "dependencies": {
     "@fortawesome/fontawesome-svg-core": "^7.3.1",
