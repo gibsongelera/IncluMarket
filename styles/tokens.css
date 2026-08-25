@@ -157,6 +157,17 @@
      and grows with the 12-24px accessibility font scale. */
   --commit-bar-h: 0px;
 
+  /* Star rating.
+     --star-filled is the requested bright gold. On white it measures 1.43:1,
+     below the 3:1 WCAG 1.4.11 minimum for a meaningful graphic, so the star
+     carries a thin darker edge (--star-edge) that gives its SHAPE the
+     required boundary contrast while keeping the bright fill. The rating is
+     also always exposed as text via aria-label, so the colour is never the
+     only channel. */
+  --star-filled: rgb(255, 212, 59);
+  --star-edge: var(--brand-yellow-800);
+  --star-empty: var(--border);
+
   /* Inline-SVG icon stroke weight. components/Icon.tsx sets stroke-width as a
      presentation ATTRIBUTE, which CSS always outranks, so this is the single
      place to tune icon weight.
@@ -193,6 +204,11 @@
   /* High contrast asks for weight, not just colour separation. */
   --icon-stroke: 2.25;
   --icon-stroke-bold: 2.75;
+  /* High contrast mode drops the bright fill for one that carries its own
+     contrast, rather than relying on the edge. */
+  --star-filled: #8A6000;
+  --star-edge: #000000;
+  --star-empty: #000000;
 }
 
 /* Font size set precisely by accessibility toolbar (12–24px) */
