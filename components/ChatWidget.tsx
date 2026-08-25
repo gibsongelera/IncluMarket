@@ -8,18 +8,11 @@ import { Icon } from "./Icon";
 
 type ChatEntry = { role: "user" | "bot" | "system"; body: string };
 
-const SESSION_KEY = "im_chat_session_id";
-const GUEST_KEY = "im_chat_guest_id";
-
-function getGuestId(): string {
-  if (typeof window === "undefined") return "";
-  let id = window.localStorage.getItem(GUEST_KEY);
-  if (!id) {
-    id = `guest-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-    window.localStorage.setItem(GUEST_KEY, id);
-  }
-  return id;
-}
+// No client-side identity. The session is resolved server-side from the auth
+// session or an httpOnly guest cookie, so there is no id in localStorage for a
+// page script to read, forge, or leave behind after someone signs out on a
+// shared device. Older builds stored both; they are cleaned up on mount.
+const LEGACY_KEYS = ["im_chat_session_id", "im_chat_guest_id"];
 
 export function ChatWidget() {
   const [open, setOpen] = useState(false);
@@ -32,29 +25,29 @@ export function ChatWidget() {
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [escalated, setEscalated] = useState(false);
-  const [sessionId, setSessionId] = useState<number | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const logRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const fabRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
-    const stored = window.localStorage.getItem(SESSION_KEY);
-    if (stored) setSessionId(Number(stored));
+    for (const key of LEGACY_KEYS) window.localStorage.removeItem(key);
   }, []);
 
+  // Load the caller's own transcript when the panel opens. No id is passed:
+  // the server resolves whose conversation this is.
   useEffect(() => {
-    if (!open || !sessionId) return;
+    if (!open) return;
     let cancelled = false;
     (async () => {
-      const res = await fetchChatHistory(sessionId, getGuestId());
-      if (cancelled || !res.ok || !res.messages?.length) return;
+      const res = await fetchChatHistory();
+      if (cancelled || !res.ok || !res.messages.length) return;
       setMessages(res.messages);
     })();
     return () => {
       cancelled = true;
     };
-  }, [open, sessionId]);
+  }, [open]);
 
   useEffect(() => {
     if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight;
@@ -88,24 +81,20 @@ export function ChatWidget() {
     setInput("");
     setMessages((m) => [...m, { role: "user", body: text }]);
     setBusy(true);
-    const res = await sendChatMessage(sessionId, getGuestId(), text);
+    const res = await sendChatMessage(text);
     setBusy(false);
     if (!res.ok) {
       toast(res.error || "The assistant is unavailable right now.", "error");
       return;
     }
-    if (res.sessionId) {
-      setSessionId(res.sessionId);
-      window.localStorage.setItem(SESSION_KEY, String(res.sessionId));
-    }
     setMessages((m) => [...m, { role: "bot", body: res.reply || "" }]);
     flashVisualAlert({ message: "Assistant replied", tone: "info" });
-    if (res.escalated) await requestHuman(res.sessionId ?? sessionId);
+    if (res.escalated) await requestHuman();
   }
 
-  async function requestHuman(id: number | null) {
-    if (!id || escalated) return;
-    const res = await escalateChat(id);
+  async function requestHuman() {
+    if (escalated) return;
+    const res = await escalateChat();
     if (!res.ok) {
       setMessages((m) => [...m, { role: "system", body: res.error || "Could not reach our support team." }]);
       return;
@@ -150,7 +139,7 @@ export function ChatWidget() {
               type="button"
               className="btn btn--ghost btn--sm"
               disabled={escalated}
-              onClick={() => requestHuman(sessionId)}
+              onClick={() => requestHuman()}
             >
               {escalated ? "Support notified" : "Talk to a human"}
             </button>
