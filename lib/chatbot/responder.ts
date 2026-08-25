@@ -36,7 +36,7 @@ const RULES: { keywords: string[]; reply: string }[] = [
       "Open the accessibility button in the corner of any page. It has text size from 12 to 24 pixels, high contrast, reduced motion, a larger cursor, text-to-speech, voice commands, reading mode and visual alerts.",
   },
   {
-    keywords: ["payment", "gcash", "maya", "grabpay", "card", "pay online", "cod", "cash on delivery"],
+    keywords: ["pay", "gcash", "maya", "grabpay", "card", "checkout", "cod", "cash on delivery"],
     reply:
       "At checkout you can pay cash on delivery, or pay online with GCash, Maya, GrabPay or a card. Online payments go through PayMongo's secure page — we never see your card details.",
   },
@@ -99,7 +99,7 @@ function answerFromContext(text: string, context: ChatContext): string | null {
   const f = context.facts;
 
   if (context.audience === "guest") {
-    if (/\bmy (order|cart|wishlist|account)\b|\bwhere is my\b|\btrack\b/.test(text)) {
+    if (/\bmy (orders?|carts?|wishlists?|account)\b|\bwhere (is|are) my\b|\btrack(ing)?\b/.test(text)) {
       return "You are not signed in, so I cannot see your account. Please sign in and I can tell you your order status right here.";
     }
     return null;
@@ -107,7 +107,7 @@ function answerFromContext(text: string, context: ChatContext): string | null {
 
   // ---- buyer -------------------------------------------------------------
   if (context.audience === "buyer") {
-    if (/\border\b|\bwhere is\b|\btrack\b|\bdeliver/.test(text)) {
+    if (/\borders?\b|\bwhere (is|are)\b|\btrack(ing)?\b|\bdeliver/.test(text)) {
       if (!f.orders?.length) {
         return "You have not placed any orders yet. When you do, they will appear in My Orders with a full status timeline.";
       }
@@ -119,29 +119,41 @@ function answerFromContext(text: string, context: ChatContext): string | null {
       return `Your most recent order is #${latest.id}, placed ${latest.placed}. It is currently "${latest.status}" and the payment is "${latest.paymentStatus}". Total ${money(latest.total)}.${rest}`;
     }
 
-    if (/\bcart\b|\bbasket\b/.test(text)) {
+    if (/\bcarts?\b|\bbaskets?\b/.test(text)) {
       return f.cartCount
         ? `You have ${f.cartCount} item${f.cartCount === 1 ? "" : "s"} in your cart. Open Cart to check out.`
         : "Your cart is empty right now. Browse the shop and tap Add to cart on anything you like.";
     }
 
-    if (/\bwishlist\b|\bsaved\b|\bfavourite|\bfavorite/.test(text)) {
+    if (/\bwishlists?\b|\bsaved\b|\bfavourite|\bfavorite/.test(text)) {
       return f.wishlistCount
         ? `You have ${f.wishlistCount} item${f.wishlistCount === 1 ? "" : "s"} saved in your Wishlist.`
         : "Your Wishlist is empty. Tap the heart on any product to save it.";
     }
 
-    if (/\bticket\b|\bsupport\b|\bcomplain/.test(text)) {
+    if (/\btickets?\b|\bsupport\b|\bcomplain/.test(text)) {
       return f.openTickets
         ? `You have ${f.openTickets} unresolved support ticket${f.openTickets === 1 ? "" : "s"}. You can follow ${f.openTickets === 1 ? "it" : "them"} on the Support page.`
         : "You have no open support tickets. You can raise one from the Support page any time.";
+    }
+
+    // Out-of-scope guard, checked last so the branches above still win.
+    // Without it, "how many sellers are on the platform" fell through to the
+    // static keyword rules and produced a pitch about becoming a seller —
+    // no data leaked, but a confusing non-answer.
+    if (
+      /\bhow many\b|\bplatform\b|\beveryone\b|\ball (users?|sellers?|buyers?)\b|\binventory\b|\bstocks?\b|\brevenue\b/.test(
+        text
+      )
+    ) {
+      return "I can only see your own account here — your orders, cart, wishlist and support tickets. I do not have platform-wide figures or anyone else's information.";
     }
     return null;
   }
 
   // ---- seller ------------------------------------------------------------
   if (context.audience === "seller") {
-    if (/\bstock\b|\binventory\b|\brestock\b|\blow\b/.test(text)) {
+    if (/\bstocks?\b|\binventory\b|\brestock\b|\blow\b/.test(text)) {
       if (!f.lowStock?.length) {
         return "None of your products are low on stock right now. I will flag anything at or below 5 units.";
       }
@@ -149,13 +161,13 @@ function answerFromContext(text: string, context: ChatContext): string | null {
       return `${f.lowStock.length} of your products ${f.lowStock.length === 1 ? "is" : "are"} low on stock: ${list}. Restock them from My Products.`;
     }
 
-    if (/\border\b|\bfulfil|\bfulfill|\bship\b|\bpending\b/.test(text)) {
+    if (/\borders?\b|\bfulfil|\bfulfill|\bship(ping|ments?)?\b|\bpending\b/.test(text)) {
       return f.pendingOrders
         ? `You have ${f.pendingOrders} order${f.pendingOrders === 1 ? "" : "s"} awaiting fulfilment. Open Orders to advance ${f.pendingOrders === 1 ? "it" : "them"}.`
         : "You have no orders awaiting fulfilment right now.";
     }
 
-    if (/\bproduct\b|\blisting\b|\bapprov|\bpending\b/.test(text)) {
+    if (/\bproducts?\b|\blistings?\b|\bapprov|\bpending\b/.test(text)) {
       if (!f.products?.length) {
         return "You have not listed any products yet. Add your first one from My Products — listings are reviewed before they go live.";
       }
@@ -164,10 +176,19 @@ function answerFromContext(text: string, context: ChatContext): string | null {
       return `You have ${f.products.length} product${f.products.length === 1 ? "" : "s"}: ${live.length} live and ${pending.length} awaiting review. Manage them from My Products.`;
     }
 
-    if (/\brating\b|\breview\b|\bscore\b|\bfeedback\b/.test(text)) {
+    if (/\bratings?\b|\breviews?\b|\bscores?\b|\bfeedback\b/.test(text)) {
       return f.averageRating
         ? `Your products average ${f.averageRating} out of 5 across all reviews. You can read them on the Reviews page.`
         : "You have no reviews yet. They will appear on the Reviews page as buyers leave them.";
+    }
+
+    // Out-of-scope guard, same reasoning as the buyer branch.
+    if (
+      /\bhow many (users?|buyers?|members?)\b|\bplatform\b|\banother sellers?\b|\bother sellers?\b|\ball sellers?\b|\bcompetitor/.test(
+        text
+      )
+    ) {
+      return "I can only see your own shop here — your products, stock, orders and reviews. I do not have platform-wide figures or any other seller's information.";
     }
     return null;
   }
@@ -176,23 +197,32 @@ function answerFromContext(text: string, context: ChatContext): string | null {
   const p = f.platform;
   if (!p) return null;
 
-  if (/\bapprov|\bpending\b|\bqueue\b|\breview\b/.test(text)) {
+  // Checked FIRST. An admin is allowed to see personal data in the dashboard,
+  // where access is role-checked and audit-logged — but not through a chat
+  // widget, which is neither. Under RA 10173 disability information and
+  // contact details are sensitive personal information, so the bot declines
+  // and points at the surface that does log the access.
+  if (/\bemail|\bphone\b|\baddress\b|\bcontact detail|\bdisabilit|\bpwd id\b|\bpersonal data\b/.test(text)) {
+    return "I cannot show personal details such as email addresses, phone numbers or disability information — those are sensitive personal data under RA 10173, and I am not an audited surface for them. Open Users in the dashboard, where access is role-checked and logged.";
+  }
+
+  if (/\bapprov|\bpending\b|\bqueue\b|\breviews?\b/.test(text)) {
     return p.pendingProducts
       ? `${p.pendingProducts} product${p.pendingProducts === 1 ? " is" : "s are"} awaiting review. Open Products to approve or flag ${p.pendingProducts === 1 ? "it" : "them"}.`
       : "Nothing is waiting for product review right now.";
   }
 
-  if (/\bticket\b|\bsupport\b/.test(text)) {
+  if (/\btickets?\b|\bsupport\b/.test(text)) {
     return p.openTickets
       ? `${p.openTickets} support ticket${p.openTickets === 1 ? " is" : "s are"} unresolved. Open Tickets to work through ${p.openTickets === 1 ? "it" : "them"}.`
       : "There are no unresolved support tickets.";
   }
 
-  if (/\buser\b|\bseller\b|\bbuyer\b|\bmember\b|\bsignup|\bregist/.test(text)) {
+  if (/\busers?\b|\bsellers?\b|\bbuyers?\b|\bmembers?\b|\bsignup|\bregist/.test(text)) {
     return `There are ${p.sellers} seller${p.sellers === 1 ? "" : "s"} and ${p.buyers} buyer${p.buyers === 1 ? "" : "s"} registered. Open Users to manage accounts — I cannot show individual records here.`;
   }
 
-  if (/\border\b|\bsale\b|\brevenue\b|\btoday\b/.test(text)) {
+  if (/\borders?\b|\bsales?\b|\brevenue\b|\btoday\b/.test(text)) {
     return `${p.ordersToday} order${p.ordersToday === 1 ? " was" : "s were"} placed in the last 24 hours. Reports has the full breakdown and the Excel export.`;
   }
 
