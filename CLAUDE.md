@@ -59,6 +59,27 @@ they encode this repo's specifics.
 | `inclumarket-security-audit` | The authorization model, threat surfaces, review checklists |
 | `inclumarket-feature-review` | Verifying that features and controls actually work |
 
+## One .next, one process
+
+Everything that compiles this app writes to the same `.next/` directory, and
+nothing arbitrates between writers. Two writers corrupts it, and the symptoms
+point nowhere near the cause:
+
+```
+MODULE_NOT_FOUND  .next/server/pages/_document.js
+ENOENT            .next/server/app/<route>/page/app-build-manifest.json
+POST /login 404
+```
+
+So, while `npm run dev` is running:
+
+* do not run `npm run build` (and `npm run verify` does not build — it is safe)
+* do not start a second `next dev`, **not even on another port** — the port is
+  separate, the build directory is not
+
+Recovery is always the same: stop every dev server, `rm -rf .next`, start one.
+The source tree is never damaged; `npx tsc --noEmit` will pass throughout.
+
 ## Verify before you claim something works
 
 ```bash
