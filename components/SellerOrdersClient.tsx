@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { money, formatDate, maskEmail } from "@/lib/format";
 import { toast } from "@/lib/toast";
 import { Pill } from "./Pill";
@@ -10,6 +10,7 @@ import { OrderTimeline } from "./OrderTimeline";
 import type { Order, OrderItem, OrderStatus, OrderStatusHistoryEntry } from "@/lib/types";
 import { TableWrap } from "./TableWrap";
 import { Tabs, TabPanel } from "./Tabs";
+import { DeepLinkFocus } from "./DeepLinkFocus";
 
 type ProductLite = { id: number; title: string };
 type VariantLite = { id: number; color_name: string; size: string | null };
@@ -39,7 +40,8 @@ export function SellerOrdersClient({
   history: Record<number, OrderStatusHistoryEntry[]>;
 }) {
   const router = useRouter();
-  const [filter, setFilter] = useState("all");
+  const searchParams = useSearchParams();
+  const [filter, setFilter] = useState(searchParams.get("status") ?? "all");
   const [busy, setBusy] = useState<number | null>(null);
 
   const filtered = filter === "all" ? orders : orders.filter((o) => o.order_status === filter);
@@ -69,6 +71,7 @@ export function SellerOrdersClient({
         }))}
       />
       <TabPanel idPrefix="sorder" value={filter}>
+      <DeepLinkFocus />
       <TableWrap label="Orders">
         <table className="data-table data-table--cards" aria-label="Seller orders">
           <thead>
@@ -88,7 +91,7 @@ export function SellerOrdersClient({
               const items = orderItems.filter((it) => it.order_id === o.id);
               const next = NEXT[o.order_status];
               return (
-                <tr key={o.id}>
+                <tr key={o.id} data-row-id={o.id}>
                   <td>
                     <strong>#{o.id}</strong>
                     <br />

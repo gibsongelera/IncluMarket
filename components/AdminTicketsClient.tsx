@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { formatDate, formatDateTime, maskEmail } from "@/lib/format";
 import { toast } from "@/lib/toast";
 import { Pill } from "./Pill";
@@ -27,8 +27,16 @@ export function AdminTicketsClient({
   users: UserLite[];
 }) {
   const router = useRouter();
-  const [filter, setFilter] = useState("open");
-  const [activeId, setActiveId] = useState<number | null>(null);
+  // Dashboard search links here as ?status=<status>&ticket=<id>: open the
+  // matching tab AND select the ticket, so the detail pane shows what was
+  // clicked instead of whatever happens to be first.
+  const searchParams = useSearchParams();
+  const linkedTicket = Number(searchParams.get("ticket"));
+
+  const [filter, setFilter] = useState(searchParams.get("status") ?? "open");
+  const [activeId, setActiveId] = useState<number | null>(
+    Number.isInteger(linkedTicket) && linkedTicket > 0 ? linkedTicket : null
+  );
   const [reply, setReply] = useState("");
   const [busy, setBusy] = useState(false);
 

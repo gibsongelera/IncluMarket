@@ -1155,3 +1155,150 @@ h3 {
     );
   }
 }
+
+/* ---------------------------------------------------------------------------
+   12. Dashboard search (seller + admin)
+   Same combobox chrome as the storefront search, plus group headings and a
+   secondary line per result. There is no submit button: a dashboard has no
+   "all results" page, so the suggestions are the whole feature.
+   ------------------------------------------------------------------------ */
+.search--scoped {
+  display: block;
+  position: relative;
+  min-width: 0;
+}
+
+.search--scoped .search__combobox {
+  position: relative;
+  width: 100%;
+}
+
+.search--scoped input {
+  width: 100%;
+  min-height: 40px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--canvas-white);
+  color: var(--text-charcoal);
+  font: inherit;
+}
+
+.search--scoped input::placeholder {
+  color: var(--text-muted);
+}
+
+/* Group heading. Presentational only — aria-hidden in the markup, because a
+   heading inside a listbox is not reliably announced with the option. Each
+   option repeats its group in an .sr-only span instead. */
+.search__group {
+  display: block;
+  padding: var(--space-2) var(--space-3) var(--space-1);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  background: var(--surface-gray);
+  border-top: 1px solid var(--border);
+}
+
+.search__group-wrap:first-child .search__group {
+  border-top: 0;
+}
+
+.search__suggestion-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.search__suggestion-meta {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+.search__empty {
+  padding: var(--space-3);
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+/* The suggestion row itself is a <span role="option">, so it needs the layout
+   the storefront gets from its <li>. */
+.search--scoped .search__suggestion {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  cursor: pointer;
+  /* Comfortably above the 44px minimum once the two lines are counted. */
+  min-height: 44px;
+}
+
+.search--scoped .search__suggestion.is-active,
+.search--scoped .search__suggestion:hover {
+  background: var(--brand-blue-100);
+}
+
+.search--scoped .search__suggestion .icon {
+  margin-top: 3px;
+  color: var(--text-muted);
+}
+
+/* ---------------------------------------------------------------------------
+   13. Deep-link highlight
+   A search result navigates to a list page with one record in mind.
+   components/DeepLinkFocus.tsx scrolls to that row, focuses it and adds this
+   class for a couple of seconds.
+
+   Both a background AND an outline, deliberately: colour alone would be
+   invisible to a colour-blind user, and the outline doubles as the focus
+   indicator for the programmatic focus move.
+   ------------------------------------------------------------------------ */
+.is-deeplinked {
+  outline: var(--focus-ring);
+  outline-offset: -2px;
+  background: var(--brand-blue-100) !important;
+}
+
+.is-deeplinked td {
+  background: transparent;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .is-deeplinked {
+    animation: deeplink-pulse 2.4s ease-out 1;
+  }
+}
+
+@keyframes deeplink-pulse {
+  0%,
+  22% {
+    background: var(--brand-yellow);
+  }
+  100% {
+    background: var(--brand-blue-100);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   14. Dashboard search on phones
+   ------------------------------------------------------------------------ */
+@media (max-width: 767px) {
+  .search--scoped .search__suggestions {
+    /* Full width of the header rather than the input, so two-line results are
+       readable on a narrow screen. */
+    position: fixed;
+    left: var(--space-2);
+    right: var(--space-2);
+    top: var(--header-total);
+    max-height: 60vh;
+    overflow-y: auto;
+    z-index: var(--z-header);
+  }
+
+  .search--scoped .search__suggestion {
+    min-height: 52px;
+  }
+}

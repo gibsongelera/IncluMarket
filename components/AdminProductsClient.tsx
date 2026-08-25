@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { money, maskEmail, productImageSrc } from "@/lib/format";
 import { toast } from "@/lib/toast";
 import { Pill } from "./Pill";
@@ -10,6 +10,7 @@ import { setProductStatus, setProductFeatured } from "@/lib/actions/admin";
 import type { Category, Product, ProductStatus } from "@/lib/types";
 import { TableWrap } from "./TableWrap";
 import { Tabs, TabPanel } from "./Tabs";
+import { DeepLinkFocus } from "./DeepLinkFocus";
 
 type SellerLite = { id: number; name: string; email: string };
 const TABS: { status: string; label: string }[] = [
@@ -29,7 +30,10 @@ export function AdminProductsClient({
   sellers: SellerLite[];
 }) {
   const router = useRouter();
-  const [filter, setFilter] = useState("pending");
+  // Dashboard search links here as ?status=<status>&focus=<id>; opening the
+  // right tab first is what makes the focused row visible at all.
+  const searchParams = useSearchParams();
+  const [filter, setFilter] = useState(searchParams.get("status") ?? "pending");
 
   const categoryLabel = (id: string | null) =>
     categories.find((c) => c.id === id)?.label || id || "Uncategorized";
@@ -66,6 +70,7 @@ export function AdminProductsClient({
         items={TABS.map((t) => ({ value: t.status, label: t.label }))}
       />
 
+      <DeepLinkFocus />
       <TabPanel idPrefix="prod" value={filter}>
       <TableWrap label="Products awaiting review">
         <table className="data-table data-table--cards" aria-label="Products for verification">
@@ -86,7 +91,7 @@ export function AdminProductsClient({
               const status = p.status || "pending";
               const hasPhoto = Array.isArray(p.images) && p.images.length > 0;
               return (
-                <tr key={p.id}>
+                <tr key={p.id} data-row-id={p.id}>
                   <td>
                     <div className="cell-product">
                       {/* eslint-disable-next-line @next/next/no-img-element */}

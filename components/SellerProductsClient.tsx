@@ -9,6 +9,7 @@ import { toast } from "@/lib/toast";
 import { createProduct, updateProduct, deleteProduct, createFlashSale } from "@/lib/actions/seller";
 import type { Category, Product, ProductVariant } from "@/lib/types";
 import { TableWrap } from "./TableWrap";
+import { DeepLinkFocus } from "./DeepLinkFocus";
 
 type VariantDraft = {
   id?: number | null;
@@ -238,6 +239,7 @@ export function SellerProductsClient({
         </button>
       </div>
 
+      <DeepLinkFocus />
       <TableWrap label="My products">
         <table className="data-table data-table--cards" aria-label="My products">
           <thead>
@@ -263,7 +265,7 @@ export function SellerProductsClient({
                 const totalStock = vs.reduce((n, v) => n + v.stock_qty, 0);
                 const hasPhoto = Array.isArray(p.images) && p.images.length > 0;
                 return (
-                  <tr key={p.id}>
+                  <tr key={p.id} data-row-id={p.id}>
                     <td>
                       <div className="cell-product">
                         {/* eslint-disable-next-line @next/next/no-img-element */}

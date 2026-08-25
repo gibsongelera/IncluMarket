@@ -6,6 +6,7 @@ import { getMyNotifications, getMyUnreadCount } from "@/lib/actions/notification
 import { getMyUnreadMessageCount } from "@/lib/actions/messages";
 import { CartBadge } from "./CartBadge";
 import { SearchBox } from "./SearchBox";
+import { ScopedSearchBox } from "./ScopedSearchBox";
 import { NotificationBell } from "./NotificationBell";
 import { ContrastToggle, LogoutButton } from "./HeaderActions";
 import { MobileNav } from "./MobileNav";
@@ -97,7 +98,10 @@ export async function SiteHeader({
             </span>
           </Link>
 
-          {variant === "buyer" ? <SearchBox /> : null}
+          {/* Buyers search the catalog; sellers and admins search their own
+              dashboard data. Scope is decided server-side from the session,
+              never from a prop. */}
+          {variant === "buyer" ? <SearchBox /> : <ScopedSearchBox variant={variant} />}
 
           <nav className="header-nav" aria-label="Primary">
             {NAV[variant].map((item) => (

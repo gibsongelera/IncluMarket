@@ -1,13 +1,14 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { formatDate, maskEmail } from "@/lib/format";
 import { toast } from "@/lib/toast";
 import { createUser, updateUser, deleteUser, updateUserRole, setSellerFeatured } from "@/lib/actions/admin";
 import { Icon } from "./Icon";
 import type { Profile, Role } from "@/lib/types";
 import { TableWrap } from "./TableWrap";
+import { DeepLinkFocus } from "./DeepLinkFocus";
 
 type UserRow = Profile & {
   footprint: { products: number; orders: number; reviews: number; tickets: number; consents: number };
@@ -24,8 +25,13 @@ export function AdminUsersClient({
   currentAdminId: number;
 }) {
   const router = useRouter();
+  // Dashboard search links here as /admin/users?q=<name>&focus=<id>, so the
+  // list arrives already filtered to what the user picked.
+  const searchParams = useSearchParams();
+  const initialQ = searchParams.get("q") ?? "";
+
   const [role, setRole] = useState("");
-  const [q, setQ] = useState("");
+  const [q, setQ] = useState(initialQ);
 
   const modalRef = useRef<HTMLDialogElement>(null);
   const detailsRef = useRef<HTMLDialogElement>(null);
@@ -224,6 +230,7 @@ export function AdminUsersClient({
         </span>
       </div>
 
+      <DeepLinkFocus />
       <TableWrap label="Users">
         <table className="data-table data-table--cards" aria-label="Registered users">
           <thead>
@@ -241,7 +248,7 @@ export function AdminUsersClient({
             {filtered.map((u) => {
               const isSelf = u.id === currentAdminId;
               return (
-                <tr key={u.id}>
+                <tr key={u.id} data-row-id={u.id}>
                   <td>
                     <strong>{u.name}</strong>
                     {isSelf ? <span className="badge badge--yellow"> You</span> : null}
