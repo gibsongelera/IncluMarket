@@ -48,7 +48,15 @@ export class OpenRouterResponder implements ChatResponder {
     const key = process.env.OPENROUTER_API_KEY;
     if (!key) return this.fallback.respond(history, userMessage, context);
 
-    const model = process.env.OPENROUTER_MODEL || DEFAULT_MODEL;
+    // OPENROUTER_MODEL may be a comma-separated chain. Free models share one
+    // upstream pool and return 429 whenever it is saturated, which has nothing
+    // to do with your key — so naming more than one lets OpenRouter route to
+    // the next available instead of failing the turn.
+    const models = (process.env.OPENROUTER_MODEL || DEFAULT_MODEL)
+      .split(",")
+      .map((m) => m.trim())
+      .filter(Boolean);
+    const model = models[0] || DEFAULT_MODEL;
     const maxTokens = Number(process.env.OPENROUTER_MAX_TOKENS || 400);
     const timeoutMs = Number(process.env.OPENROUTER_TIMEOUT_MS || 8000);
 
@@ -74,17 +82,39 @@ export class OpenRouterResponder implements ChatResponder {
           "HTTP-Referer": process.env.OPENROUTER_SITE_URL || "http://localhost:3000",
           "X-Title": process.env.OPENROUTER_APP_NAME || "IncluMarket",
         },
-        body: JSON.stringify({ model, messages, max_tokens: maxTokens, temperature: 0.3 }),
+        body: JSON.stringify({
+          model,
+          // OpenRouter's own fallback routing: it walks this list and uses the
+          // first model that is actually available. Only sent when a chain is
+          // configured, so a single-model setup behaves exactly as before.
+          ...(models.length > 1 ? { models } : {}),
+          messages,
+          max_tokens: maxTokens,
+          temperature: 0.3,
+        }),
         signal: AbortSignal.timeout(timeoutMs),
       });
 
       if (!res.ok) {
-        // 400/404 here usually means the model id was renamed or retired —
-        // log the id so it is obvious what to change in the environment.
         const detail = await res.text().catch(() => "");
-        console.error(
-          `[openrouter] HTTP ${res.status} for model "${model}": ${detail.slice(0, 200)}`
-        );
+
+        // 429 is worth distinguishing. It is not a broken configuration: the
+        // free-model pool is shared and saturates, so the same setup works
+        // minutes later. Saying so stops it being mistaken for a dead model id.
+        if (res.status === 429) {
+          console.warn(
+            `[openrouter] rate-limited upstream (429) on "${models.join(", ")}". ` +
+              "This is the shared free-tier pool, not your key. Answering from the " +
+              "rule-based responder. Add more models to OPENROUTER_MODEL " +
+              "(comma-separated) so OpenRouter can route around it."
+          );
+        } else {
+          // 400/404 usually means the model id was renamed or retired — log the
+          // id so it is obvious what to change in the environment.
+          console.error(
+            `[openrouter] HTTP ${res.status} for model "${model}": ${detail.slice(0, 200)}`
+          );
+        }
         return this.fallback.respond(history, userMessage, context);
       }
 
