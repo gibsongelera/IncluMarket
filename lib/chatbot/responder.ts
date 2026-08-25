@@ -254,15 +254,43 @@ function fallbackFor(context: ChatContext): string {
  */
 export function getChatResponder(): ChatResponder {
   const rules = new RuleResponder();
-  switch (process.env.CHAT_PROVIDER) {
+  const raw = (process.env.CHAT_PROVIDER || "").trim();
+
+  if (!raw) return rules;
+
+  // Tolerate "openrouter/<model>" as well as plain "openrouter". The provider
+  // switch and the model id are separate variables, but writing them as one
+  // path is a natural mistake — and getting it wrong used to fall through to
+  // the rule responder silently, which looks like the LLM simply giving short
+  // answers rather than like a misconfiguration.
+  const slash = raw.indexOf("/");
+  const provider = (slash === -1 ? raw : raw.slice(0, slash)).toLowerCase();
+  const inlineModel = slash === -1 ? "" : raw.slice(slash + 1);
+
+  switch (provider) {
     case "openrouter": {
       if (!process.env.OPENROUTER_API_KEY) {
-        console.warn("[chat] CHAT_PROVIDER=openrouter but OPENROUTER_API_KEY is unset.");
+        console.warn(
+          "[chat] CHAT_PROVIDER is set to openrouter but OPENROUTER_API_KEY is unset. " +
+            "Falling back to the rule-based responder."
+        );
         return rules;
+      }
+      if (inlineModel && !process.env.OPENROUTER_MODEL) {
+        // Honour it, but say so: OPENROUTER_MODEL is where this belongs.
+        console.warn(
+          `[chat] Reading the model from CHAT_PROVIDER ("${inlineModel}"). ` +
+            "Set OPENROUTER_MODEL instead and use CHAT_PROVIDER=openrouter."
+        );
+        process.env.OPENROUTER_MODEL = inlineModel;
       }
       return new OpenRouterResponder(rules);
     }
     default:
+      console.warn(
+        `[chat] Unrecognised CHAT_PROVIDER "${raw}". Supported: "openrouter", or leave it ` +
+          "empty for the built-in rule-based responder. Falling back to the rules."
+      );
       return rules;
   }
 }
