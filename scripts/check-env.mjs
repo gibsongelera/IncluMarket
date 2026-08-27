@@ -82,6 +82,57 @@ async function checkSupabase() {
   } else {
     add("Supabase", "ok", "public key cannot read profile rows (RLS holding).");
   }
+
+  // Every function in `public` is granted EXECUTE to PUBLIC by default, and
+  // PostgREST exposes any non-trigger function as /rest/v1/rpc/<name>. So a
+  // SECURITY DEFINER helper is a privileged endpoint reachable with the
+  // publishable key until the grant is revoked. Probe rather than read the
+  // catalogue: what matters is what an attacker can actually call.
+  //
+  // im_current_profile_role and im_current_profile_id are deliberately absent
+  // from this list. They are called from inside RLS policy expressions, which
+  // run with the querying role's privileges, so revoking EXECUTE would break
+  // every policy that calls them rather than hardening anything. See 0012.
+  const MUST_NOT_BE_CALLABLE = [
+    ["im_requesting_role", {}],
+    ["im_rate_limit_hit", { p_bucket: "probe", p_identifier: "probe", p_window_seconds: 60, p_max_hits: 1 }],
+    ["im_decrement_variant_stock", { p_variant_id: 0, p_qty: 1 }],
+    ["im_restore_variant_stock", { p_variant_id: 0, p_qty: 1 }],
+  ];
+
+  let exposed = 0;
+  for (const [fn, body] of MUST_NOT_BE_CALLABLE) {
+    const probe = await json(`${url}/rest/v1/rpc/${fn}`, {
+      method: "POST",
+      headers: { apikey: anon ?? "", Authorization: `Bearer ${anon ?? ""}`, "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (probe.ok) {
+      exposed++;
+      add(
+        "Supabase",
+        "error",
+        `SECURITY DEFINER function ${fn}() is callable with the PUBLIC key.`,
+        "Run migration 0012, which revokes EXECUTE from public, anon and authenticated."
+      );
+    }
+  }
+  if (!exposed) {
+    add("Supabase", "ok", "no privileged RPC is reachable with the public key.");
+  }
+
+  // The curated view is the sanctioned way to read seller info publicly; if it
+  // stops working the storefront loses its featured sellers.
+  const view = await json(`${url}/rest/v1/im_public_sellers?select=id&limit=1`, {
+    headers: { apikey: anon ?? "", Authorization: `Bearer ${anon ?? ""}` },
+  });
+  add(
+    "Supabase",
+    view.ok ? "ok" : "warn",
+    view.ok
+      ? "im_public_sellers is readable by the public key (as intended)."
+      : `im_public_sellers is not readable: HTTP ${view.status}.`
+  );
 }
 
 // ---------------------------------------------------------------------------
