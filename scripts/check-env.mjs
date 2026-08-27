@@ -152,6 +152,25 @@ async function checkPayMongo() {
     return;
   }
 
+  const site = process.env.NEXT_PUBLIC_SITE_URL || "";
+  const sameHost = (a, b) => {
+    try {
+      return !b || new URL(a).host === new URL(b).host;
+    } catch {
+      return true;
+    }
+  };
+  const ours = hooks.filter((h) => sameHost(h.attributes?.url ?? "", site));
+
+  if (!ours.length) {
+    add(
+      "PayMongo",
+      "error",
+      `no webhook for ${site} in ${mode.toUpperCase()} mode.`,
+      `Other projects on this account do not count. Switch the dashboard to ${mode === "test" ? "Test" : "Live"} mode and add ${site}/api/webhooks/paymongo — paid orders stay 'pending' without it.`
+    );
+  }
+
   for (const h of hooks) {
     const a = h.attributes ?? {};
     const url = a.url ?? "(no url)";
@@ -160,20 +179,10 @@ async function checkPayMongo() {
     const isLocal = /localhost|127\.0\.0\.1/.test(url);
     const correctPath = url.includes("/api/webhooks/paymongo");
 
-    const site = process.env.NEXT_PUBLIC_SITE_URL || "";
-    let sameSite = true;
-    try {
-      sameSite = !site || new URL(url).host === new URL(site).host;
-    } catch {
-      sameSite = true;
-    }
-    if (!sameSite) {
-      add(
-        "PayMongo",
-        "error",
-        `the only webhook in this mode points at a DIFFERENT site: ${url}`,
-        `It is not this app. IncluMarket (${site}) has no webhook in ${mode.toUpperCase()} mode, so paid orders will stay 'pending'. Leave that one alone and add your own.`
-      );
+    if (!sameHost(url, site)) {
+      // Another project on the same PayMongo account. Only a problem if THIS
+      // site has no webhook of its own — reported once, after the loop.
+      add("PayMongo", "ok", `(another project on this account: ${url} — not ours, left alone)`);
       continue;
     }
 
@@ -228,12 +237,27 @@ async function checkBrevo() {
   if (r.ok) {
     add("Brevo", "ok", `API key works (account: ${r.body?.email ?? "unknown"}).`);
   } else {
-    add(
-      "Brevo",
-      "error",
-      `API key rejected: HTTP ${r.status} ${r.body?.message ?? ""}`.trim(),
-      "An SMTP key returns 401 here even though it works for SMTP relay."
-    );
+    const msg = r.body?.message ?? "";
+    // Brevo can 401 for a bad key OR because the account restricts calls to an
+    // allow-list of IPs. Very different fixes, and the second one is the more
+    // dangerous of the two: it also blocks the deployment, whose egress IPs are
+    // dynamic and cannot be listed.
+    if (/unrecognised ip|unrecognized ip|authorised_ip|authorized_ip/i.test(msg)) {
+      const ip = msg.match(/\d{1,3}(?:\.\d{1,3}){3}/)?.[0] ?? "this machine";
+      add(
+        "Brevo",
+        "error",
+        `the key is valid, but Brevo is blocking ${ip} by IP allow-list.`,
+        "This will block Vercel too: serverless egress IPs are dynamic and cannot be allow-listed, so email fails in production as well. Turn the restriction off at app.brevo.com/security/authorised_ips — the key is already server-only, so the list adds little here."
+      );
+    } else {
+      add(
+        "Brevo",
+        "error",
+        `API key rejected: HTTP ${r.status} ${msg}`.trim(),
+        "An SMTP key (xsmtpsib-) returns 401 here even though it works for SMTP relay."
+      );
+    }
     return;
   }
 
