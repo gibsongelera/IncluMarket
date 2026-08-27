@@ -27,6 +27,28 @@ export interface Recipient {
   name?: string;
 }
 
+/**
+ * Brevo issues two kinds of credential and they are not interchangeable:
+ *
+ *   xkeysib-...   API key   -> the v3 REST API, which this module uses
+ *   xsmtpsib-...  SMTP key  -> the SMTP relay only
+ *
+ * They look alike, sit next to each other in the dashboard, and an SMTP key
+ * returns a bare 401 "Key not found" here — which reads like a bad key rather
+ * than the wrong KIND of key. Naming it explicitly turns a confusing outage
+ * into a one-line fix.
+ */
+function keyProblem(key: string | undefined): string | null {
+  if (!key) return null;
+  if (key.startsWith("xsmtpsib-")) {
+    return "BREVO_API_KEY is an SMTP key (xsmtpsib-...). The v3 API needs an API key (xkeysib-...), created under SMTP & API -> API Keys.";
+  }
+  if (!key.startsWith("xkeysib-")) {
+    return `BREVO_API_KEY has an unexpected prefix. Expected xkeysib-..., got ${key.slice(0, 9)}...`;
+  }
+  return null;
+}
+
 function isConfigured(): boolean {
   return Boolean(process.env.BREVO_API_KEY && process.env.BREVO_SENDER_EMAIL);
 }
@@ -72,6 +94,15 @@ export async function sendEmail(
   if (!isConfigured()) {
     // Expected in local development — do not treat as an error.
     await logEmail(kind, to.email, "skipped", "BREVO_API_KEY or sender not set");
+    return false;
+  }
+
+  const problem = keyProblem(process.env.BREVO_API_KEY);
+  if (problem) {
+    // Say what is wrong once, at the point of use, instead of letting every
+    // send fail with an opaque 401.
+    console.error(`[brevo] ${problem}`);
+    await logEmail(kind, to.email, "failed", problem);
     return false;
   }
 
