@@ -129,12 +129,25 @@ async function checkPayMongo() {
   add("PayMongo", "ok", "secret key authenticates.");
 
   const hooks = r.body?.data ?? [];
+
+  // PayMongo scopes webhooks PER MODE, and the dashboard has its own test/live
+  // toggle that is independent of which key you are using. A webhook created
+  // while the dashboard sits in Live mode is invisible to a test key and never
+  // fires for a test payment — but the dashboard still shows it, so it looks
+  // registered. Stating the mode here is what makes that gap visible.
+  add(
+    "PayMongo",
+    "ok",
+    `the webhook list below is ${mode.toUpperCase()} mode only (your key is a ${secretMode} key).`,
+    "The dashboard has its own test/live toggle. A webhook created in the other mode will not appear here and will never fire for payments made with this key."
+  );
+
   if (!hooks.length) {
     add(
       "PayMongo",
       "error",
-      "no webhook is registered.",
-      "Without it orders never leave 'pending' after payment. Register <SITE>/api/webhooks/paymongo in Developers → Webhooks."
+      `no webhook registered in ${mode.toUpperCase()} mode.`,
+      `Without it orders never leave 'pending' after payment. Switch the dashboard to ${mode === "test" ? "Test" : "Live"} mode, then add <SITE>/api/webhooks/paymongo.`
     );
     return;
   }
@@ -146,6 +159,23 @@ async function checkPayMongo() {
     const live = a.status === "enabled";
     const isLocal = /localhost|127\.0\.0\.1/.test(url);
     const correctPath = url.includes("/api/webhooks/paymongo");
+
+    const site = process.env.NEXT_PUBLIC_SITE_URL || "";
+    let sameSite = true;
+    try {
+      sameSite = !site || new URL(url).host === new URL(site).host;
+    } catch {
+      sameSite = true;
+    }
+    if (!sameSite) {
+      add(
+        "PayMongo",
+        "error",
+        `the only webhook in this mode points at a DIFFERENT site: ${url}`,
+        `It is not this app. IncluMarket (${site}) has no webhook in ${mode.toUpperCase()} mode, so paid orders will stay 'pending'. Leave that one alone and add your own.`
+      );
+      continue;
+    }
 
     add(
       "PayMongo",
