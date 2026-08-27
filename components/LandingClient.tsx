@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   loginAction,
+  requestPasswordResetAction,
   resendConfirmationAction,
   signupAction,
 } from "@/lib/actions/auth";
@@ -56,6 +57,36 @@ export function LandingClient({
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
+  // The sign-in panel has a second face: request a recovery link. Kept inside
+  // the panel rather than added as a third tab so the tablist still describes
+  // the two things a visitor comes here to do.
+  const [forgot, setForgot] = useState(false);
+  const [resetEmail, setResetEmail] = useState("");
+  const [resetMsg, setResetMsg] = useState<string | null>(null);
+  const [resetErr, setResetErr] = useState<string | null>(null);
+
+  // /reset-password sends people back here with ?reset=1 when their link has
+  // expired, so open straight onto the request form.
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).has("reset")) {
+      setTab("signin");
+      setForgot(true);
+    }
+  }, []);
+
+  async function onRequestReset(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setResetErr(null);
+    setResetMsg(null);
+    setBusy(true);
+    const res = await requestPasswordResetAction(resetEmail);
+    setBusy(false);
+    if (!res.ok) {
+      setResetErr(res.error || "Could not send the reset link.");
+      return;
+    }
+    setResetMsg(res.message || "Check your email for the reset link.");
+  }
   const emailRef = useRef<HTMLInputElement>(null);
 
   const products = useCountUp(stats.products);
@@ -244,6 +275,65 @@ export function LandingClient({
               aria-labelledby="tab-signin"
               hidden={tab !== "signin"}
             >
+              {forgot ? (
+                <>
+                  <h2 id="auth-title">Reset your password</h2>
+                  <p className="muted">
+                    Enter the email address on your account. We will send you a link to choose a
+                    new password.
+                  </p>
+
+                  <form className="form" noValidate onSubmit={onRequestReset}>
+                    {resetErr ? (
+                      <p className="form-error" role="alert">
+                        {resetErr}
+                      </p>
+                    ) : null}
+
+                    {resetMsg ? (
+                      <p className="form-success" role="status">
+                        {resetMsg}
+                      </p>
+                    ) : null}
+
+                    <div className="field">
+                      <label htmlFor="reset-email">Email address</label>
+                      <div className="input-icon">
+                        <svg className="leading" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2" /><path d="m3 7 9 6 9-6" /></svg>
+                        <input
+                          id="reset-email"
+                          name="email"
+                          type="email"
+                          autoComplete="username"
+                          required
+                          placeholder="you@example.com"
+                          value={resetEmail}
+                          onChange={(e) => setResetEmail(e.target.value)}
+                        />
+                      </div>
+                    </div>
+
+                    <button type="submit" className="btn btn--primary" disabled={busy}>
+                      {busy ? "Sending…" : "Send reset link"}
+                    </button>
+
+                    <p className="hint">
+                      <button
+                        type="button"
+                        className="btn btn--ghost btn--sm"
+                        onClick={() => {
+                          setForgot(false);
+                          setResetMsg(null);
+                          setResetErr(null);
+                        }}
+                      >
+                        Back to sign in
+                      </button>
+                    </p>
+                  </form>
+                </>
+              ) : (
+                <>
               <h2 id="auth-title">Welcome back</h2>
               <p className="muted">Sign in with your email and password.</p>
 
@@ -326,12 +416,24 @@ export function LandingClient({
                   <label>
                     <input type="checkbox" defaultChecked /> Remember me
                   </label>
+                  <button
+                    type="button"
+                    className="link-button"
+                    onClick={() => {
+                      setResetEmail(email);
+                      setForgot(true);
+                    }}
+                  >
+                    Forgot password?
+                  </button>
                 </div>
 
                 <button type="submit" className="btn btn--primary" disabled={busy}>
                   Sign in to IncluMarket
                 </button>
               </form>
+                </>
+              )}
             </div>
 
             <div

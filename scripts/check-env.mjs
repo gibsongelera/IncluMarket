@@ -259,26 +259,138 @@ async function checkPayMongo() {
 }
 
 // ---------------------------------------------------------------------------
-// Brevo
+// Transactional email
+//
+// Two transports exist (lib/email/resend.ts, lib/email/brevo.ts) behind
+// lib/email/send.ts. Provider selection here mirrors activeProvider() exactly —
+// if these two ever disagree, this script validates a provider the app will not
+// actually use, which is worse than not checking at all.
 // ---------------------------------------------------------------------------
+function activeEmailProvider() {
+  const pinned = (process.env.EMAIL_PROVIDER || "").trim().toLowerCase();
+  if (pinned === "resend") return "resend";
+  if (pinned === "brevo") return "brevo";
+  const resendReady = Boolean(process.env.RESEND_API_KEY && process.env.EMAIL_FROM);
+  const brevoReady = Boolean(
+    process.env.BREVO_API_KEY && (process.env.EMAIL_FROM || process.env.BREVO_SENDER_EMAIL)
+  );
+  if (resendReady) return "resend";
+  if (brevoReady) return "brevo";
+  return "none";
+}
+
+async function checkEmail() {
+  const provider = activeEmailProvider();
+  const pinned = (process.env.EMAIL_PROVIDER || "").trim().toLowerCase();
+
+  if (pinned && !["resend", "brevo", "none"].includes(pinned)) {
+    add(
+      "Email",
+      "warn",
+      `EMAIL_PROVIDER="${pinned}" is not recognised — the app falls back to auto-detect.`,
+      "Valid values: resend, brevo, or blank."
+    );
+  }
+
+  if (provider === "none") {
+    return add(
+      "Email",
+      "error",
+      "no email provider is configured — order receipts and seller notices will not be sent.",
+      "Set RESEND_API_KEY + EMAIL_FROM (recommended), or BREVO_API_KEY. Sends are logged as skipped and never fail a checkout, so this degrades silently."
+    );
+  }
+
+  add("Email", "ok", `provider: ${provider}`);
+  return provider === "resend" ? checkResend() : checkBrevo();
+}
+
+async function checkResend() {
+  const key = process.env.RESEND_API_KEY;
+  const from = process.env.EMAIL_FROM;
+
+  if (!key) {
+    return add(
+      "Email",
+      "error",
+      "EMAIL_PROVIDER=resend but RESEND_API_KEY is not set.",
+      "Create one at https://resend.com/api-keys."
+    );
+  }
+  if (!from) add("Email", "error", "EMAIL_FROM is not set.");
+  if (!key.startsWith("re_")) {
+    add(
+      "Email",
+      "warn",
+      `RESEND_API_KEY has an unfamiliar prefix (${mask(key)}) — Resend keys start with re_.`
+    );
+  }
+
+  const r = await json("https://api.resend.com/domains", {
+    headers: { Authorization: `Bearer ${key}`, Accept: "application/json" },
+  });
+
+  if (!r.ok) {
+    return add(
+      "Email",
+      "error",
+      `RESEND_API_KEY rejected: HTTP ${r.status} ${r.body?.message ?? ""}`.trim(),
+      r.status === 401 ? "The key is wrong or was revoked." : undefined
+    );
+  }
+
+  add("Email", "ok", "RESEND_API_KEY works.");
+
+  // The sending-domain rule is where Resend surprises people: with no verified
+  // domain you may only send FROM onboarding@resend.dev, and only TO the
+  // address that owns the account. The wiring "works" while no buyer can
+  // actually be reached — exactly the failure this script exists to catch.
+  const domains = r.body?.data ?? [];
+  const verified = domains.filter((d) => d.status === "verified").map((d) => d.name);
+  const fromDomain = (from ?? "").split("@")[1]?.toLowerCase() ?? "";
+
+  if (fromDomain === "resend.dev") {
+    add(
+      "Email",
+      "warn",
+      `EMAIL_FROM is ${from}, the shared Resend test sender.`,
+      "Delivery is restricted to the address that owns the Resend account. Real buyers and sellers will NOT receive mail. Verify a domain at resend.com/domains before the defence."
+    );
+  } else if (!verified.includes(fromDomain)) {
+    add(
+      "Email",
+      "error",
+      `EMAIL_FROM (${from}) is not on a verified Resend domain.`,
+      `Verified: ${verified.join(", ") || "(none)"}. Resend refuses the send with 403. Either verify ${fromDomain || "the domain"}, or set EMAIL_FROM=onboarding@resend.dev for testing.`
+    );
+  } else {
+    add("Email", "ok", `sender domain ${fromDomain} is verified.`);
+  }
+
+  const pending = domains
+    .filter((d) => d.status !== "verified")
+    .map((d) => `${d.name} (${d.status})`);
+  if (pending.length) add("Email", "warn", `unverified domains in Resend: ${pending.join(", ")}.`);
+}
+
 async function checkBrevo() {
   const key = process.env.BREVO_API_KEY;
-  const from = process.env.BREVO_SENDER_EMAIL;
+  const from = process.env.EMAIL_FROM || process.env.BREVO_SENDER_EMAIL;
 
-  if (!key) return add("Brevo", "error", "BREVO_API_KEY is not set — no email will be sent.");
-  if (!from) add("Brevo", "error", "BREVO_SENDER_EMAIL is not set.");
+  if (!key) return add("Email", "error", "EMAIL_PROVIDER=brevo but BREVO_API_KEY is not set.");
+  if (!from) add("Email", "error", "neither EMAIL_FROM nor BREVO_SENDER_EMAIL is set.");
 
   // The single most common Brevo mistake: an SMTP key where an API key is
   // needed. They look similar and are not interchangeable.
   if (key.startsWith("xsmtpsib-")) {
     add(
-      "Brevo",
+      "Email",
       "error",
       `BREVO_API_KEY is an SMTP key (${mask(key)}).`,
       "lib/email/brevo.ts calls the HTTP API v3, which only accepts an API key (xkeysib-…). Create one under SMTP & API → API Keys."
     );
   } else if (!key.startsWith("xkeysib-")) {
-    add("Brevo", "warn", `BREVO_API_KEY has an unfamiliar prefix (${mask(key)}).`);
+    add("Email", "warn", `BREVO_API_KEY has an unfamiliar prefix (${mask(key)}).`);
   }
 
   const r = await json("https://api.brevo.com/v3/account", {
@@ -286,7 +398,7 @@ async function checkBrevo() {
   });
 
   if (r.ok) {
-    add("Brevo", "ok", `API key works (account: ${r.body?.email ?? "unknown"}).`);
+    add("Email", "ok", `Brevo API key works (account: ${r.body?.email ?? "unknown"}).`);
   } else {
     const msg = r.body?.message ?? "";
     // Brevo can 401 for a bad key OR because the account restricts calls to an
@@ -294,18 +406,18 @@ async function checkBrevo() {
     // dangerous of the two: it also blocks the deployment, whose egress IPs are
     // dynamic and cannot be listed.
     if (/unrecognised ip|unrecognized ip|authorised_ip|authorized_ip/i.test(msg)) {
-      const ip = msg.match(/\d{1,3}(?:\.\d{1,3}){3}/)?.[0] ?? "this machine";
+      const ip = msg.match(/\d{1,3}(?:\.\d{1,3}){3}/)?.[0] ?? "this machine";
       add(
-        "Brevo",
+        "Email",
         "error",
-        `the key is valid, but Brevo is blocking ${ip} by IP allow-list.`,
-        "This will block Vercel too: serverless egress IPs are dynamic and cannot be allow-listed, so email fails in production as well. Turn the restriction off at app.brevo.com/security/authorised_ips — the key is already server-only, so the list adds little here."
+        `the Brevo key is valid, but Brevo is blocking ${ip} by IP allow-list.`,
+        "This blocks Vercel too: serverless egress IPs are dynamic and cannot be allow-listed. If the setting at app.brevo.com/security/authorised_ips is already off and the block persists, it is account-level — switch to EMAIL_PROVIDER=resend."
       );
     } else {
       add(
-        "Brevo",
+        "Email",
         "error",
-        `API key rejected: HTTP ${r.status} ${msg}`.trim(),
+        `Brevo API key rejected: HTTP ${r.status} ${msg}`.trim(),
         "An SMTP key (xsmtpsib-) returns 401 here even though it works for SMTP relay."
       );
     }
@@ -321,15 +433,15 @@ async function checkBrevo() {
     const match = senders.find((x) => (x.email ?? "").toLowerCase() === (from ?? "").toLowerCase());
     if (!match) {
       add(
-        "Brevo",
+        "Email",
         "error",
-        `BREVO_SENDER_EMAIL (${from}) is not a verified sender.`,
+        `sender ${from} is not verified in Brevo.`,
         `Verified: ${senders.map((x) => x.email).join(", ") || "(none)"}. Add and verify it in Senders.`
       );
     } else if (match.active === false) {
-      add("Brevo", "warn", `sender ${from} exists but is not active.`);
+      add("Email", "warn", `sender ${from} exists but is not active.`);
     } else {
-      add("Brevo", "ok", `sender ${from} is verified.`);
+      add("Email", "ok", `sender ${from} is verified.`);
     }
   }
 }
@@ -444,7 +556,7 @@ console.log("\nChecking configured integrations (read-only)…\n");
 for (const [name, fn] of [
   ["Supabase", checkSupabase],
   ["PayMongo", checkPayMongo],
-  ["Brevo", checkBrevo],
+  ["Email", checkEmail],
   ["OpenRouter", checkOpenRouter],
   ["Site", checkSite],
 ]) {

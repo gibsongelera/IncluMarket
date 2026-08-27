@@ -116,6 +116,46 @@
   padding: .5rem .75rem;
   border-radius: var(--radius-sm);
 }
+/* Same shape as .form-error so a confirmation and a failure occupy the same
+   space and never reflow the form underneath them. */
+.form-success {
+  color: var(--success);
+  font-weight: 600;
+  background: var(--success-100);
+  border: 1px solid var(--success);
+  padding: .5rem .75rem;
+  border-radius: var(--radius-sm);
+}
+
+/* A button that reads as a link. Stays a real <button> because it performs an
+   in-page action rather than navigating -- a link here would lie to a screen
+   reader and offer a useless "open in new tab". */
+.link-button {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  color: var(--brand-blue);
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+  /* WCAG 2.5.5: the underline is small, the hit area must not be. A fixed px
+     here is deliberate -- 44px is an absolute physical floor, not a layout
+     offset, so it must not shrink when the a11y toolbar drops the root font. */
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
+.link-button:hover { color: var(--brand-blue-800); }
+.link-button:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+  border-radius: var(--radius-sm);
+}
+
+/* Lead paragraph. Existed as a class on the landing hero only; promoted here
+   so static pages get the same treatment. */
+.lede { font-size: var(--step-1); color: var(--text-charcoal); }
 input[type="text"], input[type="email"], input[type="password"],
 input[type="number"], input[type="search"], input[type="tel"], select, textarea {
   width: 100%;

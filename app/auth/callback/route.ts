@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { homeForRole } from "@/lib/session";
+import { recoveryCookie } from "@/lib/auth/recovery";
 import type { Role } from "@/lib/types";
 
 /**
@@ -15,6 +16,9 @@ import type { Role } from "@/lib/types";
  * Belt and braces: shape-check the string, then resolve it against the origin
  * and assert the origin survived.
  */
+/** Where a recovery link lands. Must match the action that builds the URL. */
+const RESET_PATH = "/reset-password";
+
 function safeNext(next: string | null, origin: string): string | null {
   if (!next) return null;
   // Must start with exactly one slash, and contain no backslashes (which some
@@ -46,14 +50,44 @@ export async function GET(request: Request) {
         .maybeSingle();
 
       if (profile) {
-        await admin.from("im_consent_logs").insert({
-          user_id: profile.id,
-          action: "email_confirmed",
-          consent: true,
-          purpose: "RA 10173 DPA registration consent",
-        });
+        // This one route handles two different emails: the signup confirmation
+        // and the password-recovery link. Only the first is a consent event —
+        // logging a recovery as "email_confirmed" would put a false consent
+        // record in the RA 10173 trail, which is worse than logging nothing.
+        //
+        // The flow is read off the validated `next` value rather than a
+        // separate query param, so there is nothing extra to spoof.
+        const isRecovery = next === RESET_PATH;
+
+        if (!isRecovery) {
+          await admin.from("im_consent_logs").insert({
+            user_id: profile.id,
+            action: "email_confirmed",
+            consent: true,
+            purpose: "RA 10173 DPA registration consent",
+          });
+        } else {
+          await admin.from("im_audit_logs").insert({
+            actor_id: profile.id,
+            actor_role: profile.role,
+            action: "password_recovery_link_used",
+            target: `user:${profile.id}`,
+          });
+        }
+
         const dest = next || homeForRole(profile.role as Role);
-        return NextResponse.redirect(`${origin}${dest}`);
+        const response = NextResponse.redirect(`${origin}${dest}`);
+
+        // A Supabase session on its own only proves "signed in". This marker is
+        // what proves "arrived via the emailed link", and it is the only thing
+        // that authorises updatePasswordAction. Set on the response directly so
+        // it is unambiguously attached to the redirect.
+        if (isRecovery) {
+          const c = recoveryCookie(data.user.id);
+          response.cookies.set(c.name, c.value, c.options);
+        }
+
+        return response;
       }
       return NextResponse.redirect(`${origin}/`);
     }

@@ -1,7 +1,7 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createNotification } from "@/lib/notify";
-import { queueEmail } from "@/lib/email/brevo";
+import { queueEmail } from "@/lib/email/send";
 
 /**
  * Apply a payment outcome to an order.

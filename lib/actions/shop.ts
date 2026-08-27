@@ -5,7 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getSession } from "@/lib/session";
 import { clearCartAction, getCartItems } from "@/lib/actions/cart";
 import { createNotification } from "@/lib/notify";
-import { queueEmail } from "@/lib/email/brevo";
+import { queueEmail } from "@/lib/email/send";
 import {
   createCheckoutSession,
   isPayMongoConfigured,

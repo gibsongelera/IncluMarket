@@ -113,6 +113,46 @@ const chatWidget = read("components/ChatWidget.tsx");
 assert(chatWidget.includes("sendChatMessage"), "ChatWidget calls sendChatMessage");
 assert(chatWidget.includes("fetchChatHistory"), "ChatWidget calls fetchChatHistory");
 
+console.log("\n=== Smoke: password reset flow ===");
+const authAction = read("lib/actions/auth.ts");
+assert(
+  authAction.includes("export async function requestPasswordResetAction"),
+  "requestPasswordResetAction exported"
+);
+assert(
+  authAction.includes("export async function updatePasswordAction"),
+  "updatePasswordAction exported"
+);
+// Unauthenticated and it sends mail: without a limiter it is a mail-bomb relay.
+assert(
+  /requestPasswordResetAction[\s\S]{0,900}rateLimit\(/.test(authAction),
+  "reset request is rate limited"
+);
+// The neutral reply is the account-enumeration defence. If someone ever adds a
+// "no account with that email" branch, this is what catches it.
+assert(
+  authAction.includes("If that email has an account"),
+  "reset request replies identically whether or not the account exists"
+);
+// The load-bearing check: a Supabase session alone must NOT authorise a
+// password change, or any signed-in browser becomes a one-request takeover.
+assert(
+  /updatePasswordAction[\s\S]{0,1200}hasRecoveryMarker\(/.test(authAction),
+  "password change requires the recovery marker, not just a session"
+);
+assert(
+  /updatePasswordAction[\s\S]{0,1600}clearRecoveryMarker\(/.test(authAction),
+  "recovery marker is consumed after use"
+);
+const callback = read("app/auth/callback/route.ts");
+assert(callback.includes("recoveryCookie"), "callback mints the recovery marker");
+// A recovery is not a consent event; logging it as one falsifies the RA 10173 trail.
+assert(callback.includes("isRecovery"), "callback distinguishes recovery from signup confirmation");
+const resetPage = read("app/reset-password/page.tsx");
+assert(resetPage.includes("hasRecoveryMarker"), "reset page gates on the recovery marker");
+const landing = read("components/LandingClient.tsx");
+assert(landing.includes("requestPasswordResetAction"), "sign-in panel offers the reset");
+
 console.log("\n=== Smoke: chatbot responder rules ===");
 const responder = read("lib/chatbot/responder.ts");
 assert(responder.includes("MockResponder") || responder.includes("getChatResponder"), "responder present");

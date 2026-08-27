@@ -6,6 +6,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getSession } from "@/lib/session";
 import { guardByIp, rateLimit, RATE_LIMITED_MESSAGE } from "@/lib/security/rate-limit";
+import { clearRecoveryMarker, hasRecoveryMarker } from "@/lib/auth/recovery";
 import type { Role } from "@/lib/types";
 
 export interface AuthResult {
@@ -171,6 +172,118 @@ export async function resendConfirmationAction(email: string): Promise<AuthResul
     ok: true,
     message: "Confirmation email sent. Please check your inbox.",
   };
+}
+
+/**
+ * Where the emailed link lands. app/auth/callback/route.ts matches on the
+ * `next` value to tell a recovery from a signup confirmation, so the two must
+ * agree — and this whole URL has to be allow-listed in Supabase Auth under
+ * Redirect URLs, or Supabase silently substitutes the Site URL.
+ */
+const RESET_REDIRECT = "/auth/callback?next=/reset-password";
+
+/** Minimum we will accept. Supabase enforces its own floor as well. */
+const MIN_PASSWORD = 8;
+
+/**
+ * Start a password reset.
+ *
+ * ALWAYS reports success, whether or not the address has an account. Saying
+ * "no account with that email" turns this into an account-enumeration oracle
+ * — and on a marketplace where every seller is a person with a disability,
+ * confirming that a given person has an account here is itself a disclosure.
+ *
+ * The link Supabase sends lands on /auth/callback, which exchanges the code
+ * for a session and forwards to /reset-password.
+ */
+export async function requestPasswordResetAction(email: string): Promise<AuthResult> {
+  const normalized = String(email || "").trim().toLowerCase();
+  if (!normalized || !normalized.includes("@")) {
+    return { ok: false, error: "Please enter your email address." };
+  }
+
+  // Unauthenticated and it sends mail, so it is both an abuse vector and a way
+  // to burn the email quota. Limited per address and per IP.
+  const perEmail = await rateLimit("password_reset", `email:${normalized}`, {
+    limit: 3,
+    windowSeconds: 3600,
+  });
+  const ipGuard = await guardByIp("password_reset_ip", { limit: 10, windowSeconds: 3600 });
+
+  // Note the ordering: the generic success message is returned even when
+  // rate-limited, so timing and wording cannot be used to probe for accounts.
+  if (perEmail.ok && !ipGuard) {
+    const supabase = await createSupabaseServerClient();
+    // Deliberately NOT siteOrigin(): that trusts the request Host, and a reset
+    // link built from an attacker-supplied Host is the classic password-reset
+    // poisoning bug — the victim gets a real token pointing at the attacker.
+    // The configured origin wins; the request host is only a dev fallback.
+    const site = process.env.NEXT_PUBLIC_SITE_URL || (await siteOrigin());
+    const { error } = await supabase.auth.resetPasswordForEmail(normalized, {
+      redirectTo: `${site}${RESET_REDIRECT}`,
+    });
+    if (error) {
+      // Logged, not surfaced — the caller still sees the neutral message.
+      console.error("[auth] password reset request failed:", error.message);
+    }
+  }
+
+  return {
+    ok: true,
+    message:
+      "If that email has an account, we have sent a reset link. It expires in one hour — check your spam folder if it does not arrive.",
+  };
+}
+
+/**
+ * Finish a password reset.
+ *
+ * Two conditions, both required:
+ *
+ *   1. a Supabase session — proves someone is signed in;
+ *   2. the recovery marker set by /auth/callback — proves that session was
+ *      created by following a link sent to the mailbox, moments ago.
+ *
+ * The second is the load-bearing one. updateUser({ password }) succeeds for any
+ * session, and this function is a public HTTP endpoint like every other export
+ * of a "use server" module, so without (2) an unattended signed-in browser is a
+ * one-request account takeover.
+ *
+ * Nothing is accepted from the caller but the new password: no token, no user
+ * id, no email.
+ */
+export async function updatePasswordAction(password: string): Promise<AuthResult> {
+  const next = String(password || "");
+  if (next.length < MIN_PASSWORD) {
+    return { ok: false, error: `Please use at least ${MIN_PASSWORD} characters.` };
+  }
+  if (!/[a-zA-Z]/.test(next) || !/[0-9]/.test(next)) {
+    return { ok: false, error: "Please include at least one letter and one number." };
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const expired = {
+    ok: false as const,
+    error: "This reset link has expired or was already used. Please request a new one.",
+  };
+
+  if (!user) return expired;
+  if (!(await hasRecoveryMarker(user.id))) return expired;
+
+  const { error } = await supabase.auth.updateUser({ password: next });
+  if (error) return { ok: false, error: error.message };
+
+  // One link, one change.
+  await clearRecoveryMarker();
+
+  const session = await getSession();
+  if (session) await audit(session.user_id, session.role, "reset_password", `user:${session.user_id}`);
+
+  return { ok: true, message: "Your password has been changed. You are now signed in." };
 }
 
 export async function logoutAction(): Promise<void> {
