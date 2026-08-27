@@ -20,6 +20,27 @@
 -- The last two return `trigger`, and PostgREST does not expose trigger
 -- functions at all — so despite being SECURITY DEFINER they were never
 -- reachable as RPC.
+--
+-- ---------------------------------------------------------------------------
+-- WRONG DATABASE?
+--
+-- If this file errors with 42883 (function does not exist) or 42P01 (relation
+-- does not exist), the session is almost certainly pointed at a different
+-- Supabase project. Run this first — it should report the IncluMarket schema:
+--
+--   select
+--     (select count(*) from pg_tables
+--       where schemaname = 'public' and tablename like 'im\_%') as im_tables,
+--     to_regprocedure('public.im_requesting_role()')   is not null as has_0009,
+--     to_regprocedure('public.im_decrement_variant_stock(bigint,integer)')
+--                                                      is not null as has_0010;
+--
+-- Expect roughly 29 tables and both flags true. Zero tables means you are in
+-- the wrong project — switch it in the dashboard selector and re-run.
+--
+-- Every statement below is guarded so a missing object is skipped with a
+-- notice rather than aborting the migration.
+-- ---------------------------------------------------------------------------
 
 begin;
 
@@ -34,7 +55,17 @@ begin;
 -- a ready-made privileged endpoint, and the next person to extend it would
 -- inherit that exposure silently.
 -- ---------------------------------------------------------------------------
-revoke all on function public.im_requesting_role() from public, anon, authenticated;
+do $guard$
+begin
+  if to_regprocedure('public.im_requesting_role()') is null then
+    raise notice 'skipped: public.im_requesting_role() not found (is this the right project?)';
+  else
+    revoke all on function public.im_requesting_role() from public, anon, authenticated;
+    alter function public.im_requesting_role() set search_path = '';
+    raise notice 'im_requesting_role: EXECUTE revoked, search_path tightened';
+  end if;
+end
+$guard$;
 
 -- ---------------------------------------------------------------------------
 -- im_current_profile_role() and im_current_profile_id() — DELIBERATELY LEFT
@@ -52,26 +83,46 @@ revoke all on function public.im_requesting_role() from public, anon, authentica
 -- id, and an anonymous caller gets null. There is no cross-user read and no
 -- escalation path.
 -- ---------------------------------------------------------------------------
-comment on function public.im_current_profile_role() is
-  'Used inside RLS policies. EXECUTE must remain granted to authenticated: policy expressions run with the querying role''s privileges, so revoking it breaks every policy that calls it. Safe as-is — resolves only from auth.uid().';
-
-comment on function public.im_current_profile_id() is
-  'Used inside RLS policies. EXECUTE must remain granted to authenticated — see im_current_profile_role. Safe as-is — resolves only from auth.uid().';
+do $guard$
+begin
+  if to_regprocedure('public.im_current_profile_role()') is not null then
+    comment on function public.im_current_profile_role() is
+      'Used inside RLS policies. EXECUTE must remain granted to authenticated: policy expressions run with the querying role''s privileges, so revoking it breaks every policy that calls it. Safe as-is — resolves only from auth.uid().';
+  end if;
+  if to_regprocedure('public.im_current_profile_id()') is not null then
+    comment on function public.im_current_profile_id() is
+      'Used inside RLS policies. EXECUTE must remain granted to authenticated — see im_current_profile_role. Safe as-is — resolves only from auth.uid().';
+  end if;
+end
+$guard$;
 
 -- ---------------------------------------------------------------------------
--- Tighten search_path from `public` to `''` on the SECURITY DEFINER functions.
+-- Tighten search_path from `public` to `''` on the remaining SECURITY DEFINER
+-- functions.
 --
 -- Each one already schema-qualifies every relation it touches, and otherwise
 -- uses only pg_catalog built-ins, so an empty search_path changes no behaviour
 -- while removing the possibility of an object in `public` shadowing something
 -- these functions resolve.
 -- ---------------------------------------------------------------------------
-alter function public.im_requesting_role() set search_path = '';
-alter function public.im_handle_new_auth_user() set search_path = '';
-alter function public.im_profiles_guard_privileged_columns() set search_path = '';
-alter function public.im_rate_limit_hit(text, text, integer, integer) set search_path = '';
-alter function public.im_decrement_variant_stock(bigint, integer) set search_path = '';
-alter function public.im_restore_variant_stock(bigint, integer) set search_path = '';
+do $guard$
+declare
+  fn text;
+begin
+  foreach fn in array array[
+    'public.im_handle_new_auth_user()',
+    'public.im_profiles_guard_privileged_columns()',
+    'public.im_decrement_variant_stock(bigint,integer)',
+    'public.im_restore_variant_stock(bigint,integer)'
+  ] loop
+    if to_regprocedure(fn) is null then
+      raise notice 'skipped search_path: % not found', fn;
+    else
+      execute format('alter function %s set search_path = %L', fn, '');
+    end if;
+  end loop;
+end
+$guard$;
 
 -- ---------------------------------------------------------------------------
 -- Rate-limit cleanup: bounded per call instead of a 1% dice roll.
@@ -82,8 +133,10 @@ alter function public.im_restore_variant_stock(bigint, integer) set search_path 
 --
 -- Now each call clears only the expired rows for the identifier it is already
 -- touching, which is indexed, constant-ish work and keeps a caller's own
--- history bounded. A small global sweep still runs occasionally for identifiers
--- that stopped calling entirely and would otherwise linger.
+-- history bounded. A rarer global sweep still runs for identifiers that stopped
+-- calling entirely and would otherwise linger.
+--
+-- CREATE OR REPLACE, so this is safe whether or not 0009 has been applied.
 -- ---------------------------------------------------------------------------
 create or replace function public.im_rate_limit_hit(
   p_bucket         text,
