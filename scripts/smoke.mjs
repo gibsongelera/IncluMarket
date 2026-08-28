@@ -144,10 +144,37 @@ assert(
   /updatePasswordAction[\s\S]{0,1600}clearRecoveryMarker\(/.test(authAction),
   "recovery marker is consumed after use"
 );
-const callback = read("app/auth/callback/route.ts");
-assert(callback.includes("recoveryCookie"), "callback mints the recovery marker");
+assert(
+  authAction.includes("export async function verifyPasswordResetCodeAction"),
+  "verifyPasswordResetCodeAction exported"
+);
+// A short numeric code is a small search space and this step grants a session.
+assert(
+  /verifyPasswordResetCodeAction[\s\S]{0,1200}rateLimit\(/.test(authAction),
+  "code redemption is rate limited"
+);
+assert(
+  /verifyPasswordResetCodeAction[\s\S]{0,1600}setRecoveryMarker\(/.test(authAction),
+  "code redemption mints the same marker as the link path"
+);
+// Supabase decides the code length server-side (8 digits on this project), so
+// nothing may hardcode 6 -- doing so silently truncates and every code fails.
+const landingSrc = read("components/LandingClient.tsx");
+assert(!/maxLength=\{6\}/.test(landingSrc), "code field does not assume a 6-digit code");
+// token_hash works in any browser; the PKCE code does not. Email links get
+// opened on a different device from the one that asked, so this route is what
+// makes recovery work at all for most people.
+const confirm = read("app/auth/confirm/route.ts");
+assert(confirm.includes("verifyOtp"), "/auth/confirm redeems a token_hash");
+assert(confirm.includes("token_hash"), "/auth/confirm reads token_hash");
+// Both email-link routes share this tail, so the guarantees below are asserted
+// once against the shared module rather than per route.
+const emailLink = read("lib/auth/email-link.ts");
+assert(emailLink.includes("recoveryCookie"), "email-link tail mints the recovery marker");
 // A recovery is not a consent event; logging it as one falsifies the RA 10173 trail.
-assert(callback.includes("isRecovery"), "callback distinguishes recovery from signup confirmation");
+assert(emailLink.includes("isRecovery"), "email-link tail separates recovery from signup confirmation");
+assert(read("app/auth/callback/route.ts").includes("completeEmailLink"), "callback uses the shared tail");
+assert(read("app/auth/confirm/route.ts").includes("completeEmailLink"), "confirm uses the shared tail");
 const resetPage = read("app/reset-password/page.tsx");
 assert(resetPage.includes("hasRecoveryMarker"), "reset page gates on the recovery marker");
 const landing = read("components/LandingClient.tsx");

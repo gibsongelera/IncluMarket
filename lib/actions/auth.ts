@@ -6,7 +6,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getSession } from "@/lib/session";
 import { guardByIp, rateLimit, RATE_LIMITED_MESSAGE } from "@/lib/security/rate-limit";
-import { clearRecoveryMarker, hasRecoveryMarker } from "@/lib/auth/recovery";
+import { clearRecoveryMarker, hasRecoveryMarker, setRecoveryMarker } from "@/lib/auth/recovery";
 import type { Role } from "@/lib/types";
 
 export interface AuthResult {
@@ -175,10 +175,17 @@ export async function resendConfirmationAction(email: string): Promise<AuthResul
 }
 
 /**
- * Where the emailed link lands. app/auth/callback/route.ts matches on the
- * `next` value to tell a recovery from a signup confirmation, so the two must
- * agree — and this whole URL has to be allow-listed in Supabase Auth under
- * Redirect URLs, or Supabase silently substitutes the Site URL.
+ * Where the emailed link lands.
+ *
+ * This is the FALLBACK target, used when the Supabase email template still
+ * builds its link from {{ .ConfirmationURL }}. That path is PKCE, so it only
+ * works if the link is opened in the browser that requested it.
+ *
+ * The template should instead point at /auth/confirm with {{ .TokenHash }},
+ * which works on any device. See lib/auth/email-link.ts.
+ *
+ * The URL must be allow-listed in Supabase Auth under Redirect URLs, or
+ * Supabase silently substitutes the Site URL.
  */
 const RESET_REDIRECT = "/auth/callback?next=/reset-password";
 
@@ -246,6 +253,62 @@ export async function requestPasswordResetAction(email: string): Promise<AuthRes
     message:
       "If that email has an account, we have sent a reset link. It expires in one hour — check your spam folder if it does not arrive.",
   };
+}
+
+/**
+ * Redeem the numeric code from the recovery email.
+ *
+ * The alternative to clicking the link, and the better one here. A link is
+ * redeemed by whichever browser opens it, which is rarely the browser that
+ * asked: people request a reset on a laptop and read mail on a phone. The PKCE
+ * link then fails outright, and the non-PKCE one strands a live session token
+ * in a URL fragment. A code has no such coupling — you carry six digits across
+ * to whatever device you are already sitting at.
+ *
+ * Requires the Supabase recovery template to include {{ .Token }}. Its length
+ * is a Supabase setting (8 digits on this project), so nothing here assumes
+ * one -- non-digits are stripped and whatever remains is sent as the token.
+ *
+ * Same neutral-response rule as the request step: a wrong code and an unknown
+ * address must be indistinguishable, or this becomes the enumeration oracle
+ * the request step refuses to be.
+ */
+export async function verifyPasswordResetCodeAction(
+  email: string,
+  code: string
+): Promise<AuthResult> {
+  const normalized = String(email || "").trim().toLowerCase();
+  const token = String(code || "").replace(/\D/g, "");
+
+  if (!normalized || !token) {
+    return { ok: false, error: "Enter the code from your email." };
+  }
+
+  // A short numeric code is a small search space. Without a limiter it is
+  // brute-forceable, and unlike the request step this one grants a session.
+  const perEmail = await rateLimit("password_reset_verify", `email:${normalized}`, {
+    limit: 8,
+    windowSeconds: 900,
+  });
+  const ipGuard = await guardByIp("password_reset_verify_ip", { limit: 20, windowSeconds: 900 });
+  if (!perEmail.ok || ipGuard) return { ok: false, error: RATE_LIMITED_MESSAGE };
+
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase.auth.verifyOtp({
+    email: normalized,
+    token,
+    type: "recovery",
+  });
+
+  if (error || !data.user) {
+    return { ok: false, error: "That code is not valid, or it has expired. Request a new one." };
+  }
+
+  // Same proof the link path mints, so updatePasswordAction cannot tell the
+  // two entry points apart and needs no second code path.
+  await setRecoveryMarker(data.user.id);
+
+  return { ok: true, message: "Code accepted. Choose your new password." };
 }
 
 /**

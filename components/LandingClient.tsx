@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   loginAction,
   requestPasswordResetAction,
+  verifyPasswordResetCodeAction,
   resendConfirmationAction,
   signupAction,
 } from "@/lib/actions/auth";
@@ -74,6 +75,12 @@ export function LandingClient({
     }
   }, []);
 
+  // The reset panel has two steps: ask for the email, then redeem the code that
+  // arrives. Kept in one panel so the address stays on screen while the code is
+  // typed — people check it against the message they are reading.
+  const [resetStep, setResetStep] = useState<"request" | "code">("request");
+  const [resetCode, setResetCode] = useState("");
+
   async function onRequestReset(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setResetErr(null);
@@ -82,10 +89,25 @@ export function LandingClient({
     const res = await requestPasswordResetAction(resetEmail);
     setBusy(false);
     if (!res.ok) {
-      setResetErr(res.error || "Could not send the reset link.");
+      setResetErr(res.error || "Could not send the reset code.");
       return;
     }
-    setResetMsg(res.message || "Check your email for the reset link.");
+    setResetMsg(res.message || "Check your email.");
+    setResetStep("code");
+  }
+
+  async function onVerifyCode(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setResetErr(null);
+    setBusy(true);
+    const res = await verifyPasswordResetCodeAction(resetEmail, resetCode);
+    setBusy(false);
+    if (!res.ok) {
+      setResetErr(res.error || "That code did not work.");
+      return;
+    }
+    // The action has set the recovery marker; the page re-checks it server-side.
+    window.location.href = "/reset-password";
   }
   const emailRef = useRef<HTMLInputElement>(null);
 
@@ -279,11 +301,16 @@ export function LandingClient({
                 <>
                   <h2 id="auth-title">Reset your password</h2>
                   <p className="muted">
-                    Enter the email address on your account. We will send you a link to choose a
-                    new password.
+                    {resetStep === "request"
+                      ? "Enter the email address on your account. We will email you a sign-in code."
+                      : "Enter the code we emailed you. It expires in one hour."}
                   </p>
 
-                  <form className="form" noValidate onSubmit={onRequestReset}>
+                  <form
+                    className="form"
+                    noValidate
+                    onSubmit={resetStep === "request" ? onRequestReset : onVerifyCode}
+                  >
                     {resetErr ? (
                       <p className="form-error" role="alert">
                         {resetErr}
@@ -308,21 +335,65 @@ export function LandingClient({
                           required
                           placeholder="you@example.com"
                           value={resetEmail}
+                          readOnly={resetStep === "code"}
                           onChange={(e) => setResetEmail(e.target.value)}
                         />
                       </div>
                     </div>
 
+                    {resetStep === "code" ? (
+                      <div className="field">
+                        <label htmlFor="reset-code">Code from your email</label>
+                        <input
+                          id="reset-code"
+                          name="code"
+                          type="text"
+                          inputMode="numeric"
+                          autoComplete="one-time-code"
+                          pattern="[0-9]*"
+                          maxLength={12}
+                          required
+                          autoFocus
+                          placeholder="12345678"
+                          className="otp-input"
+                          value={resetCode}
+                          onChange={(e) => setResetCode(e.target.value.replace(/\D/g, ""))}
+                        />
+                      </div>
+                    ) : null}
+
                     <button type="submit" className="btn btn--primary" disabled={busy}>
-                      {busy ? "Sending…" : "Send reset link"}
+                      {busy
+                        ? resetStep === "request"
+                          ? "Sending…"
+                          : "Checking…"
+                        : resetStep === "request"
+                          ? "Send code"
+                          : "Continue"}
                     </button>
 
                     <p className="hint">
+                      {resetStep === "code" ? (
+                        <button
+                          type="button"
+                          className="btn btn--ghost btn--sm"
+                          onClick={() => {
+                            setResetStep("request");
+                            setResetCode("");
+                            setResetErr(null);
+                            setResetMsg(null);
+                          }}
+                        >
+                          Use a different email
+                        </button>
+                      ) : null}{" "}
                       <button
                         type="button"
                         className="btn btn--ghost btn--sm"
                         onClick={() => {
                           setForgot(false);
+                          setResetStep("request");
+                          setResetCode("");
                           setResetMsg(null);
                           setResetErr(null);
                         }}

@@ -153,6 +153,20 @@
   border-radius: var(--radius-sm);
 }
 
+/* One-time code entry. Wide tracking because six digits get transcribed from
+   another screen, and a misread 0/O or 1/l costs the whole attempt. Sized in
+   ch and em so it still tracks the accessibility toolbar's root font. */
+.otp-input {
+  font-family: ui-monospace, "Cascadia Mono", "Segoe UI Mono", Menlo, monospace;
+  font-size: var(--step-2);
+  letter-spacing: .35em;
+  text-align: center;
+  /* letter-spacing pads the right of the last glyph, which visually
+     off-centres the group; this pulls it back. */
+  text-indent: .35em;
+  max-width: 12ch;
+}
+
 /* Lead paragraph. Existed as a class on the landing hero only; promoted here
    so static pages get the same treatment. */
 .lede { font-size: var(--step-1); color: var(--text-charcoal); }

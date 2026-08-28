@@ -55,6 +55,17 @@ export function recoveryCookie(authUserId: string) {
   };
 }
 
+/**
+ * Set the marker from a server action.
+ *
+ * The route handlers attach it to their redirect response instead; this is the
+ * code-entry path, where there is no redirect to hang it on.
+ */
+export async function setRecoveryMarker(authUserId: string): Promise<void> {
+  const c = recoveryCookie(authUserId);
+  (await cookies()).set(c.name, c.value, c.options);
+}
+
 /** True when the current request carries a valid marker for this user. */
 export async function hasRecoveryMarker(authUserId: string): Promise<boolean> {
   const value = (await cookies()).get(COOKIE)?.value;
