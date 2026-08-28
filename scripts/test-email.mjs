@@ -299,20 +299,39 @@ async function probeAuthMail() {
   // honest way to answer it is to ask Supabase to actually send one.
   console.log(`  ${dim("Link minting works. Delivery is separate — testing that now.")}`);
 
-  const send = await fetch(`${url}/auth/v1/recover?redirect_to=${encodeURIComponent(redirectTo)}`, {
-    method: "POST",
-    headers: {
-      apikey: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? serviceKey,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ email: to }),
-    signal: AbortSignal.timeout(20000),
-  });
+  const recover = () =>
+    fetch(`${url}/auth/v1/recover?redirect_to=${encodeURIComponent(redirectTo)}`, {
+      method: "POST",
+      headers: {
+        apikey: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? serviceKey,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ email: to }),
+      signal: AbortSignal.timeout(20000),
+    });
+
+  let send = await recover();
+
+  // Supabase enforces a per-address cooldown of about a minute. Running this
+  // script twice in a row therefore answers 429 and tells you nothing about
+  // the mailer — which is the one question the section exists to answer. Wait
+  // it out once rather than reporting an inconclusive result as if it were a
+  // finding. A second 429 is real and gets reported.
+  if (send.status === 429) {
+    const body429 = await send.clone().text();
+    const secs = Math.min(Number(body429.match(/after (\d+) seconds/)?.[1] ?? 60) + 5, 90);
+    process.stdout.write(`  ${dim(`cooldown active — waiting ${secs}s so this run can answer...`)}`);
+    await new Promise((r) => setTimeout(r, secs * 1000));
+    process.stdout.write("\r\u001b[2K");
+    send = await recover();
+  }
 
   if (send.ok) {
-    console.log(`  ${ok("ok")}     Supabase accepted the recovery email for ${to}.\n`);
-    console.log(`  ${dim("Check the inbox. If nothing arrives, the project is on Supabase's")}`);
-    console.log(`  ${dim("built-in mailer, which is rate limited and not for production.")}\n`);
+    console.log(`  ${ok("ok")}     Supabase accepted the recovery email for ${to}.`);
+    console.log(
+      `  ${dim("That means the SMTP handoff succeeded — with custom SMTP configured,")}`
+    );
+    console.log(`  ${dim("the message is now your provider's to deliver. Check the inbox.")}\n`);
     return;
   }
 
