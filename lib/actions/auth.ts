@@ -224,7 +224,20 @@ export async function requestPasswordResetAction(email: string): Promise<AuthRes
     });
     if (error) {
       // Logged, not surfaced — the caller still sees the neutral message.
-      console.error("[auth] password reset request failed:", error.message);
+      //
+      // Log the status and name too, not just the message. Supabase's mailer
+      // failures arrive as AuthRetryableFetchError with an EMPTY message, so
+      // logging error.message alone prints "{}" and tells you nothing about
+      // the one failure mode that silences this whole feature.
+      console.error(
+        `[auth] password reset request failed: ${error.name} status=${error.status ?? "?"} ` +
+          `message=${JSON.stringify(error.message)}` +
+          (error.status === 500
+            ? " — a 500 with an empty message is Supabase's auth mailer failing." +
+              " Auth emails do NOT use EMAIL_PROVIDER; configure custom SMTP in" +
+              " Supabase (Project Settings -> Authentication -> SMTP Settings)."
+            : "")
+      );
     }
   }
 

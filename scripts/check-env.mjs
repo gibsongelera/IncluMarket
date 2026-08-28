@@ -330,7 +330,14 @@ async function checkResend() {
     headers: { Authorization: `Bearer ${key}`, Accept: "application/json" },
   });
 
-  if (!r.ok) {
+  // Resend issues keys at two permission levels, and this probe reads domains,
+  // which only a full-access key may do. A "Sending access" key answers 401
+  // with a message saying exactly that — it is a VALID key doing its job, and
+  // it is the better one to deploy: it cannot enumerate or alter the account.
+  // Treating that 401 as a dead key would send you hunting a non-existent bug.
+  const restricted = /restricted to only send/i.test(r.body?.message ?? "");
+
+  if (!r.ok && !restricted) {
     return add(
       "Email",
       "error",
@@ -339,7 +346,29 @@ async function checkResend() {
     );
   }
 
-  add("Email", "ok", "RESEND_API_KEY works.");
+  if (restricted) {
+    // No domain list is readable, so the verification check below cannot run.
+    // Say so in the hint rather than staying silent: an unverified sending
+    // domain is the commonest reason mail never arrives, and silence here
+    // would read as "verified".
+    add(
+      "Email",
+      "ok",
+      "RESEND_API_KEY works — a sending-only key (least privilege).",
+      `A sending-only key cannot list domains, so this script cannot confirm ${(from ?? "").split("@")[1] || "the EMAIL_FROM domain"} is verified. npm run test-email -- <you@address> settles it either way.`
+    );
+    if ((from ?? "").endsWith("@resend.dev")) {
+      add(
+        "Email",
+        "warn",
+        `EMAIL_FROM is ${from}, the shared Resend test sender.`,
+        "Delivery is restricted to the address that owns the Resend account. Real buyers and sellers will NOT receive mail. Verify a domain at resend.com/domains before the defence."
+      );
+    }
+    return;
+  }
+
+  add("Email", "ok", "RESEND_API_KEY works (full access).");
 
   // The sending-domain rule is where Resend surprises people: with no verified
   // domain you may only send FROM onboarding@resend.dev, and only TO the
