@@ -3,7 +3,6 @@
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getSession } from "@/lib/session";
-import { clearCartAction, getCartItems } from "@/lib/actions/cart";
 import { createNotification } from "@/lib/notify";
 import { queueEmail } from "@/lib/email/send";
 import {
@@ -12,7 +11,8 @@ import {
   toCentavos,
 } from "@/lib/payments/paymongo";
 import { boundedText } from "@/lib/validation/data-url";
-import { SHIPPING_FEE } from "@/lib/pricing";
+import { priceCartForBuyer } from "@/lib/pricing/engine";
+import type { PricedLine } from "@/lib/pricing/core";
 import type { Priority } from "@/lib/types";
 
 const LOW_STOCK_THRESHOLD = 5;
@@ -31,6 +31,8 @@ export interface PlaceOrderInput {
   shippingCity: string;
   shippingPhone: string;
   paymentMethod: PaymentMethod;
+  /** Check out only these cart lines; omitted = the whole cart. */
+  cartItemIds?: number[];
 }
 
 export interface PlaceOrderResult extends ActionResult {
@@ -45,19 +47,21 @@ function cleanPhone(input: string): string {
   return String(input || "").replace(/[\s()-]/g, "");
 }
 
+/** What the buyer sees on PayMongo's page: the product, never "Item #12". */
+function checkoutLineName(line: Pick<PricedLine, "title" | "variantLabel">): string {
+  return line.variantLabel && line.variantLabel !== "Standard"
+    ? `${line.title} — ${line.variantLabel}`
+    : line.title;
+}
+
 /**
  * Place an order.
  *
- * Previously took NO arguments: CheckoutClient collected name, address, city,
- * phone and a payment choice, validated them in the browser, and then called
- * `placeOrder()` — discarding every field. im_orders.shipping_* and
- * payment_provider were null on every order ever placed, and the admin Excel
- * export had columns for them that were permanently blank.
- *
- * Stock was also never validated. The decrement was `Math.max(0, stock - qty)`,
- * so ordering 500 of a 3-stock item succeeded silently and set stock to 0. The
- * only ceiling was a `stockCap` argument passed in from the client, which any
- * caller could omit.
+ * Prices come from lib/pricing/engine.ts — the same pipeline the cart and
+ * checkout pages render — so the flash-sale price a buyer saw is the price
+ * charged (it used to be base_price, B-02) and a variant that does not belong
+ * to its product can never be ordered (N-01). Nothing about price, stock or
+ * the variant is taken from the browser.
  */
 export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResult> {
   const session = await getSession();
@@ -74,7 +78,10 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
   if (!shippingAddress) return { ok: false, error: "Please enter a delivery address." };
   if (!shippingCity) return { ok: false, error: "Please enter a city." };
   if (!PHONE_RE.test(phone))
-    return { ok: false, error: "Please enter a valid Philippine contact number." };
+    return {
+      ok: false,
+      error: "Please enter a valid Philippine contact number, for example 09171234567.",
+    };
 
   const paymentMethod: PaymentMethod = input?.paymentMethod === "paymongo" ? "paymongo" : "cod";
 
@@ -85,51 +92,22 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
     };
   }
 
-  const items = await getCartItems();
-  if (!items.length) return { ok: false, error: "Your cart is empty." };
+  // ---- price the cart on the server ---------------------------------------
+  const selected = Array.isArray(input?.cartItemIds)
+    ? input.cartItemIds.map(Number).filter((n) => Number.isInteger(n) && n > 0)
+    : null;
+  let cart;
+  try {
+    cart = await priceCartForBuyer(session.user_id, selected);
+  } catch {
+    return { ok: false, error: "We could not reach the shop. Your cart is safe — please try again." };
+  }
+  if (!cart.lines.length) return { ok: false, error: "Your cart is empty." };
+  if (!cart.purchasable) return { ok: false, error: cart.firstProblem || "Please review your cart." };
 
   const db = createAdminClient();
-
-  // ---- validate stock BEFORE writing anything -----------------------------
-  const variantLines = items.filter((it) => it.variant_id);
-  const variantIds = variantLines.map((it) => it.variant_id as number);
-
-  if (variantIds.length) {
-    const { data: variants } = await db
-      .from("im_product_variants")
-      .select("id, product_id, stock_qty")
-      .in("id", variantIds);
-
-    const stockById = new Map((variants ?? []).map((v) => [v.id, Number(v.stock_qty)]));
-    const productIds = [...new Set((variants ?? []).map((v) => v.product_id))];
-    const { data: titles } = await db.from("im_products").select("id, title").in("id", productIds);
-    const titleById = new Map((titles ?? []).map((t) => [t.id, t.title as string]));
-
-    for (const line of variantLines) {
-      const available = stockById.get(line.variant_id as number);
-      if (available === undefined) {
-        return { ok: false, error: "One of the items in your cart is no longer available." };
-      }
-      if (available < line.quantity) {
-        const title = titleById.get(line.product_id) ?? "an item in your cart";
-        return {
-          ok: false,
-          error:
-            available === 0
-              ? `${title} just sold out. Please remove it from your cart.`
-              : `Only ${available} left of ${title}. Please lower the quantity.`,
-        };
-      }
-    }
-  }
-
-  const subtotal = items.reduce(
-    (n, it) => n + Number(it.unit_price || 0) * Number(it.quantity || 0),
-    0
-  );
-  // Computed server-side. The checkout page renders the same constant, but the
-  // authoritative total must never come from the client.
-  const total = subtotal + SHIPPING_FEE;
+  const lines = cart.lines;
+  const total = cart.grandTotal;
 
   // ---- create the order ----------------------------------------------------
   const { data: order, error } = await db
@@ -145,9 +123,9 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
       shipping_city: shippingCity,
       shipping_phone: phone,
     })
-    .select("*")
+    .select("id")
     .single();
-  if (error || !order) return { ok: false, error: error?.message || "Could not place order." };
+  if (error || !order) return { ok: false, error: "Could not place your order. Please try again." };
 
   await db.from("im_order_status_history").insert({
     order_id: order.id,
@@ -156,15 +134,21 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
   });
 
   const { error: itemsErr } = await db.from("im_order_items").insert(
-    items.map((it) => ({
+    lines.map((l) => ({
       order_id: order.id,
-      product_id: it.product_id,
-      variant_id: it.variant_id || null,
-      quantity: it.quantity,
-      unit_price: it.unit_price,
+      product_id: l.productId,
+      variant_id: l.variantId,
+      quantity: l.quantity,
+      unit_price: l.unitPrice,
     }))
   );
-  if (itemsErr) return { ok: false, error: itemsErr.message };
+  if (itemsErr) {
+    // An order with no lines is worse than no order: it shows up in My Orders
+    // and in seller and admin reports with a total and nothing in it (B-07).
+    // History rows cascade with the order.
+    await db.from("im_orders").delete().eq("id", order.id);
+    return { ok: false, error: "Could not place your order. Your cart is safe — please try again." };
+  }
 
   // ---- reserve stock atomically -------------------------------------------
   // im_decrement_variant_stock only succeeds when stock_qty >= qty, so the
@@ -172,9 +156,8 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
   // PostgREST gives us no multi-statement transaction here, so a partial
   // failure is unwound with compensating restores rather than a rollback.
   const reserved: { variantId: number; qty: number }[] = [];
-
-  for (const line of variantLines) {
-    const variantId = line.variant_id as number;
+  for (const line of lines) {
+    const variantId = line.variantId as number;
     const { data: decremented } = await db.rpc("im_decrement_variant_stock", {
       p_variant_id: variantId,
       p_qty: line.quantity,
@@ -187,14 +170,15 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
       await db.from("im_orders").delete().eq("id", order.id);
       return {
         ok: false,
-        error: "Someone just bought the last of one of your items. Please review your cart.",
+        error: `Someone just bought the last of ${line.title}. Please review your cart.`,
       };
     }
     reserved.push({ variantId, qty: line.quantity });
   }
 
-  await alertLowStock(db, variantLines);
-  await notifySellersOfNewOrder(db, items, order.id);
+  const orderedLines = lines.map((l) => ({ variant_id: l.variantId as number, product_id: l.productId }));
+  await alertLowStock(db, orderedLines);
+  await notifySellersOfNewOrder(db, orderedLines, order.id);
 
   await db.from("im_audit_logs").insert({
     actor_id: session.user_id,
@@ -203,24 +187,27 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
     target: `order:${order.id}`,
   });
 
+  const cartItemIds = lines.map((l) => l.cartItemId).filter((n): n is number => n != null);
+
   // ---- settle --------------------------------------------------------------
   if (paymentMethod === "paymongo") {
     const origin = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
     const checkout = await createCheckoutSession({
       orderId: order.id,
-      lines: items.map((it) => ({
-        name: `Item #${it.product_id}`,
-        amountCentavos: toCentavos(it.unit_price),
-        quantity: it.quantity,
+      lines: lines.map((l) => ({
+        name: checkoutLineName(l),
+        amountCentavos: toCentavos(l.unitPrice),
+        quantity: l.quantity,
+        description: l.sale ? `${l.sale.percent}% flash sale price` : undefined,
       })),
-      shippingCentavos: toCentavos(SHIPPING_FEE),
+      shippingCentavos: toCentavos(cart.shippingTotal),
       billing: { name: shippingName, email: session.email, phone },
       successUrl: `${origin}/buyer/orders?paid=${order.id}`,
       cancelUrl: `${origin}/buyer/checkout?cancelled=${order.id}`,
     });
 
     if (!checkout.ok) {
-      // Give the stock back and mark the order dead — the buyer never paid.
+      // Give the stock back and mark the payment failed — the buyer never paid.
       for (const r of reserved) {
         await db.rpc("im_restore_variant_stock", { p_variant_id: r.variantId, p_qty: r.qty });
       }
@@ -230,14 +217,16 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
 
     await db.from("im_orders").update({ payment_reference: checkout.sessionId }).eq("id", order.id);
 
-    // The cart is deliberately NOT cleared here. It is cleared by the webhook
-    // once payment succeeds, so abandoning the hosted checkout page leaves the
-    // buyer cart intact and they can retry.
+    // The cart is deliberately NOT cleared here. The webhook removes the
+    // ordered lines once payment succeeds, so abandoning the hosted checkout
+    // page leaves the buyer's cart intact and they can retry.
     revalidatePath("/buyer/orders");
     return { ok: true, orderId: order.id, redirectUrl: checkout.checkoutUrl };
   }
 
-  await clearCartAction();
+  if (cartItemIds.length) {
+    await db.from("im_cart_items").delete().eq("user_id", session.user_id).in("id", cartItemIds);
+  }
   await queueEmail(
     "order_confirmation",
     { email: session.email, name: session.name },

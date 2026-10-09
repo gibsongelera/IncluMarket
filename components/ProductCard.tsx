@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import type { Product } from "@/lib/types";
 import { money, productImageSrc } from "@/lib/format";
+import { applyPercentOff } from "@/lib/pricing/core";
 import { toast } from "@/lib/toast";
 import { toggleWishlistAction } from "@/lib/actions/wishlist";
 import { StarRating } from "./StarRating";
@@ -92,10 +93,13 @@ export function ProductCard({
             {flashSale ? (
               <>
                 <span className="product-card__price--sale">
-                  {money(product.base_price * (1 - flashSale.discountPercent / 100))}
+                  {money(applyPercentOff(product.base_price, flashSale.discountPercent))}
                 </span>
-                <span className="product-card__price--original">{money(product.base_price)}</span>
-                <span className="badge badge--red">-{flashSale.discountPercent}%</span>
+                <s className="product-card__price--original">
+                  <span className="sr-only">was </span>
+                  {money(product.base_price)}
+                </s>
+                <span className="badge badge--sale">−{flashSale.discountPercent}%</span>
               </>
             ) : (
               money(product.base_price)

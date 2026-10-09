@@ -35,3 +35,23 @@ export async function createNotification(input: NotifyInput): Promise<void> {
     link: input.link || null,
   });
 }
+
+/** One notification per active admin — moderation queues, refunds, flags. */
+export async function notifyAdmins(input: Omit<NotifyInput, "userId">): Promise<void> {
+  const db = createAdminClient();
+  const { data: admins } = await db
+    .from("im_profiles")
+    .select("id")
+    .eq("role", "admin")
+    .eq("account_status", "active");
+  if (!admins?.length) return;
+  await db.from("im_notifications").insert(
+    admins.map((a) => ({
+      user_id: a.id,
+      type: input.type,
+      title: input.title,
+      body: input.body || null,
+      link: input.link || null,
+    }))
+  );
+}

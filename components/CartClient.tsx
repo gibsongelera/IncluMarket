@@ -1,190 +1,197 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Icon } from "./Icon";
 import { money, svgPlaceholder } from "@/lib/format";
 import { toast } from "@/lib/toast";
-import {
-  removeFromCartAction,
-  setCartQuantityAction,
-} from "@/lib/actions/cart";
-import type { CartItem } from "@/lib/types";
+import { removeFromCartAction, setCartQuantityAction } from "@/lib/actions/cart";
+import type { PricedCart, PricedLine } from "@/lib/pricing/core";
 
-type ProductLite = {
-  id: number;
-  title: string;
-  seller_id: number;
-  image: string | null;
-  images: string[] | null;
-};
-type VariantLite = {
-  id: number;
-  color_name: string;
-  size: string | null;
-  stock_qty: number;
-  sku_code: string;
-};
-type SellerLite = { id: number; name: string };
-
-function imgSrc(p?: ProductLite): string {
-  if (p?.images && p.images.length) return p.images[0];
-  return svgPlaceholder(p?.image);
+function lineImage(line: PricedLine): string {
+  return line.image || svgPlaceholder(null);
 }
 
+/**
+ * The cart, grouped by seller. Every figure comes from the server-side
+ * pricing engine (lib/pricing/engine.ts); this component only renders it and
+ * asks the server to change quantities.
+ */
 export function CartClient({
-  items: initialItems,
-  products,
-  variants,
-  sellers,
+  cart,
+  sellerNames,
 }: {
-  items: CartItem[];
-  products: ProductLite[];
-  variants: VariantLite[];
-  sellers: SellerLite[];
+  cart: PricedCart;
+  sellerNames: Record<number, string>;
 }) {
   const router = useRouter();
-  const items = initialItems;
+  const [busyKey, setBusyKey] = useState<string | null>(null);
 
-  const productById = (id: number) => products.find((p) => p.id === id);
-  const variantById = (id: number) => variants.find((v) => v.id === id);
-  const sellerById = (id: number) => sellers.find((s) => s.id === id);
-
-  async function changeQty(it: CartItem, quantity: number, stockCap: number) {
-    const res = await setCartQuantityAction(it.product_id, it.variant_id || null, quantity, stockCap);
+  async function changeQty(line: PricedLine, quantity: number) {
+    if (line.cartItemId == null || busyKey) return;
+    setBusyKey(line.key);
+    const res = await setCartQuantityAction(line.cartItemId, quantity);
+    setBusyKey(null);
     if (!res.ok) {
       toast(res.error || "Could not update quantity.", "error");
       return;
     }
+    if (res.notice) toast(res.notice, "info");
     router.refresh();
   }
 
-  async function remove(it: CartItem) {
-    const res = await removeFromCartAction(it.product_id, it.variant_id || null);
+  async function remove(line: PricedLine) {
+    if (line.cartItemId == null || busyKey) return;
+    setBusyKey(line.key);
+    const res = await removeFromCartAction(line.cartItemId);
+    setBusyKey(null);
     if (!res.ok) {
       toast(res.error || "Could not remove item.", "error");
       return;
     }
-    toast("Item removed.", "success");
+    toast(`Removed ${line.title}.`, "success");
     router.refresh();
   }
 
-  if (items.length === 0) {
+  if (cart.lines.length === 0) {
     return (
-      <p className="empty" id="cart-empty">
-        Your cart is empty. <Link href="/home">Start shopping.</Link>
-      </p>
+      <div className="empty" id="cart-empty">
+        <p>Your cart is empty.</p>
+        <Link href="/home" className="btn btn--primary">
+          Start shopping
+        </Link>
+      </div>
     );
   }
 
-  const groups: Record<
-    string,
-    { seller: SellerLite | undefined; rows: { it: CartItem; p: ProductLite | undefined }[] }
-  > = {};
-  let subtotal = 0;
-  items.forEach((it) => {
-    const p = productById(it.product_id);
-    const sid = p ? p.seller_id : 0;
-    if (!groups[sid]) groups[sid] = { seller: sellerById(sid), rows: [] };
-    groups[sid].rows.push({ it, p });
-    subtotal += it.unit_price * it.quantity;
-  });
-
   return (
-    <>
-      <div id="cart-body">
-        {Object.keys(groups).map((sid) => {
-          const g = groups[sid];
-          const groupTotal = g.rows.reduce((n, r) => n + r.it.unit_price * r.it.quantity, 0);
-          return (
-            <section
-              className="cart-group"
-              key={sid}
-              aria-label={`Items from ${g.seller ? g.seller.name : "Seller"}`}
-            >
-              <header className="cart-group__head">
-                <span>
-                  <Icon name="box" size={18} />
-                </span>
-                <strong>{g.seller ? g.seller.name : "PWD Seller"}</strong>
-                <span className="badge">
-                  {g.rows.length} item{g.rows.length > 1 ? "s" : ""}
-                </span>
-              </header>
-              <div className="cart-group__body">
-                {g.rows.map((r) => {
-                  const it = r.it;
-                  const p = r.p;
-                  const v = variantById(it.variant_id);
-                  const stockCap = v ? v.stock_qty : it.quantity;
-                  return (
-                    <div className="cart-item" key={`${it.product_id}-${it.variant_id}`}>
-                      <div className="cart-item__thumb">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={imgSrc(p)} alt="" />
+    <div id="cart-body">
+      {cart.groups.map((g) => {
+        const shop = sellerNames[g.sellerId] || "PWD Seller";
+        return (
+          <section className="cart-group" key={g.sellerId} aria-label={`Items from ${shop}`}>
+            <header className="cart-group__head">
+              <span aria-hidden="true">
+                <Icon name="box" size={18} />
+              </span>
+              <strong>{shop}</strong>
+              <span className="badge">
+                {g.lines.length} item{g.lines.length > 1 ? "s" : ""}
+              </span>
+            </header>
+            <div className="cart-group__body">
+              {g.lines.map((line) => {
+                const max = Math.max(1, Math.min(line.available, 99));
+                const busy = busyKey === line.key;
+                return (
+                  <div className="cart-item" key={line.key}>
+                    <div className="cart-item__thumb">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={lineImage(line)} alt="" />
+                    </div>
+                    <div>
+                      <div className="cart-item__title">
+                        <Link href={`/buyer/product/${line.productId}`}>{line.title}</Link>
                       </div>
-                      <div>
-                        <div className="cart-item__title">{p ? p.title : "Item"}</div>
-                        <div className="cart-item__meta">
-                          {v ? `${v.color_name} · ${v.size} · SKU ${v.sku_code}` : ""}
-                        </div>
-                      </div>
-                      <div className="cart-item__price">{money(it.unit_price)}</div>
-                      <div className="qty-ctrl">
+                      {line.variantLabel ? <div className="cart-item__meta">{line.variantLabel}</div> : null}
+                      {line.problemText ? (
+                        <p className="notice notice--warning cart-item__problem" role="status">
+                          {line.problemText}
+                        </p>
+                      ) : null}
+                    </div>
+                    <div className="cart-item__price">
+                      {line.sale ? (
+                        <>
+                          <span className="price price--sale">{money(line.unitPrice)}</span>{" "}
+                          <s className="price price--was">
+                            <span className="sr-only">was </span>
+                            {money(line.baseUnitPrice)}
+                          </s>
+                        </>
+                      ) : (
+                        <span className="price">{money(line.unitPrice)}</span>
+                      )}
+                    </div>
+                    {line.problem === "unavailable" || line.problem === "needs_option" ? (
+                      <span aria-hidden="true" />
+                    ) : (
+                      <div className="qty-ctrl" role="group" aria-label={`Quantity of ${line.title}`}>
                         <button
                           type="button"
                           aria-label="Decrease quantity"
-                          onClick={() => changeQty(it, it.quantity - 1, stockCap)}
+                          disabled={busy || line.quantity <= 1}
+                          onClick={() => changeQty(line, line.quantity - 1)}
                         >
-                          -
+                          −
                         </button>
                         <input
                           type="number"
                           min={1}
-                          max={stockCap}
-                          value={it.quantity}
+                          max={max}
+                          defaultValue={line.quantity}
+                          key={`${line.key}-${line.quantity}`}
                           aria-label="Quantity"
-                          onChange={(e) =>
-                            changeQty(it, Number(e.target.value), stockCap)
-                          }
+                          disabled={busy}
+                          onBlur={(e) => {
+                            const n = Number(e.target.value);
+                            if (n !== line.quantity) changeQty(line, n);
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                          }}
                         />
                         <button
                           type="button"
                           aria-label="Increase quantity"
-                          onClick={() => changeQty(it, it.quantity + 1, stockCap)}
+                          disabled={busy || line.quantity >= max}
+                          onClick={() => changeQty(line, line.quantity + 1)}
                         >
                           +
                         </button>
                       </div>
-                      <button
-                        type="button"
-                        className="btn btn--ghost btn--sm"
-                        aria-label="Remove item"
-                        onClick={() => remove(it)}
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-              <footer className="cart-group__foot">
-                Subtotal for this shop: <strong>{money(groupTotal)}</strong>
-              </footer>
-            </section>
-          );
-        })}
+                    )}
+                    <button
+                      type="button"
+                      className="btn btn--ghost btn--sm"
+                      aria-label={`Remove ${line.title}`}
+                      disabled={busy}
+                      onClick={() => remove(line)}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+            <footer className="cart-group__foot">
+              Subtotal for this shop: <strong>{money(g.subtotal)}</strong>
+              {g.shippingFee ? <> · Shipping {money(g.shippingFee)}</> : null}
+            </footer>
+          </section>
+        );
+      })}
 
-        <div className="cart-summary--sticky">
-          <span className="muted">
-            {items.length} item{items.length > 1 ? "s" : ""} in cart
-          </span>
-          <span className="total">Total: {money(subtotal)}</span>
-          <Link href="/buyer/checkout" className="btn btn--danger">
-            Checkout &rarr;
+      <div className="cart-summary--sticky">
+        <span className="muted">
+          {cart.itemCount} item{cart.itemCount === 1 ? "" : "s"}
+          {cart.saleSavings > 0 ? <> · You save {money(cart.saleSavings)}</> : null}
+        </span>
+        <span className="total">Total: {money(cart.grandTotal)}</span>
+        {cart.purchasable ? (
+          <Link href="/buyer/checkout" className="btn btn--primary">
+            Check out
           </Link>
-        </div>
+        ) : (
+          // No dead, disabled button: say what stands in the way instead. The
+          // problem line itself is marked in the list above.
+          <span className="cart-summary__blocked" role="status">
+            <strong>Check out is paused</strong>
+            <span className="hint">{cart.firstProblem}</span>
+          </span>
+        )}
       </div>
-    </>
+    </div>
   );
 }

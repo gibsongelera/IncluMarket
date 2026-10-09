@@ -344,6 +344,23 @@ export async function getActiveFlashSales(): Promise<Record<number, FlashSale>> 
   return map;
 }
 
+/** The flash sale running on one product right now, if any. */
+export async function getActiveSaleForProduct(productId: number): Promise<FlashSale | null> {
+  const nowIso = new Date().toISOString();
+  const data = rows<FlashSale>(
+    "flash sale",
+    await db()
+      .from("im_flash_sales")
+      .select("*")
+      .eq("product_id", productId)
+      .lte("starts_at", nowIso)
+      .gte("ends_at", nowIso)
+      .order("starts_at", { ascending: false })
+      .limit(1)
+  );
+  return data[0] ?? null;
+}
+
 export async function getConversationsForUser(
   userId: number,
   role: "buyer" | "seller"
@@ -469,6 +486,116 @@ export async function getWishlistProducts(userId: number): Promise<Product[]> {
   const byId = new Map(products.map((p) => [p.id, p]));
   const ordered = ids.map((id) => byId.get(id)).filter((p): p is Product => Boolean(p));
   return hydrateImages(ordered);
+}
+
+// ---- scoped readers ----------------------------------------------------------
+// The unscoped readers above (getProfiles, getAllProducts, getOrders,
+// getOrderItems, getReviews, getVariants, getTicketResponses) return whole
+// tables and are for admin pages only — scripts/check-page-props.mjs fails the
+// build if any other page imports them. Everything below reads only the rows a
+// page is about.
+
+/** Lightweight product rows for listing lines: title plus first photo. */
+export interface ProductThumb {
+  id: number;
+  title: string;
+  image: string | null;
+  images: string[];
+  seller_id: number;
+}
+
+export async function getProductThumbs(ids: number[]): Promise<ProductThumb[]> {
+  const unique = [...new Set(ids.filter((n) => Number.isInteger(n) && n > 0))];
+  if (!unique.length) return [];
+  const products = rows<{ id: number; title: string; image: string | null; seller_id: number }>(
+    "products",
+    await db().from("im_products").select("id, title, image, seller_id").in("id", unique)
+  );
+  const imgs = rows<{ product_id: number; url: string }>(
+    "product images",
+    await db()
+      .from("im_product_images")
+      .select("product_id, url")
+      .in("product_id", unique)
+      .eq("position", 0)
+  );
+  const first = new Map(imgs.map((i) => [i.product_id, i.url]));
+  return products.map((p) => ({ ...p, images: first.has(p.id) ? [first.get(p.id)!] : [] }));
+}
+
+export async function getVariantsByIds(ids: number[]): Promise<ProductVariant[]> {
+  const unique = [...new Set(ids.filter((n) => Number.isInteger(n) && n > 0))];
+  if (!unique.length) return [];
+  return rows<ProductVariant>(
+    "variants",
+    await db().from("im_product_variants").select("*").in("id", unique)
+  );
+}
+
+export async function getVariantsForProducts(productIds: number[]): Promise<ProductVariant[]> {
+  const unique = [...new Set(productIds)];
+  if (!unique.length) return [];
+  return rows<ProductVariant>(
+    "variants",
+    await db().from("im_product_variants").select("*").in("product_id", unique).order("id")
+  );
+}
+
+export async function getOrderItemsForOrders(orderIds: number[]): Promise<OrderItem[]> {
+  const unique = [...new Set(orderIds)];
+  if (!unique.length) return [];
+  return rows<OrderItem>(
+    "order items",
+    await db().from("im_order_items").select("*").in("order_id", unique).order("id")
+  );
+}
+
+export async function getOrderItemsForProducts(productIds: number[]): Promise<OrderItem[]> {
+  const unique = [...new Set(productIds)];
+  if (!unique.length) return [];
+  return rows<OrderItem>(
+    "order items",
+    await db().from("im_order_items").select("*").in("product_id", unique).order("id")
+  );
+}
+
+export async function getOrdersByIds(ids: number[]): Promise<Order[]> {
+  const unique = [...new Set(ids)];
+  if (!unique.length) return [];
+  return rows<Order>(
+    "orders",
+    await db().from("im_orders").select("*").in("id", unique).order("created_at", { ascending: false })
+  );
+}
+
+export async function getReviewsForProducts(productIds: number[]): Promise<ProductReview[]> {
+  const unique = [...new Set(productIds)];
+  if (!unique.length) return [];
+  return rows<ProductReview>(
+    "reviews",
+    await db()
+      .from("im_product_reviews")
+      .select("*")
+      .in("product_id", unique)
+      .order("created_at", { ascending: false })
+  );
+}
+
+export async function getReviewedProductIds(buyerId: number): Promise<number[]> {
+  const data = rows<{ product_id: number }>(
+    "reviews",
+    await db().from("im_product_reviews").select("product_id").eq("buyer_id", buyerId)
+  );
+  return data.map((r) => r.product_id);
+}
+
+export async function getTicketResponsesForTickets(ticketIds: number[]): Promise<TicketResponse[]> {
+  const unique = [...new Set(ticketIds)];
+  if (!unique.length) return [];
+  return rows<TicketResponse>(
+    "ticket responses",
+    await db().from("im_ticket_responses").select("*").in("ticket_id", unique).order("created_at")
+  );
 }
 
 // ---- aggregation helpers ---------------------------------------------------

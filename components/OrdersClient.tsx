@@ -1,12 +1,13 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { money, formatDateTime, svgPlaceholder } from "@/lib/format";
 import { toast } from "@/lib/toast";
 import { Pill } from "./Pill";
 import { StarInput } from "./StarInput";
 import { addReview } from "@/lib/actions/shop";
+import { abandonPayment, retryPayment } from "@/lib/actions/payments-buyer";
 import { OrderTimeline } from "./OrderTimeline";
 import type { Order, OrderItem, OrderStatus, OrderStatusHistoryEntry } from "@/lib/types";
 import { Tabs, TabPanel } from "./Tabs";
@@ -56,6 +57,47 @@ export function OrdersClient({
     const list = filter === "all" ? orders : orders.filter((o) => o.order_status === filter);
     return list;
   }, [orders, filter]);
+
+  const [payingId, setPayingId] = useState<number | null>(null);
+  const handledReturn = useRef(false);
+
+  // Returning from PayMongo after "Pay now": ?cancelled=<id> releases the hold
+  // again; ?paid=<id> just confirms (the webhook does the real work).
+  useEffect(() => {
+    if (handledReturn.current) return;
+    handledReturn.current = true;
+    const params = new URLSearchParams(window.location.search);
+    const cancelled = Number(params.get("cancelled"));
+    if (Number.isInteger(cancelled) && cancelled > 0) {
+      void abandonPayment(cancelled).then(() => {
+        toast("Payment cancelled. Nothing was charged.", "info");
+        router.replace("/buyer/orders");
+      });
+    } else if (params.get("paid")) {
+      toast("Thank you! We'll confirm as soon as PayMongo tells us the payment went through.", "success");
+      router.replace("/buyer/orders");
+    }
+  }, [router]);
+
+  function awaitingPayment(o: Order): boolean {
+    return (
+      o.payment_provider === "paymongo" &&
+      o.order_status === "pending" &&
+      (o.payment_status === "pending" || o.payment_status === "failed")
+    );
+  }
+
+  async function payNow(orderId: number) {
+    setPayingId(orderId);
+    const res = await retryPayment(orderId);
+    if (!res.ok || !res.redirectUrl) {
+      setPayingId(null);
+      toast(res.error || "Could not start the payment.", "error");
+      router.refresh();
+      return;
+    }
+    window.location.href = res.redirectUrl;
+  }
 
   const productById = (id: number | null) => products.find((p) => p.id === id);
   const variantById = (id: number | null) => variants.find((v) => v.id === id);
@@ -159,6 +201,23 @@ export function OrdersClient({
                 <OrderTimeline order={o} history={history[o.id] || []} />
                 <div className="order-card__foot">
                   <strong>Total: {money(o.total_amount)}</strong>
+                  {awaitingPayment(o) ? (
+                    <>
+                      <span className="muted small">
+                        {o.payment_status === "failed"
+                          ? "Payment did not go through. Items are released until you pay."
+                          : "Waiting for your online payment."}
+                      </span>
+                      <button
+                        type="button"
+                        className="btn btn--primary btn--sm"
+                        disabled={payingId === o.id}
+                        onClick={() => payNow(o.id)}
+                      >
+                        {payingId === o.id ? "Opening payment…" : "Pay now"}
+                      </button>
+                    </>
+                  ) : null}
                 </div>
               </article>
             );

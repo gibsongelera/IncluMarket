@@ -73,6 +73,16 @@
 .badge--red     { background: var(--brand-red);    color: #FFFFFF; border-color: var(--brand-red-800); }   /* Guardrail 2: red is a dark surface */
 .badge--success { background: var(--success-100);  color: var(--success); border-color: var(--success); }
 .badge--muted   { background: var(--surface-gray); color: var(--text-muted); }
+/* Discount badge ("−20%"): the commerce accent, white text — Guardrail 2. */
+.badge--sale    { background: var(--brand-red-800); color: #FFFFFF; border-color: var(--brand-red-800); }
+
+/* Money. Tabular numerals so prices in a column line up digit for digit. A
+   sale price is the accent colour; the price it replaces is struck through
+   AND announced as "was" to screen readers, so the change is never conveyed
+   by colour or strike-through alone. */
+.price       { font-variant-numeric: tabular-nums; font-weight: 700; }
+.price--sale { color: var(--brand-red-800); font-weight: 800; }
+.price--was  { color: var(--text-muted); font-weight: 400; font-size: .875em; }
 
 /* Status pill (order/ticket lifecycles) */
 .pill {

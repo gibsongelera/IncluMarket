@@ -21,6 +21,8 @@ export interface Profile {
   assistive_needs: string | null;
   is_featured_seller: boolean;
   seller_story: string | null;
+  account_status: "active" | "suspended" | "pending_approval";
+  phone: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -113,11 +115,21 @@ export interface ProductVariant {
   sku_code: string;
 }
 
+export type PaymentStatus = "unpaid" | "pending" | "paid" | "failed" | "refunded";
+
 export interface Order {
   id: number;
   buyer_id: number;
   total_amount: number;
   order_status: OrderStatus;
+  payment_status: PaymentStatus;
+  /** "cod" | "paymongo"; null on orders placed before migration 0010. */
+  payment_provider: string | null;
+  payment_reference: string | null;
+  shipping_name: string | null;
+  shipping_address: string | null;
+  shipping_city: string | null;
+  shipping_phone: string | null;
   created_at: string;
 }
 

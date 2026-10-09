@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { Product, ProductVariant } from "@/lib/types";
 import { money, productImageSrc } from "@/lib/format";
+import { applyPercentOff } from "@/lib/pricing/core";
 import { addToCartAction } from "@/lib/actions/cart";
 import { startConversation } from "@/lib/actions/messages";
 import { toast } from "@/lib/toast";
@@ -18,6 +19,7 @@ export function ProductDetailClient({
   userId,
   rating = 0,
   ratingCount = 0,
+  salePercent = null,
 }: {
   product: Product;
   variants: ProductVariant[];
@@ -26,6 +28,8 @@ export function ProductDetailClient({
   userId?: number;
   rating?: number;
   ratingCount?: number;
+  /** Active flash-sale percent, from the same table the server prices with. */
+  salePercent?: number | null;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -94,18 +98,13 @@ export function ProductDetailClient({
     if (requireLogin()) return;
     if (!activeVariant || activeVariant.stock_qty <= 0 || busy) return;
     setBusy(true);
-    const res = await addToCartAction(
-      product.id,
-      activeVariant.id,
-      qty,
-      activeVariant.stock_qty
-    );
+    const res = await addToCartAction(product.id, activeVariant.id, qty);
     setBusy(false);
     if (!res.ok) {
       toast(res.error || "Could not add to cart.", "error");
       return;
     }
-    toast("Added to cart.", "success");
+    toast(res.notice || "Added to cart.", res.notice ? "info" : "success");
     router.refresh();
   }
 
@@ -126,12 +125,7 @@ export function ProductDetailClient({
     if (requireLogin()) return;
     if (!activeVariant || activeVariant.stock_qty <= 0 || busy) return;
     setBusy(true);
-    const res = await addToCartAction(
-      product.id,
-      activeVariant.id,
-      qty,
-      activeVariant.stock_qty
-    );
+    const res = await addToCartAction(product.id, activeVariant.id, qty);
     setBusy(false);
     if (!res.ok) {
       toast(res.error || "Could not add to cart.", "error");
@@ -177,7 +171,20 @@ export function ProductDetailClient({
         <p className="pd__rating">
           <StarRating score={rating} /> <small>({ratingCount} review{ratingCount === 1 ? "" : "s"})</small>
         </p>
-        <p className="pd__price">{money(product.base_price)}</p>
+        {salePercent ? (
+          <p className="pd__price">
+            <span className="price price--sale">{money(applyPercentOff(product.base_price, salePercent))}</span>{" "}
+            <s className="price price--was">
+              <span className="sr-only">was </span>
+              {money(product.base_price)}
+            </s>{" "}
+            <span className="badge badge--sale">−{salePercent}%</span>
+          </p>
+        ) : (
+          <p className="pd__price">
+            <span className="price">{money(product.base_price)}</span>
+          </p>
+        )}
         <p className="pd__desc">{product.description}</p>
 
         <div className="pd__section">

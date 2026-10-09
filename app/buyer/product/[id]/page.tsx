@@ -8,6 +8,7 @@ import { ProductDetailClient } from "@/components/ProductDetailClient";
 import { StarRating } from "@/components/StarRating";
 import { formatDate } from "@/lib/format";
 import {
+  getActiveSaleForProduct,
   getCategories,
   getDisplayNames,
   getProductById,
@@ -70,10 +71,11 @@ export default async function ProductPage({
   if (!resolved) notFound();
   const { product, preview } = resolved;
 
-  const [variants, reviews, categories] = await Promise.all([
+  const [variants, reviews, categories, sale] = await Promise.all([
     getVariantsByProduct(product.id),
     getReviewsByProduct(product.id),
     getCategories(),
+    getActiveSaleForProduct(product.id),
   ]);
   const names = await getDisplayNames([product.seller_id, ...reviews.map((r) => r.buyer_id)]);
   const cat = categories.find((c) => c.id === product.category);
@@ -103,6 +105,7 @@ export default async function ProductPage({
           userId={session?.role === "buyer" ? session.user_id : undefined}
           rating={avg[product.id] || 0}
           ratingCount={count[product.id] || 0}
+          salePercent={sale ? Number(sale.discount_percent) : null}
         />
 
         <section className="reviews" aria-labelledby="reviews-title">

@@ -18,6 +18,7 @@ import {
 
 type SellerLite = { id: number; name: string; seller_story: string | null };
 import { ProductCard } from "./ProductCard";
+import { applyPercentOff } from "@/lib/pricing/core";
 import { Icon } from "./Icon";
 
 const ALL_ITEMS_ICON = faStore;
@@ -159,6 +160,17 @@ export function BuyerHomeClient({
     setApplied((a) => ({ ...a, seller: a.seller === id ? 0 : id }));
   }
 
+  // The price a buyer actually pays: base price, or the flash-sale price when
+  // one is running. Sorting and the price filter used to ignore sales (N-09).
+  const priceOf = useMemo(() => {
+    const map: Record<number, number> = {};
+    for (const p of products) {
+      const sale = flashSales[p.id];
+      map[p.id] = sale ? applyPercentOff(p.base_price, Number(sale.discount_percent)) : p.base_price;
+    }
+    return map;
+  }, [products, flashSales]);
+
   const results = useMemo(() => {
     const filtered = products.filter((p) => {
       if (
@@ -169,7 +181,7 @@ export function BuyerHomeClient({
         return false;
       if (applied.category && p.category !== applied.category) return false;
       if (applied.seller && p.seller_id !== applied.seller) return false;
-      if (p.base_price < applied.min || p.base_price > applied.max) return false;
+      if (priceOf[p.id] < applied.min || priceOf[p.id] > applied.max) return false;
       if (applied.rating && (ratingAvg[p.id] || 0) < applied.rating) return false;
       return true;
     });
@@ -177,10 +189,10 @@ export function BuyerHomeClient({
     const sorted = [...filtered];
     switch (sort) {
       case "price_asc":
-        sorted.sort((a, b) => a.base_price - b.base_price);
+        sorted.sort((a, b) => priceOf[a.id] - priceOf[b.id]);
         break;
       case "price_desc":
-        sorted.sort((a, b) => b.base_price - a.base_price);
+        sorted.sort((a, b) => priceOf[b.id] - priceOf[a.id]);
         break;
       case "rating":
         sorted.sort((a, b) => (ratingAvg[b.id] || 0) - (ratingAvg[a.id] || 0));
@@ -193,7 +205,7 @@ export function BuyerHomeClient({
         sorted.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     }
     return sorted;
-  }, [products, applied, ratingAvg, popularity, sort]);
+  }, [products, applied, ratingAvg, popularity, sort, priceOf]);
 
   const showRails = !applied.q && !applied.category && !applied.seller;
   const recommended = useMemo(() => {

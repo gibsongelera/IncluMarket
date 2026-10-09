@@ -3,21 +3,24 @@ import { requireRole } from "@/lib/session";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { CheckoutClient } from "@/components/CheckoutClient";
-import { getCartItems } from "@/lib/actions/cart";
-import { getAllProducts, getVariants } from "@/lib/data";
+import { priceCartForBuyer } from "@/lib/pricing/engine";
+import { getDisplayNames } from "@/lib/data";
 import { isPayMongoConfigured } from "@/lib/payments/paymongo";
 
 export const dynamic = "force-dynamic";
 
-export default async function CheckoutPage() {
+export default async function CheckoutPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ cancelled?: string }>;
+}) {
   const session = await requireRole(["buyer"]);
-  const [items, products, variants] = await Promise.all([
-    getCartItems(),
-    getAllProducts(),
-    getVariants(),
-  ]);
+  const sp = await searchParams;
+  const cart = await priceCartForBuyer(session.user_id);
 
-  if (!items.length) redirect("/buyer/cart");
+  if (!cart.lines.length) redirect("/buyer/cart");
+  const sellerNames = await getDisplayNames(cart.groups.map((g) => g.sellerId));
+  const cancelled = Number(sp.cancelled);
 
   return (
     <>
@@ -27,18 +30,9 @@ export default async function CheckoutPage() {
         <CheckoutClient
           userName={session.name}
           onlinePaymentEnabled={isPayMongoConfigured()}
-          items={items}
-          products={products.map((p) => ({
-            id: p.id,
-            title: p.title,
-            image: p.image,
-            images: p.images ?? null,
-          }))}
-          variants={variants.map((v) => ({
-            id: v.id,
-            color_name: v.color_name,
-            size: v.size,
-          }))}
+          cart={cart}
+          sellerNames={sellerNames}
+          cancelledOrderId={Number.isInteger(cancelled) && cancelled > 0 ? cancelled : null}
         />
       </main>
       <SiteFooter />
