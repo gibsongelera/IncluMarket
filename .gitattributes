@@ -1,0 +1,20 @@
+# Normalise every text file to LF, in the repository AND the working tree.
+#
+# core.autocrlf=true on Windows checked files out as CRLF while editors and
+# generators wrote LF, so ordinary diffs showed whole-file churn and git
+# printed "LF will be replaced by CRLF" on every add. eol=lf makes the working
+# tree match the index regardless of the local autocrlf setting.
+* text=auto eol=lf
+
+# Binary assets: never touch line endings, never diff as text.
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.webp  binary
+*.ico   binary
+*.woff  binary
+*.woff2 binary
+*.pdf   binary
+*.docx  binary
+*.xlsx  binary
