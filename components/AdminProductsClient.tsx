@@ -7,6 +7,7 @@ import { toast } from "@/lib/toast";
 import { Pill } from "./Pill";
 import { Icon } from "./Icon";
 import { setProductStatus, setProductFeatured } from "@/lib/actions/admin";
+import { ConfirmDialog } from "./ConfirmDialog";
 import type { Category, Product, ProductStatus } from "@/lib/types";
 import { TableWrap } from "./TableWrap";
 import { Tabs, TabPanel } from "./Tabs";
@@ -39,15 +40,27 @@ export function AdminProductsClient({
     categories.find((c) => c.id === id)?.label || id || "Uncategorized";
 
   const list = (filter === "all" ? products : products.filter((p) => (p.status || "pending") === filter)).slice();
+  const [flagging, setFlagging] = useState<Product | null>(null);
+  const [flagError, setFlagError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
-  async function decide(id: number, status: ProductStatus, msg: string, kind: "success" | "warning") {
-    const res = await setProductStatus(id, status);
+  async function decide(id: number, status: ProductStatus, msg: string, kind: "success" | "warning", reason?: string) {
+    setBusy(true);
+    const res = await setProductStatus(id, status, reason);
+    setBusy(false);
     if (!res.ok) {
-      toast(res.error || "Could not update.", "error");
+      if (flagging) setFlagError(res.error || "Could not update.");
+      else toast(res.error || "Could not update.", "error");
       return;
     }
+    setFlagging(null);
     toast(msg, kind);
     router.refresh();
+  }
+
+  function openFlag(p: Product) {
+    setFlagError(null);
+    setFlagging(p);
   }
 
   async function toggleFeatured(id: number, next: boolean) {
@@ -142,8 +155,8 @@ export function AdminProductsClient({
                         <button className="btn btn--primary btn--sm" onClick={() => decide(p.id, "approved", "Product approved.", "success")}>
                           Approve
                         </button>{" "}
-                        <button className="btn btn--danger btn--sm" onClick={() => decide(p.id, "flagged", "Product flagged.", "warning")}>
-                          Flag
+                        <button className="btn btn--danger btn--sm" onClick={() => openFlag(p)}>
+                          Ask for changes…
                         </button>
                       </>
                     ) : status === "flagged" ? (
@@ -157,8 +170,8 @@ export function AdminProductsClient({
                       </>
                     ) : (
                       <>
-                        <button className="btn btn--danger btn--sm" onClick={() => decide(p.id, "flagged", "Product flagged.", "warning")}>
-                          Flag
+                        <button className="btn btn--danger btn--sm" onClick={() => openFlag(p)}>
+                          Flag…
                         </button>{" "}
                         <button className="btn btn--ghost btn--sm" onClick={() => decide(p.id, "pending", "Re-queued for review.", "success")}>
                           Re-queue
@@ -174,6 +187,28 @@ export function AdminProductsClient({
       </TableWrap>
       </TabPanel>
       {list.length === 0 ? <p className="empty">No products in this queue.</p> : null}
+
+      <ConfirmDialog
+        open={Boolean(flagging)}
+        title={flagging ? `Ask for changes to "${flagging.title}"?` : ""}
+        confirmLabel="Send to seller"
+        tone="danger"
+        busy={busy}
+        error={flagError}
+        reason={{
+          label: "What should the seller change? (they see this)",
+          required: true,
+          minLength: 5,
+          maxLength: 500,
+          hint: "For example: photo is blurry; price looks wrong; description does not match the item; not a PWD-made product.",
+        }}
+        onCancel={() => setFlagging(null)}
+        onConfirm={(reason) => {
+          if (flagging) void decide(flagging.id, "flagged", "Sent back to the seller with your note.", "warning", reason);
+        }}
+      >
+        <p>The listing is hidden from buyers until it is approved again. The seller is notified in the app and by email.</p>
+      </ConfirmDialog>
     </>
   );
 }

@@ -6,7 +6,7 @@ import { Icon } from "./Icon";
 import { Pill } from "./Pill";
 import { money, formatDate, productImageSrc } from "@/lib/format";
 import { toast } from "@/lib/toast";
-import { createProduct, updateProduct, deleteProduct, createFlashSale } from "@/lib/actions/seller";
+import { createProduct, updateProduct, setProductPublished, createFlashSale } from "@/lib/actions/seller";
 import type { Category, Product, ProductVariant } from "@/lib/types";
 import { TableWrap } from "./TableWrap";
 import { DeepLinkFocus } from "./DeepLinkFocus";
@@ -226,14 +226,18 @@ export function SellerProductsClient({
     router.refresh();
   }
 
-  async function onDelete(id: number) {
-    if (!confirm("Delete this product and all its variants?")) return;
-    const res = await deleteProduct(id);
+  async function onPublish(id: number, published: boolean) {
+    const res = await setProductPublished(id, published);
     if (!res.ok) {
-      toast(res.error || "Could not delete.", "error");
+      toast(res.error || "Could not update the listing.", "error");
       return;
     }
-    toast("Product deleted.", "success");
+    toast(
+      published
+        ? "Sent for review. It goes back on sale once approved."
+        : "Unpublished. Buyers can no longer see it; past orders still show it.",
+      "success"
+    );
     router.refresh();
   }
 
@@ -298,6 +302,9 @@ export function SellerProductsClient({
                     <td>{money(p.base_price)}</td>
                     <td>
                       <Pill status={p.status || "pending"} />
+                      {p.status === "flagged" && p.moderation_reason ? (
+                        <p className="small muted">Admin note: {p.moderation_reason}</p>
+                      ) : null}
                     </td>
                     <td>
                       {vs.length} variants &middot; {totalStock} units
@@ -314,9 +321,15 @@ export function SellerProductsClient({
                       >
                         Flash sale
                       </button>{" "}
-                      <button className="btn btn--danger btn--sm" onClick={() => onDelete(p.id)}>
-                        Delete
-                      </button>
+                      {p.status === "archived" ? (
+                        <button type="button" className="btn btn--ghost btn--sm" onClick={() => onPublish(p.id, true)}>
+                          Republish
+                        </button>
+                      ) : (
+                        <button type="button" className="btn btn--ghost btn--sm" onClick={() => onPublish(p.id, false)}>
+                          Unpublish
+                        </button>
+                      )}
                     </td>
                   </tr>
                 );

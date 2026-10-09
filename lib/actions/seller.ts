@@ -206,6 +206,9 @@ export async function updateProduct(
     Boolean(imageCheck.value);
   const backToReview = seller.role !== "admin" && existing.status === "approved" && contentChanged;
   if (backToReview) patch.status = "pending";
+  // An admin's edit is a moderation act: stamping moderated_at tells the
+  // database's moderation trigger (0016) not to send it back to review.
+  if (seller.role === "admin") patch.moderated_at = new Date().toISOString();
 
   // Variants are checked BEFORE anything is written: an id must belong to
   // THIS product. updateProduct used to update any variant by id alone, so a
@@ -433,27 +436,59 @@ export async function createFlashSale(
   return { ok: true, productId };
 }
 
-export async function deleteProduct(productId: number): Promise<ActionResult> {
+/**
+ * Unpublish or republish a listing.
+ *
+ * This replaces deleting. A hard delete set every order line's product to
+ * NULL and erased the product's reviews, so buyers' order history lost what
+ * they bought (N-19). An unpublished listing is `archived` (migration 0016):
+ * hidden from the shop, still named in old orders. Republishing sends it
+ * back to review, because it may have changed while hidden.
+ */
+export async function setProductPublished(productId: number, published: boolean): Promise<ActionResult> {
   const seller = await requireSeller();
   if (!seller) return { ok: false, error: "Seller access required." };
   const db = createAdminClient();
   const { data: existing } = await db
     .from("im_products")
-    .select("seller_id")
+    .select("seller_id, status, title")
     .eq("id", productId)
     .maybeSingle();
   if (!existing) return { ok: false, error: "Product not found." };
   if (seller.role !== "admin" && existing.seller_id !== seller.user_id)
-    return { ok: false, error: "You can only delete your own products." };
+    return { ok: false, error: "You can only change your own products." };
 
-  const { error } = await db.from("im_products").delete().eq("id", productId);
-  if (error) return { ok: false, error: error.message };
+  if (!published && existing.status === "archived") return { ok: true };
+  if (published && existing.status !== "archived") return { ok: false, error: "This listing is already published." };
+
+  const { error } = await db
+    .from("im_products")
+    .update({ status: published ? "pending" : "archived", updated_at: new Date().toISOString() })
+    .eq("id", productId);
+  if (error) {
+    return {
+      ok: false,
+      error: /check constraint|archived/i.test(error.message)
+        ? "Unpublishing needs the latest database update. Please try again later."
+        : "Could not update the listing. Please try again.",
+    };
+  }
   await db.from("im_audit_logs").insert({
     actor_id: seller.user_id,
     actor_role: seller.role,
-    action: "deleted_product",
+    action: published ? "republished_product" : "unpublished_product",
     target: `product:${productId}`,
   });
+  if (published && seller.role !== "admin") {
+    await notifyAdmins({
+      type: "system",
+      title: `Listing to review again: ${existing.title}`,
+      body: "A seller republished a listing they had taken down.",
+      link: "/admin/products",
+    });
+  }
   revalidatePath("/seller/products");
+  revalidatePath("/home");
+  revalidatePath(`/buyer/product/${productId}`);
   return { ok: true };
 }

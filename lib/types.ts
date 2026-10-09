@@ -1,7 +1,7 @@
 // IncluMarket domain types (mirror the im_* Postgres tables).
 
 export type Role = "buyer" | "seller" | "admin";
-export type ProductStatus = "pending" | "approved" | "flagged";
+export type ProductStatus = "pending" | "approved" | "flagged" | "archived";
 export type OrderStatus =
   | "pending"
   | "processing"
@@ -48,6 +48,13 @@ export interface Product {
   created_at: string;
   updated_at: string;
   images?: string[];
+  /** Migration 0016 (absent on older databases). */
+  moderation_reason?: string | null;
+  adaptive_tags?: string[];
+  rating_avg?: number;
+  rating_count?: number;
+  sold_count?: number;
+  stock_total?: number;
 }
 
 export interface WishlistItem {

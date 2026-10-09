@@ -6,6 +6,8 @@ import { getSession } from "@/lib/session";
 import { buildReportWorkbook } from "@/lib/reports/excel";
 import { boundedText } from "@/lib/validation/data-url";
 import { queueEmail } from "@/lib/email/send";
+import { createNotification } from "@/lib/notify";
+import { isMissingObject } from "@/lib/db-errors";
 import type { ProductStatus, ReportType, TicketStatus } from "@/lib/types";
 
 export interface ActionResult {
@@ -25,21 +27,75 @@ async function audit(actorId: number, action: string, target: string) {
     .insert({ actor_id: actorId, actor_role: "admin", action, target });
 }
 
+/**
+ * Approve, flag (with a reason the seller sees) or re-queue a listing.
+ *
+ * The decision is stamped (moderated_at/by/reason, migration 0016): the
+ * database treats an UPDATE that stamps moderated_at as a moderation act, so
+ * it never bounces an admin's decision back to pending. The seller is told in
+ * the app and by email — the "seller_decision" email template existed but
+ * nothing sent it (N-18).
+ */
 export async function setProductStatus(
   productId: number,
-  status: ProductStatus
+  status: ProductStatus,
+  reason?: string
 ): Promise<ActionResult> {
   const admin = await requireAdmin();
   if (!admin) return { ok: false, error: "Admin access required." };
+  if (!["approved", "flagged", "pending"].includes(status)) return { ok: false, error: "Invalid status." };
+  const why = boundedText(reason ?? "", 500);
+  if (status === "flagged" && (!why || why.length < 5))
+    return { ok: false, error: "Please tell the seller what to change (a sentence is enough)." };
+
   const db = createAdminClient();
-  const { error } = await db
+  const { data: product } = await db
     .from("im_products")
-    .update({ status, updated_at: new Date().toISOString() })
+    .select("id, title, seller_id")
+    .eq("id", productId)
+    .maybeSingle();
+  if (!product) return { ok: false, error: "Product not found." };
+
+  const now = new Date().toISOString();
+  let { error } = await db
+    .from("im_products")
+    .update({
+      status,
+      updated_at: now,
+      moderated_at: now,
+      moderated_by: admin.user_id,
+      moderation_reason: status === "flagged" ? why : null,
+    })
     .eq("id", productId);
-  if (error) return { ok: false, error: error.message };
+  if (error && isMissingObject(error)) {
+    // Before migration 0016 there are no moderation columns.
+    ({ error } = await db.from("im_products").update({ status, updated_at: now }).eq("id", productId));
+  }
+  if (error) return { ok: false, error: "Could not update the listing. Please try again." };
+
   const verb = status === "approved" ? "approved_product" : status === "flagged" ? "flagged_product" : "reset_product";
-  await audit(admin.user_id, verb, `product:${productId}`);
+  await audit(admin.user_id, verb, `product:${productId}${why ? ` reason:${why}` : ""}`);
+
+  if (status !== "pending") {
+    await createNotification({
+      userId: product.seller_id,
+      type: "system",
+      title: status === "approved" ? `"${product.title}" is now live` : `"${product.title}" needs changes`,
+      body: status === "approved" ? "Buyers can now find and order it." : why ?? undefined,
+      link: "/seller/products",
+    });
+    const { data: seller } = await db.from("im_profiles").select("email, name").eq("id", product.seller_id).maybeSingle();
+    if (seller?.email && !String(seller.email).endsWith(".invalid")) {
+      await queueEmail(
+        "seller_decision",
+        { email: seller.email, name: seller.name },
+        { status, productTitle: product.title, reason: why }
+      );
+    }
+  }
   revalidatePath("/admin/products");
+  revalidatePath("/seller/products");
+  revalidatePath("/home");
   return { ok: true };
 }
 
