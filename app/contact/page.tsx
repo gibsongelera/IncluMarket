@@ -1,13 +1,13 @@
 import { StaticPageLayout } from "@/components/StaticPageLayout";
 
-export const metadata = { title: "Contact — IncluMarket" };
+export const metadata = { title: "Contact" };
 
 export default function ContactPage() {
   return (
     <StaticPageLayout title="Contact us">
       <p>
         Already have an account? The fastest way to reach us is the{" "}
-        <strong>Support</strong> tab inside IncluMarket (buyers) or by
+        <strong>Support</strong> tab inside InclusiveMarket (buyers) or by
         replying on an open order — support tickets are tracked and answered
         by our team, with a full response history you can revisit anytime.
       </p>
@@ -30,7 +30,7 @@ export default function ContactPage() {
           accessibility@inclumarket.example
         </a>
       </p>
-      <h2>Selling on IncluMarket</h2>
+      <h2>Selling on InclusiveMarket</h2>
       <p>
         Sign up as a seller from the homepage — every new listing is
         reviewed before it appears in the marketplace, usually within one

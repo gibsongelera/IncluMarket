@@ -57,7 +57,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { id } = await params;
   const product = await getPublicProductById(Number(id));
-  return { title: product ? `${product.title} — IncluMarket` : "Product — IncluMarket" };
+  return { title: product ? product.title : "Product" };
 }
 
 export default async function ProductPage({

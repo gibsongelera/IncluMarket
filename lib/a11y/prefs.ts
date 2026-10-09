@@ -149,7 +149,7 @@ export function matchVoiceCommand(utterance: string): VoiceAction {
   if (/\b(scroll )?down\b/.test(t)) return { type: "scroll", direction: "down" };
   if (/\b(go to )?top\b/.test(t)) return { type: "scroll", direction: "top" };
   if (/\bread (the )?title\b/.test(t)) {
-    return { type: "speak", text: typeof document !== "undefined" ? document.title : "IncluMarket" };
+    return { type: "speak", text: typeof document !== "undefined" ? document.title : "InclusiveMarket" };
   }
   if (/\bread (the )?page\b/.test(t)) {
     const text =

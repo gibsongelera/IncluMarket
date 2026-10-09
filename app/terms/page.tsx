@@ -1,12 +1,12 @@
 import { StaticPageLayout } from "@/components/StaticPageLayout";
 
-export const metadata = { title: "Terms — IncluMarket" };
+export const metadata = { title: "Terms" };
 
 export default function TermsPage() {
   return (
     <StaticPageLayout title="Terms of Service">
       <p>
-        These terms govern your use of IncluMarket. By creating an account
+        These terms govern your use of InclusiveMarket. By creating an account
         you agree to them.
       </p>
       <h2>Accounts</h2>
@@ -15,16 +15,16 @@ export default function TermsPage() {
         accounts are provisioned directly and are not available through
         public sign-up. You're responsible for activity under your account.
       </p>
-      <h2>Selling on IncluMarket</h2>
+      <h2>Selling on InclusiveMarket</h2>
       <p>
-        Sellers list products for review before they go live. IncluMarket
+        Sellers list products for review before they go live. InclusiveMarket
         (via its administrators) may approve, flag, or remove a listing that
         violates these terms or applicable law. Sellers are responsible for
         the accuracy of their listings and for fulfilling orders they accept.
       </p>
-      <h2>Buying on IncluMarket</h2>
+      <h2>Buying on InclusiveMarket</h2>
       <p>
-        Orders are a contract between buyer and seller; IncluMarket
+        Orders are a contract between buyer and seller; InclusiveMarket
         facilitates the transaction and provides order tracking, messaging,
         and a support-ticket escalation path if something goes wrong.
       </p>
@@ -36,7 +36,7 @@ export default function TermsPage() {
       </p>
       <h2>Prohibited use</h2>
       <p>
-        Do not use IncluMarket to list illegal goods, harass another user, or
+        Do not use InclusiveMarket to list illegal goods, harass another user, or
         attempt to bypass the platform's security or role restrictions.
         Violations may result in account suspension.
       </p>

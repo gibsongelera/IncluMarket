@@ -1,11 +1,11 @@
 import { StaticPageLayout } from "@/components/StaticPageLayout";
 
-export const metadata = { title: "FAQ — IncluMarket" };
+export const metadata = { title: "FAQ" };
 
 const FAQS: { q: string; a: string }[] = [
   {
-    q: "Who can sell on IncluMarket?",
-    a: "IncluMarket is built for persons with disabilities (PWD) selling their own goods and services. Every seller signs up with a seller account, and every listing is reviewed by an administrator before it becomes visible to buyers.",
+    q: "Who can sell on InclusiveMarket?",
+    a: "InclusiveMarket is built for persons with disabilities (PWD) selling their own goods and services. Every seller signs up with a seller account, and every listing is reviewed by an administrator before it becomes visible to buyers.",
   },
   {
     q: "How do I track my order?",
@@ -17,7 +17,7 @@ const FAQS: { q: string; a: string }[] = [
   },
   {
     q: "Can I message a seller before buying?",
-    a: "Yes — use the \"Message seller\" button on any product page. This is separate from support tickets, which go to IncluMarket's admin team instead.",
+    a: "Yes — use the \"Message seller\" button on any product page. This is separate from support tickets, which go to InclusiveMarket's admin team instead.",
   },
   {
     q: "How do I save items for later?",
@@ -32,7 +32,7 @@ const FAQS: { q: string; a: string }[] = [
     a: "Yes — see our Privacy Policy. Email addresses are masked in shared views (e.g. a seller viewing a buyer's order), and all account data changes are logged for accountability.",
   },
   {
-    q: "Does IncluMarket support screen readers and keyboard navigation?",
+    q: "Does InclusiveMarket support screen readers and keyboard navigation?",
     a: "Yes. See our Accessibility Statement for the full list of supported assistive technology features, including a persisted high-contrast mode and reduced-motion support.",
   },
 ];

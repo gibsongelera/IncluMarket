@@ -1,12 +1,12 @@
 import { StaticPageLayout } from "@/components/StaticPageLayout";
 
-export const metadata = { title: "Accessibility Statement — IncluMarket" };
+export const metadata = { title: "Accessibility Statement" };
 
 export default function AccessibilityPage() {
   return (
     <StaticPageLayout title="Accessibility Statement">
       <p>
-        IncluMarket is built for a PWD seller and buyer community, so
+        InclusiveMarket is built for a PWD seller and buyer community, so
         accessibility isn't an add-on — it's a build requirement. We target
         WCAG 2.1 Level AA today and are actively closing gaps toward WCAG 2.2.
       </p>
@@ -30,7 +30,7 @@ export default function AccessibilityPage() {
       </p>
       <h2>Feedback</h2>
       <p>
-        If any part of IncluMarket is difficult to use with a screen reader,
+        If any part of InclusiveMarket is difficult to use with a screen reader,
         keyboard, switch device, or magnification software, contact{" "}
         <a href="mailto:accessibility@inclumarket.example">
           accessibility@inclumarket.example

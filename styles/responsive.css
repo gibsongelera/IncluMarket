@@ -1,4 +1,4 @@
-/* IncluMarket — responsive layer
+/* InclusiveMarket — responsive layer
    ===========================================================================
    Imported LAST, so it can adjust anything above it without a specificity war.
 
@@ -693,7 +693,7 @@ h3 {
    where possible, cards instead of tables, and a fixed action bar for the
    primary commitment on each screen.
 
-   Two IncluMarket-specific departures from that reference, both deliberate:
+   Two InclusiveMarket-specific departures from that reference, both deliberate:
      - every tab bar item keeps a visible text label, because icon-only
        navigation is a barrier for cognitive disabilities
      - targets are 44px minimum and 48-56px for primary actions, rather than

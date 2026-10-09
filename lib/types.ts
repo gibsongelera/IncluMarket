@@ -1,4 +1,4 @@
-// IncluMarket domain types (mirror the im_* Postgres tables).
+// InclusiveMarket domain types (mirror the im_* Postgres tables).
 
 export type Role = "buyer" | "seller" | "admin";
 export type ProductStatus = "pending" | "approved" | "flagged" | "archived";

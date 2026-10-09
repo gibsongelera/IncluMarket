@@ -215,11 +215,11 @@ export function LandingClient({
           <div className="landing-hero__blob landing-hero__blob--yellow" aria-hidden="true" />
 
           <div className="landing-hero__content">
-            <a className="landing-brand" href="/" aria-label="IncluMarket home">
+            <a className="landing-brand" href="/" aria-label="InclusiveMarket home">
               <span className="landing-brand__mark" aria-hidden="true">
                 IM
               </span>
-              <span className="landing-brand__name">IncluMarket</span>
+              <span className="landing-brand__name">InclusiveMarket</span>
             </a>
 
             <p className="landing-eyebrow">
@@ -274,7 +274,7 @@ export function LandingClient({
           </div>
 
           <div className="landing-hero__foot">
-            <span className="muted">&copy; 2026 IncluMarket &middot; ZPPSU-CICS Capstone</span>
+            <span className="muted">&copy; 2026 InclusiveMarket &middot; ZPPSU-CICS Capstone</span>
             <span className="muted">RA 7277 &middot; RA 10173</span>
           </div>
         </aside>
@@ -546,7 +546,7 @@ export function LandingClient({
                 </div>
 
                 <button type="submit" className="btn btn--primary" disabled={busy}>
-                  Sign in to IncluMarket
+                  Sign in to InclusiveMarket
                 </button>
               </form>
                 </>
@@ -627,7 +627,7 @@ export function LandingClient({
                   <input type="checkbox" id="su-consent" name="consent" required />
                   <span>
                     I have read and agree to the Data Privacy notice (<strong>RA 10173</strong>). I consent
-                    to the collection and processing of my registration data for IncluMarket.
+                    to the collection and processing of my registration data for InclusiveMarket.
                   </span>
                 </label>
 
@@ -639,7 +639,7 @@ export function LandingClient({
           </div>
 
           <p className="landing-legal">
-            &copy; 2026 IncluMarket &middot; Aligned to <strong>RA 7277</strong> &amp;{" "}
+            &copy; 2026 InclusiveMarket &middot; Aligned to <strong>RA 7277</strong> &amp;{" "}
             <strong>RA 10173</strong>
           </p>
         </section>

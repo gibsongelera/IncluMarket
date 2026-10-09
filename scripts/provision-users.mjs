@@ -1,5 +1,5 @@
 /**
- * Provision the demo IncluMarket accounts via the Supabase Auth Admin API.
+ * Provision the demo InclusiveMarket accounts via the Supabase Auth Admin API.
  *
  * Usage (from repo root, with .env.local loaded):
  *   node --env-file=.env.local scripts/provision-users.mjs
@@ -64,7 +64,7 @@ const USERS = [
     story:
       "Maria weaves bags and home textiles using a foot-pedal loom adapted for her limited hand mobility. " +
       "What started as physical therapy after an accident became a full-time livelihood — every piece is " +
-      "handwoven in her home workshop in Laguna and sold directly through IncluMarket.",
+      "handwoven in her home workshop in Laguna and sold directly through InclusiveMarket.",
   },
   {
     email: email("SEED_SELLER3_EMAIL", "seller3@example.test"),

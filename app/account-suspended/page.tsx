@@ -3,7 +3,7 @@ import { StaticPageLayout } from "@/components/StaticPageLayout";
 import { logoutAction } from "@/lib/actions/auth";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Account suspended — IncluMarket" };
+export const metadata = { title: "Account suspended" };
 
 // Where requireRole() sends a signed-in user whose account an administrator
 // has suspended. Before, they were redirected to the storefront with no

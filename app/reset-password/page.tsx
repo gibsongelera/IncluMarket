@@ -6,7 +6,7 @@ import { hasRecoveryMarker } from "@/lib/auth/recovery";
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "Choose a new password — IncluMarket",
+  title: "Choose a new password",
 };
 
 /**

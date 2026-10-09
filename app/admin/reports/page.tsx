@@ -17,7 +17,7 @@ export default async function AdminReportsPage() {
           Download Office Open XML (`.xlsx`) workbooks with real display names,
           numeric IDs/amounts, ISO 8601 UTC timestamps, and ISO 4217 currency code
           PHP. Emails stay masked. File names follow{" "}
-          <code>IncluMarket_&lt;Report&gt;_Report_YYYY-MM-DD.xlsx</code>.
+          <code>InclusiveMarket_&lt;Report&gt;_Report_YYYY-MM-DD.xlsx</code>.
         </p>
         <AdminReportsClient />
       </main>

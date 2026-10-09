@@ -322,7 +322,7 @@ export function BuyerHomeClient({
       </aside>
 
       <section className="feed" aria-labelledby="feed-title">
-        <h1 className="sr-only">Shop IncluMarket</h1>
+        <h1 className="sr-only">Shop InclusiveMarket</h1>
         <section className="category-strip" aria-labelledby="cats-title">
           <h2 id="cats-title">Shop by category folder</h2>
           <p className="category-folder-hint">

@@ -77,7 +77,7 @@ function shell(headline: string, bodyHtml: string, ctaLabel?: string, ctaHref?: 
                 border:1px solid ${BORDER};border-radius:12px">
     <tr>
       <td style="padding:20px 24px;background:${BRAND_DEEP};border-radius:12px 12px 0 0">
-        <span style="color:#FFFFFF;font-size:20px;font-weight:800">IncluMarket</span>
+        <span style="color:#FFFFFF;font-size:20px;font-weight:800">InclusiveMarket</span>
       </td>
     </tr>
     <tr><td style="padding:24px 24px 8px">
@@ -86,7 +86,7 @@ function shell(headline: string, bodyHtml: string, ctaLabel?: string, ctaHref?: 
     </td></tr>
     ${cta}
     <tr><td style="padding:16px 24px 24px;border-top:1px solid ${BORDER};color:${MUTED};font-size:14px">
-      IncluMarket — a livelihood marketplace for Persons with Disabilities.<br>
+      InclusiveMarket — a livelihood marketplace for Persons with Disabilities.<br>
       <a href="${esc(siteUrl())}" style="color:${BRAND_DEEP}">${esc(siteUrl())}</a>
     </td></tr>
   </table>
@@ -105,7 +105,7 @@ export function renderTemplate(kind: EmailKind, d: TemplateData): RenderedEmail 
       const id = d.orderId;
       const total = peso(d.total);
       return {
-        subject: `Order #${id} received — IncluMarket`,
+        subject: `Order #${id} received — InclusiveMarket`,
         html: shell(
           `Thank you, ${esc(d.buyerName)}`,
           p(`We have received your order <strong>#${esc(id)}</strong>.`) +
@@ -134,7 +134,7 @@ export function renderTemplate(kind: EmailKind, d: TemplateData): RenderedEmail 
       const id = d.orderId;
       const total = peso(d.total);
       return {
-        subject: `Payment received for order #${id} — IncluMarket`,
+        subject: `Payment received for order #${id} — InclusiveMarket`,
         html: shell(
           "Your payment went through",
           p(`Order <strong>#${esc(id)}</strong> is now paid.`) +
@@ -154,7 +154,7 @@ export function renderTemplate(kind: EmailKind, d: TemplateData): RenderedEmail 
     case "seller_new_order": {
       const id = d.orderId;
       return {
-        subject: `New order #${id} — IncluMarket`,
+        subject: `New order #${id} — InclusiveMarket`,
         html: shell(
           "You have a new order",
           p(`Order <strong>#${esc(id)}</strong> includes one or more of your products.`) +
@@ -175,8 +175,8 @@ export function renderTemplate(kind: EmailKind, d: TemplateData): RenderedEmail 
       const approved = d.status === "approved";
       return {
         subject: approved
-          ? `"${d.productTitle}" is now live — IncluMarket`
-          : `"${d.productTitle}" needs changes — IncluMarket`,
+          ? `"${d.productTitle}" is now live — InclusiveMarket`
+          : `"${d.productTitle}" needs changes — InclusiveMarket`,
         html: shell(
           approved ? "Your listing is approved" : "Your listing needs changes",
           p(`<strong>${esc(d.productTitle)}</strong>`) +
@@ -208,7 +208,7 @@ export function renderTemplate(kind: EmailKind, d: TemplateData): RenderedEmail 
 
     case "ticket_reply": {
       return {
-        subject: `Reply to your support request — IncluMarket`,
+        subject: `Reply to your support request — InclusiveMarket`,
         html: shell(
           "Our support team replied",
           p(`Re: <strong>${esc(d.subject)}</strong>`) +
@@ -228,7 +228,7 @@ export function renderTemplate(kind: EmailKind, d: TemplateData): RenderedEmail 
 
     case "newsletter_welcome": {
       return {
-        subject: "You are subscribed — IncluMarket",
+        subject: "You are subscribed — InclusiveMarket",
         html: shell(
           "Thanks for subscribing",
           p("You will hear from us when new PWD-made products and flash sales go live.") +
@@ -248,8 +248,8 @@ export function renderTemplate(kind: EmailKind, d: TemplateData): RenderedEmail 
       const suspended = d.status === "suspended";
       return {
         subject: suspended
-          ? "Your IncluMarket account is suspended"
-          : "Your IncluMarket account is active again",
+          ? "Your InclusiveMarket account is suspended"
+          : "Your InclusiveMarket account is active again",
         html: shell(
           suspended ? "Your account is suspended" : "Your account is active again",
           p(`Hello${d.name ? ` ${esc(d.name)}` : ""}.`) +
@@ -274,17 +274,17 @@ export function renderTemplate(kind: EmailKind, d: TemplateData): RenderedEmail 
           `<p style="margin:0 0 16px;font-size:28px;letter-spacing:.18em;font-weight:800;font-family:ui-monospace,Menlo,Consolas,monospace;color:${BRAND_DEEP}">${esc(code)}</p>`
         : "";
       return {
-        subject: "Confirm your IncluMarket account",
+        subject: "Confirm your InclusiveMarket account",
         html: shell(
           "Confirm your email",
           p(`Hello${d.name ? ` ${esc(d.name)}` : ""}.`) +
-            p("Welcome to IncluMarket. Confirm your email to finish creating your account.") +
+            p("Welcome to InclusiveMarket. Confirm your email to finish creating your account.") +
             codeBlock,
           "Confirm my email",
           String(d.confirmUrl || url)
         ),
         text:
-          `Confirm your IncluMarket account\n\n` +
+          `Confirm your InclusiveMarket account\n\n` +
           `Hello${d.name ? ` ${d.name}` : ""}.\n` +
           `Confirm your email to finish creating your account.\n\n` +
           (code ? `Confirmation code: ${code}\n\n` : "") +
@@ -299,7 +299,7 @@ export function renderTemplate(kind: EmailKind, d: TemplateData): RenderedEmail 
           `<p style="margin:0 0 16px;font-size:28px;letter-spacing:.18em;font-weight:800;font-family:ui-monospace,Menlo,Consolas,monospace;color:${BRAND_DEEP}">${esc(code)}</p>`
         : "";
       return {
-        subject: "Reset your IncluMarket password",
+        subject: "Reset your InclusiveMarket password",
         html: shell(
           "Reset your password",
           p("We received a request to reset your password.") +
@@ -309,7 +309,7 @@ export function renderTemplate(kind: EmailKind, d: TemplateData): RenderedEmail 
           String(d.confirmUrl || url)
         ),
         text:
-          `Reset your IncluMarket password\n\n` +
+          `Reset your InclusiveMarket password\n\n` +
           `We received a request to reset your password.\n` +
           (code ? `Reset code: ${code}\n\n` : "") +
           `Reset: ${d.confirmUrl || url}\n\n` +

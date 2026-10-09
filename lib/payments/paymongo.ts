@@ -110,8 +110,8 @@ export async function createCheckoutSession(
         success_url: args.successUrl,
         cancel_url: args.cancelUrl,
         description: args.checkoutId
-          ? `IncluMarket checkout #${args.checkoutId}`
-          : `IncluMarket order #${args.orderId}`,
+          ? `InclusiveMarket checkout #${args.checkoutId}`
+          : `InclusiveMarket order #${args.orderId}`,
         send_email_receipt: false,
         show_line_items: true,
       },

@@ -12,11 +12,11 @@ export function StaticPageLayout({
     <>
       <header className="static-header" role="banner">
         <div className="container">
-          <Link className="brand" href="/" aria-label="IncluMarket home">
+          <Link className="brand" href="/" aria-label="InclusiveMarket home">
             <span className="brand-mark" aria-hidden="true">
               IM
             </span>
-            <span className="brand-word">IncluMarket</span>
+            <span className="brand-word">InclusiveMarket</span>
           </Link>
         </div>
       </header>

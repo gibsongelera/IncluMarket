@@ -20,9 +20,13 @@ import { VisualAlertHost } from "@/components/VisualAlert";
 import { HeaderMetrics } from "@/components/HeaderMetrics";
 
 export const metadata: Metadata = {
-  title: "IncluMarket — PWD Livelihood Marketplace",
+  title: {
+    default: "InclusiveMarket — products made by PWD trainees of AVRC Region IX",
+    template: "%s — InclusiveMarket",
+  },
   description:
-    "IncluMarket — a Shopee-style e-commerce module for PWD livelihood under the InkluTrack ecosystem. Built on DSWD identity and WCAG 2.1 AA.",
+    "Buy bags, apparel, crafts, food and more made by persons with disabilities trained at AVRC Region IX. Accessible by design. Part of the InkluTrack ecosystem.",
+  applicationName: "InclusiveMarket",
 };
 
 // Theme + contrast are request-time; avoid static prerender crashing when

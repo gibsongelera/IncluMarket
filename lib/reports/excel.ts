@@ -86,12 +86,12 @@ function applyColumnFormats(
 
 /**
  * ISO 8601 UTC calendar date for filenames: YYYY-MM-DD
- * Full stamp: IncluMarket_<Slug>_YYYY-MM-DD.xlsx
+ * Full stamp: InclusiveMarket_<Slug>_YYYY-MM-DD.xlsx
  */
 export function reportFilename(type: ReportType, when = new Date()): string {
   const ymd = when.toISOString().slice(0, 10);
-  if (type === "all") return `IncluMarket_Full_Platform_Report_${ymd}.xlsx`;
-  return `IncluMarket_${REPORT_META[type].slug}_Report_${ymd}.xlsx`;
+  if (type === "all") return `InclusiveMarket_Full_Platform_Report_${ymd}.xlsx`;
+  return `InclusiveMarket_${REPORT_META[type].slug}_Report_${ymd}.xlsx`;
 }
 
 async function addUsersSheet(workbook: ExcelJS.Workbook, db: Db) {
@@ -318,15 +318,15 @@ export async function buildReportWorkbook(
 ): Promise<{ workbook: ExcelJS.Workbook; filename: string }> {
   const when = new Date();
   const workbook = new ExcelJS.Workbook();
-  workbook.creator = "IncluMarket";
-  workbook.lastModifiedBy = "IncluMarket Admin";
+  workbook.creator = "InclusiveMarket";
+  workbook.lastModifiedBy = "InclusiveMarket Admin";
   workbook.created = when;
   workbook.modified = when;
-  workbook.company = "IncluMarket — AVRC Region IX";
+  workbook.company = "InclusiveMarket — AVRC Region IX";
   workbook.title =
     type === "all"
-      ? "IncluMarket Full Platform Report"
-      : `IncluMarket ${REPORT_META[type].title}`;
+      ? "InclusiveMarket Full Platform Report"
+      : `InclusiveMarket ${REPORT_META[type].title}`;
   workbook.subject = "Administrative data export (ISO 8601 dates, ISO 4217 PHP)";
   workbook.description =
     "Generated for internal administration. Emails are masked. Monetary amounts use ISO 4217 currency code PHP.";

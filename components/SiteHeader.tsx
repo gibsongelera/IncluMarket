@@ -58,11 +58,11 @@ export async function SiteHeader({
     return (
       <header className="site-header site-header--buyer" role="banner">
         <div className="container header-row">
-          <Link className="brand" href="/home" aria-label="IncluMarket home">
+          <Link className="brand" href="/home" aria-label="InclusiveMarket home">
             <span className="brand-mark" aria-hidden="true">
               IM
             </span>
-            <span className="brand-word">IncluMarket</span>
+            <span className="brand-word">InclusiveMarket</span>
           </Link>
 
           <SearchBox />
@@ -88,12 +88,12 @@ export async function SiteHeader({
     <>
       <header className={`site-header site-header--${variant}`} role="banner">
         <div className="container header-row">
-          <Link className="brand" href={BRAND_HREF[variant]} aria-label="IncluMarket home">
+          <Link className="brand" href={BRAND_HREF[variant]} aria-label="InclusiveMarket home">
             <span className="brand-mark" aria-hidden="true">
               IM
             </span>
             <span className="brand-word">
-              IncluMarket{variant !== "buyer" ? <small>{variant === "admin" ? "Admin" : "Seller"}</small> : null}
+              InclusiveMarket{variant !== "buyer" ? <small>{variant === "admin" ? "Admin" : "Seller"}</small> : null}
             </span>
           </Link>
 

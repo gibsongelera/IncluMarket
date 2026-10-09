@@ -1,18 +1,18 @@
 import { StaticPageLayout } from "@/components/StaticPageLayout";
 
-export const metadata = { title: "About Us — IncluMarket" };
+export const metadata = { title: "About Us" };
 
 export default function AboutPage() {
   return (
-    <StaticPageLayout title="About IncluMarket">
+    <StaticPageLayout title="About InclusiveMarket">
       <p>
-        IncluMarket is an accessible online marketplace built for persons with
+        InclusiveMarket is an accessible online marketplace built for persons with
         disabilities (PWD) to sell what they make — bags, apparel, crafts,
         food, accessories, wellness items, and services — directly to
         buyers, without a storefront being a barrier in itself.
       </p>
       <p>
-        IncluMarket is part of the wider <strong>IncluTrack</strong>{" "}
+        InclusiveMarket is part of the wider <strong>InkluTrack</strong>{" "}
         ecosystem. The platform runs three roles — buyers, sellers, and
         administrators — with every seller listing reviewed before it goes
         live, and every account protected by role-based access control at
@@ -29,7 +29,7 @@ export default function AboutPage() {
       </p>
       <h2>Why PWD-made goods</h2>
       <p>
-        Every seller on IncluMarket is a person with a disability running
+        Every seller on InclusiveMarket is a person with a disability running
         their own livelihood. Some listings are adapted specifically for
         other PWD buyers — magnetic closures instead of buttons, one-handed
         zippers, seated-fit clothing — because the people making them know

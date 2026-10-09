@@ -17,7 +17,7 @@ export function SiteFooter() {
     <footer className="site-footer" role="contentinfo">
       <div className="container footer-grid">
         <div>
-          <h2>IncluMarket</h2>
+          <h2>InclusiveMarket</h2>
           <ul className="footer-links">
             <li>
               <Link href="/about">About Us</Link>
@@ -67,7 +67,7 @@ export function SiteFooter() {
         </div>
       </div>
       <div className="footer-bottom">
-        <p>&copy; 2026 IncluMarket</p>
+        <p>&copy; 2026 InclusiveMarket</p>
       </div>
     </footer>
   );

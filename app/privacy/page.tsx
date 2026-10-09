@@ -1,12 +1,12 @@
 import { StaticPageLayout } from "@/components/StaticPageLayout";
 
-export const metadata = { title: "Privacy Policy — IncluMarket" };
+export const metadata = { title: "Privacy Policy" };
 
 export default function PrivacyPage() {
   return (
     <StaticPageLayout title="Privacy Policy">
       <p>
-        IncluMarket processes personal data in line with the Philippine Data
+        InclusiveMarket processes personal data in line with the Philippine Data
         Privacy Act of 2012 (RA 10173). This page explains what we collect,
         why, and how it's protected.
       </p>

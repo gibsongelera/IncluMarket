@@ -19,7 +19,7 @@ export function ChatWidget() {
   const [messages, setMessages] = useState<ChatEntry[]>([
     {
       role: "bot",
-      body: "Hi! I'm the IncluMarket assistant. Ask me about orders, shipping, returns, accessibility, or selling on IncluMarket.",
+      body: "Hi! I'm the InclusiveMarket assistant. Ask me about orders, shipping, returns, accessibility, or selling on InclusiveMarket.",
     },
   ]);
   const [input, setInput] = useState("");
@@ -109,9 +109,9 @@ export function ChatWidget() {
   return (
     <div className="chat-widget" ref={panelRef}>
       {open ? (
-        <div className="chat-panel" role="dialog" aria-label="IncluMarket assistant" aria-modal="false">
+        <div className="chat-panel" role="dialog" aria-label="InclusiveMarket assistant" aria-modal="false">
           <div className="chat-panel__head">
-            <strong>IncluMarket Assistant</strong>
+            <strong>InclusiveMarket Assistant</strong>
             <button
               type="button"
               className="icon-btn"
@@ -147,7 +147,7 @@ export function ChatWidget() {
 
           <form className="chat-form" onSubmit={send}>
             <label htmlFor="chat-input" className="sr-only">
-              Message the IncluMarket assistant
+              Message the InclusiveMarket assistant
             </label>
             <input
               id="chat-input"
