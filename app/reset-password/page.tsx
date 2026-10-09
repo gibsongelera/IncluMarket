@@ -29,7 +29,7 @@ export default async function ResetPasswordPage() {
 
   return (
     <StaticPageLayout title="Choose a new password">
-      <ResetPasswordClient hasSession={recovering} email={user?.email ?? null} />
+      <ResetPasswordClient hasSession={recovering} email={user?.email ?? null} /> {/* props-ok: the signed-in user's own address */}
     </StaticPageLayout>
   );
 }

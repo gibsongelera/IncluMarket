@@ -5,8 +5,8 @@ import { WishlistClient } from "@/components/WishlistClient";
 import {
   getWishlistProducts,
   getCategories,
-  getReviews,
-  getVariants,
+  getReviewsForProducts,
+  getVariantsForProducts,
   ratingByProduct,
   stockByProduct,
 } from "@/lib/data";
@@ -15,12 +15,12 @@ export const dynamic = "force-dynamic";
 
 export default async function WishlistPage() {
   const session = await requireRole(["buyer"]);
-  const [products, variants, reviews, categories] = await Promise.all([
+  const [products, categories] = await Promise.all([
     getWishlistProducts(session.user_id),
-    getVariants(),
-    getReviews(),
     getCategories(),
   ]);
+  const ids = products.map((p) => p.id);
+  const [variants, reviews] = await Promise.all([getVariantsForProducts(ids), getReviewsForProducts(ids)]);
   const stock = stockByProduct(variants);
   const { avg, count } = ratingByProduct(reviews);
 

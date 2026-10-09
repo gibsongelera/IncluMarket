@@ -2,7 +2,7 @@ import { requireRole } from "@/lib/session";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { MessagesClient } from "@/components/MessagesClient";
-import { getConversationsForUser, getMessagesForConversations, getProfiles } from "@/lib/data";
+import { getConversationsForUser, getDisplayNames, getMessagesForConversations } from "@/lib/data";
 
 export const dynamic = "force-dynamic";
 
@@ -13,11 +13,13 @@ export default async function SellerMessagesPage({
 }) {
   const session = await requireRole(["seller"]);
   const sp = await searchParams;
-  const [conversations, profiles] = await Promise.all([
-    getConversationsForUser(session.user_id, "seller"),
-    getProfiles(),
+  const conversations = await getConversationsForUser(session.user_id, "seller");
+  // Names of the people in these conversations only — this page used to send
+  // every user's name to the browser.
+  const [messages, names] = await Promise.all([
+    getMessagesForConversations(conversations.map((c) => c.id)),
+    getDisplayNames(conversations.map((c) => c.buyer_id)),
   ]);
-  const messages = await getMessagesForConversations(conversations.map((c) => c.id));
 
   return (
     <>
@@ -29,7 +31,7 @@ export default async function SellerMessagesPage({
           viewerId={session.user_id}
           conversations={conversations}
           messages={messages}
-          participants={profiles.map((p) => ({ id: p.id, name: p.name }))}
+          participants={Object.entries(names).map(([id, name]) => ({ id: Number(id), name }))}
           initialConversationId={sp.c ? Number(sp.c) : null}
         />
       </main>

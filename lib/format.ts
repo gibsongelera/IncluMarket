@@ -79,6 +79,16 @@ export function productImageSrc(
   return svgPlaceholder(product.image);
 }
 
+/**
+ * "Maria Santos" → "Maria S." — how one user is shown to another (reviewer,
+ * buyer on a seller's screen). Enough to recognise, not enough to look up.
+ */
+export function shortName(name: string | null | undefined): string {
+  const parts = String(name || "").trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return "Buyer";
+  return parts.length === 1 ? parts[0] : `${parts[0]} ${parts[parts.length - 1].charAt(0)}.`;
+}
+
 export function initials(name: string): string {
   return name
     .split(/\s+/)

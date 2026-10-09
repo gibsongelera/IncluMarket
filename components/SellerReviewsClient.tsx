@@ -1,12 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { formatDate, maskEmail } from "@/lib/format";
+import { formatDate } from "@/lib/format";
 import { StarRating } from "./StarRating";
 import type { ProductReview } from "@/lib/types";
 
 type ProductLite = { id: number; title: string };
-type BuyerLite = { id: number; name: string; email: string };
+type BuyerLite = { id: number; name: string };
 
 export function SellerReviewsClient({
   reviews,
@@ -87,8 +87,7 @@ export function SellerReviewsClient({
               <article className="review" key={r.id}>
                 <header>
                   <div>
-                    <strong>{buyer ? buyer.name : "Buyer"}</strong> &middot;{" "}
-                    <small className="muted">{maskEmail(buyer ? buyer.email : "")}</small>
+                    <strong>{buyer ? buyer.name : "Buyer"}</strong>
                   </div>
                   <span className="muted small">{formatDate(r.created_at)}</span>
                 </header>

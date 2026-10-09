@@ -9,9 +9,9 @@ import {
   getCategories,
   getFeaturedProducts,
   getFeaturedSellers,
-  getOrderItems,
-  getReviews,
-  getVariants,
+  getOrderItemsForProducts,
+  getReviewsForProducts,
+  getVariantsForProducts,
   getWishlistProductIds,
   popularityByProduct,
   ratingByProduct,
@@ -33,18 +33,22 @@ export default async function HomePage({
   if (session && session.role !== "buyer") redirect(homeForRole(session.role));
 
   const sp = await searchParams;
-  const [products, variants, reviews, categories, wishlistIds, orderItems, featured, flashSales, featuredSellers] =
-    await Promise.all([
-      getApprovedProducts(),
-      getVariants(),
-      getReviews(),
-      getCategories(),
-      session ? getWishlistProductIds(session.user_id) : Promise.resolve([] as number[]),
-      getOrderItems(),
-      getFeaturedProducts(),
-      getActiveFlashSales(),
-      getFeaturedSellers(),
-    ]);
+  const [products, categories, wishlistIds, featured, flashSales, featuredSellers] = await Promise.all([
+    getApprovedProducts(),
+    getCategories(),
+    session ? getWishlistProductIds(session.user_id) : Promise.resolve([] as number[]),
+    getFeaturedProducts(),
+    getActiveFlashSales(),
+    getFeaturedSellers(),
+  ]);
+  // Stats for the listed products only (S5-01 replaces this whole page with a
+  // paginated server-side query over pre-computed columns).
+  const ids = products.map((p) => p.id);
+  const [variants, reviews, orderItems] = await Promise.all([
+    getVariantsForProducts(ids),
+    getReviewsForProducts(ids),
+    getOrderItemsForProducts(ids),
+  ]);
   const stock = stockByProduct(variants);
   const { avg, count } = ratingByProduct(reviews);
   const popularity = popularityByProduct(orderItems);

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { money, formatDate, maskEmail } from "@/lib/format";
+import { money, formatDate } from "@/lib/format";
 import { toast } from "@/lib/toast";
 import { Pill } from "./Pill";
 import { updateOrderStatus } from "@/lib/actions/seller";
@@ -14,7 +14,26 @@ import { DeepLinkFocus } from "./DeepLinkFocus";
 
 type ProductLite = { id: number; title: string };
 type VariantLite = { id: number; color_name: string; size: string | null };
-type BuyerLite = { id: number; name: string; email: string };
+type BuyerLite = { id: number; name: string };
+
+/**
+ * One order as THIS seller may see it: their own lines' subtotal (never the
+ * whole order total, which can include other sellers' items) and the shipping
+ * destination they need to send the parcel. No buyer email.
+ */
+export type SellerOrderLite = Pick<
+  Order,
+  | "id"
+  | "created_at"
+  | "order_status"
+  | "payment_status"
+  | "payment_provider"
+  | "buyer_id"
+  | "shipping_name"
+  | "shipping_address"
+  | "shipping_city"
+  | "shipping_phone"
+> & { subtotal: number };
 
 const NEXT: Record<string, OrderStatus | undefined> = {
   pending: "processing",
@@ -32,7 +51,7 @@ export function SellerOrdersClient({
   buyers,
   history,
 }: {
-  orders: Order[];
+  orders: SellerOrderLite[];
   orderItems: OrderItem[];
   products: ProductLite[];
   variants: VariantLite[];
@@ -79,7 +98,7 @@ export function SellerOrdersClient({
               <th>Order</th>
               <th>Buyer</th>
               <th>Items</th>
-              <th>Total</th>
+              <th>Your items</th>
               <th>Status</th>
               <th>Tracking</th>
               <th>Advance</th>
@@ -99,8 +118,12 @@ export function SellerOrdersClient({
                   </td>
                   <td>
                     {buyer ? buyer.name : "Buyer"}
-                    <br />
-                    <small className="muted">{maskEmail(buyer ? buyer.email : "")}</small>
+                    {o.shipping_city ? (
+                      <>
+                        <br />
+                        <small className="muted">Ship to {o.shipping_city}</small>
+                      </>
+                    ) : null}
                   </td>
                   <td>
                     {items.map((it, idx) => {
@@ -118,7 +141,7 @@ export function SellerOrdersClient({
                       );
                     })}
                   </td>
-                  <td>{money(o.total_amount)}</td>
+                  <td className="price">{money(o.subtotal)}</td>
                   <td>
                     <Pill status={o.order_status} />
                   </td>

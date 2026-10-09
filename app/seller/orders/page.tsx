@@ -1,37 +1,53 @@
 import { requireRole } from "@/lib/session";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
-import { SellerOrdersClient } from "@/components/SellerOrdersClient";
+import { SellerOrdersClient, type SellerOrderLite } from "@/components/SellerOrdersClient";
 import {
-  getOrderItems,
-  getOrders,
+  getDisplayNames,
+  getOrderItemsForProducts,
+  getOrdersByIds,
   getOrderStatusHistoryForOrders,
-  getProductsBySeller,
-  getProfiles,
-  getVariants,
+  getSellerProductIndex,
+  getVariantsByIds,
 } from "@/lib/data";
+import { shortName } from "@/lib/format";
+import { roundMoney } from "@/lib/pricing/core";
 
 export const dynamic = "force-dynamic";
 
 export default async function SellerOrdersPage() {
   const session = await requireRole(["seller"]);
-  const [products, orderItems, orders, variants, profiles] = await Promise.all([
-    getProductsBySeller(session.user_id),
-    getOrderItems(),
-    getOrders(),
-    getVariants(),
-    getProfiles(),
-  ]);
+  const products = await getSellerProductIndex(session.user_id);
 
-  const myProdIds = new Set(products.map((p) => p.id));
-  const myItems = orderItems.filter((it) => it.product_id != null && myProdIds.has(it.product_id));
-  const orderIds = new Set(myItems.map((it) => it.order_id));
-  const myOrders = orders
-    .filter((o) => orderIds.has(o.id))
-    .sort((a, b) => b.created_at.localeCompare(a.created_at));
-  // include all items belonging to those orders (for line display)
-  const relatedItems = orderItems.filter((it) => orderIds.has(it.order_id));
-  const history = await getOrderStatusHistoryForOrders(myOrders.map((o) => o.id));
+  // Only this seller's lines, and only the orders they appear in. This page
+  // used to load every order, every line and every user's name and raw email,
+  // and hand all of it to the browser (B-13); it also showed other sellers'
+  // lines and the whole order total (B-09).
+  const myItems = await getOrderItemsForProducts(products.map((p) => p.id));
+  const orderIds = [...new Set(myItems.map((it) => it.order_id))];
+  const [orders, history, variants] = await Promise.all([
+    getOrdersByIds(orderIds),
+    getOrderStatusHistoryForOrders(orderIds),
+    getVariantsByIds(myItems.map((it) => it.variant_id).filter((n): n is number => n != null)),
+  ]);
+  const names = await getDisplayNames(orders.map((o) => o.buyer_id));
+
+  const lite: SellerOrderLite[] = orders.map((o) => ({
+    id: o.id,
+    created_at: o.created_at,
+    order_status: o.order_status,
+    payment_status: o.payment_status,
+    payment_provider: o.payment_provider,
+    buyer_id: o.buyer_id,
+    // Shipping details are this seller's to see: they ship the parcel.
+    shipping_name: o.shipping_name,
+    shipping_address: o.shipping_address,
+    shipping_city: o.shipping_city,
+    shipping_phone: o.shipping_phone,
+    subtotal: roundMoney(
+      myItems.filter((it) => it.order_id === o.id).reduce((n, it) => n + it.unit_price * it.quantity, 0)
+    ),
+  }));
 
   return (
     <>
@@ -39,11 +55,11 @@ export default async function SellerOrdersPage() {
       <main id="main" tabIndex={-1} className="container main--seller">
         <h1>Order fulfillment</h1>
         <SellerOrdersClient
-          orders={myOrders}
-          orderItems={relatedItems}
+          orders={lite}
+          orderItems={myItems}
           products={products.map((p) => ({ id: p.id, title: p.title }))}
           variants={variants.map((v) => ({ id: v.id, color_name: v.color_name, size: v.size }))}
-          buyers={profiles.map((p) => ({ id: p.id, name: p.name, email: p.email }))}
+          buyers={Object.entries(names).map(([id, name]) => ({ id: Number(id), name: shortName(name) }))}
           history={history}
         />
       </main>

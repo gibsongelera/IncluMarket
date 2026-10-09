@@ -523,6 +523,16 @@ export async function getProductThumbs(ids: number[]): Promise<ProductThumb[]> {
   return products.map((p) => ({ ...p, images: first.has(p.id) ? [first.get(p.id)!] : [] }));
 }
 
+/** A seller's own products, id/title/status only — no photos, no prices. */
+export async function getSellerProductIndex(
+  sellerId: number
+): Promise<{ id: number; title: string; status: string }[]> {
+  return rows<{ id: number; title: string; status: string }>(
+    "seller products",
+    await db().from("im_products").select("id, title, status").eq("seller_id", sellerId)
+  );
+}
+
 export async function getVariantsByIds(ids: number[]): Promise<ProductVariant[]> {
   const unique = [...new Set(ids.filter((n) => Number.isInteger(n) && n > 0))];
   if (!unique.length) return [];

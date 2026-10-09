@@ -3,13 +3,13 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { Chart } from "@/components/Chart";
 import { Pill } from "@/components/Pill";
-import { money, formatDate } from "@/lib/format";
+import { money, formatDate, shortName } from "@/lib/format";
 import {
-  getOrderItems,
-  getOrders,
-  getProductsBySeller,
-  getProfiles,
-  getVariants,
+  getDisplayNames,
+  getOrderItemsForProducts,
+  getOrdersByIds,
+  getSellerProductIndex,
+  getVariantsForProducts,
 } from "@/lib/data";
 import { TableWrap } from "@/components/TableWrap";
 
@@ -19,20 +19,22 @@ const ACTIVE = ["processing", "shipped", "delivered"];
 
 export default async function SellerDashboardPage() {
   const session = await requireRole(["seller"]);
-  const [products, orderItems, orders, variants, profiles] = await Promise.all([
-    getProductsBySeller(session.user_id),
-    getOrderItems(),
-    getOrders(),
-    getVariants(),
-    getProfiles(),
-  ]);
-
+  // Scoped reads: this seller's products, the order lines for them, those
+  // orders, and the names of those buyers. It used to read every order, every
+  // line, every variant and every user in the system on each visit.
+  const products = await getSellerProductIndex(session.user_id);
   const productIds = products.map((p) => p.id);
-  const myItems = orderItems.filter((it) => it.product_id != null && productIds.includes(it.product_id));
+  const [myItems, variants] = await Promise.all([
+    getOrderItemsForProducts(productIds),
+    getVariantsForProducts(productIds),
+  ]);
+  const orders = await getOrdersByIds([...new Set(myItems.map((it) => it.order_id))]);
   const ordersById: Record<number, (typeof orders)[number]> = {};
   orders.forEach((o) => (ordersById[o.id] = o));
-  const nameById: Record<number, string> = {};
-  profiles.forEach((p) => (nameById[p.id] = p.name));
+  const nameById = await getDisplayNames(orders.map((o) => o.buyer_id));
+  // What this seller earns from an order: their own lines, not the order total.
+  const mySubtotal: Record<number, number> = {};
+  myItems.forEach((it) => (mySubtotal[it.order_id] = (mySubtotal[it.order_id] || 0) + it.unit_price * it.quantity));
 
   const now = Date.now();
   const monthAgo = now - 30 * 24 * 3600 * 1000;
@@ -156,7 +158,7 @@ export default async function SellerDashboardPage() {
                     <th>Order</th>
                     <th>Buyer</th>
                     <th>Placed</th>
-                    <th>Total</th>
+                    <th>Your items</th>
                     <th>Status</th>
                   </tr>
                 </thead>
@@ -164,9 +166,9 @@ export default async function SellerDashboardPage() {
                   {mineOrders.map((o) => (
                     <tr key={o.id}>
                       <td>#{o.id}</td>
-                      <td>{nameById[o.buyer_id] || "Buyer"}</td>
+                      <td>{shortName(nameById[o.buyer_id])}</td>
                       <td>{formatDate(o.created_at)}</td>
-                      <td>{money(o.total_amount)}</td>
+                      <td>{money(mySubtotal[o.id] || 0)}</td>
                       <td>
                         <Pill status={o.order_status} />
                       </td>
