@@ -52,9 +52,32 @@ export async function getSession(): Promise<SessionUser | null> {
   };
 }
 
+/**
+ * True when the browser holds a valid sign-in for a SUSPENDED profile — the
+ * window between an admin suspending someone and their session expiring.
+ */
+export async function isSignedInButSuspended(): Promise<boolean> {
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return false;
+  const { data } = await createAdminClient()
+    .from("im_profiles")
+    .select("account_status")
+    .eq("auth_user_id", user.id)
+    .maybeSingle();
+  return data?.account_status === "suspended";
+}
+
 export async function requireRole(roles: Role[]): Promise<SessionUser> {
   const session = await getSession();
-  if (!session) redirect("/");
+  if (!session) {
+    // A suspended user used to be bounced silently to the storefront (B-14);
+    // they now get a page that says what happened and what to do.
+    if (await isSignedInButSuspended()) redirect("/account-suspended");
+    redirect("/login");
+  }
   if (roles.length && !roles.includes(session.role)) {
     redirect(homeForRole(session.role));
   }

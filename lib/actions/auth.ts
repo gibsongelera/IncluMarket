@@ -21,6 +21,9 @@ function describeAuthError(
   return fallback;
 }
 
+const SUSPENDED_MESSAGE =
+  "This account is suspended, so it cannot sign in right now. If you think this is a mistake, contact us through the Contact page.";
+
 export interface AuthResult {
   ok: boolean;
   error?: string;
@@ -60,6 +63,11 @@ export async function loginAction(email: string, password: string): Promise<Auth
 
   if (error) {
     const msg = describeAuthError(error, "Sign in failed.");
+    // Suspension bans the user in Supabase Auth (setAccountStatus), which
+    // reports it as "User is banned".
+    if (/banned/i.test(msg)) {
+      return { ok: false, error: SUSPENDED_MESSAGE };
+    }
     if (/confirm|not confirmed|email not confirmed/i.test(msg)) {
       return {
         ok: false,
@@ -84,7 +92,17 @@ export async function loginAction(email: string, password: string): Promise<Auth
 
   const session = await getSession();
   if (!session) {
-    return { ok: false, error: "Account profile not found. Contact support." };
+    // Either the profile is suspended (and the Auth ban has not applied yet)
+    // or there is no profile. A suspended user used to see "Account profile
+    // not found", which explains nothing (B-14).
+    const { data: profile } = await createAdminClient()
+      .from("im_profiles")
+      .select("account_status")
+      .eq("auth_user_id", data.user.id)
+      .maybeSingle();
+    await supabase.auth.signOut();
+    if (profile?.account_status === "suspended") return { ok: false, error: SUSPENDED_MESSAGE };
+    return { ok: false, error: "We could not find your account details. Please contact us through the Contact page." };
   }
 
   await audit(session.user_id, session.role, "auth_login", `user:${session.user_id}`);

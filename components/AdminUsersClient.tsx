@@ -4,8 +4,18 @@ import { useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { formatDate, maskEmail } from "@/lib/format";
 import { toast } from "@/lib/toast";
-import { createUser, updateUser, deleteUser, updateUserRole, setSellerFeatured } from "@/lib/actions/admin";
+import {
+  anonymizeUser,
+  createUser,
+  deleteUser,
+  setAccountStatus,
+  setSellerFeatured,
+  updateUser,
+  updateUserRole,
+} from "@/lib/actions/admin";
 import { Icon } from "./Icon";
+import { Pill } from "./Pill";
+import { ConfirmDialog } from "./ConfirmDialog";
 import type { Profile, Role } from "@/lib/types";
 import { TableWrap } from "./TableWrap";
 import { DeepLinkFocus } from "./DeepLinkFocus";
@@ -14,8 +24,17 @@ type UserRow = Profile & {
   footprint: { products: number; orders: number; reviews: number; tickets: number; consents: number };
 };
 
+type Pending =
+  | { kind: "suspend" | "restore" | "delete" | "anonymize"; user: UserRow }
+  | { kind: "role"; user: UserRow; next: Role }
+  | { kind: "feature"; user: UserRow };
+
 const ROLES: Role[] = ["buyer", "seller", "admin"];
 const s = (n: number) => (n === 1 ? "" : "s");
+
+function hasHistory(u: UserRow): boolean {
+  return u.footprint.orders > 0 || u.footprint.products > 0;
+}
 
 export function AdminUsersClient({
   users,
@@ -31,6 +50,7 @@ export function AdminUsersClient({
   const initialQ = searchParams.get("q") ?? "";
 
   const [role, setRole] = useState("");
+  const [status, setStatus] = useState("");
   const [q, setQ] = useState(initialQ);
 
   const modalRef = useRef<HTMLDialogElement>(null);
@@ -40,11 +60,13 @@ export function AdminUsersClient({
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
+  const [pending, setPending] = useState<Pending | null>(null);
+  const [pendingError, setPendingError] = useState<string | null>(null);
+
   // form state
   const [fName, setFName] = useState("");
   const [fEmail, setFEmail] = useState("");
   const [fRole, setFRole] = useState<Role>("buyer");
-  const [fPassword, setFPassword] = useState("");
   const [fDisability, setFDisability] = useState("");
   const [fNeeds, setFNeeds] = useState("");
   const [fConsent, setFConsent] = useState(false);
@@ -54,18 +76,18 @@ export function AdminUsersClient({
     return users
       .filter((u) => {
         if (role && u.role !== role) return false;
+        if (status && u.account_status !== status) return false;
         if (query && (u.name + " " + u.email).toLowerCase().indexOf(query) < 0) return false;
         return true;
       })
       .sort((a, b) => a.name.localeCompare(b.name));
-  }, [users, role, q]);
+  }, [users, role, status, q]);
 
   function openCreate() {
     setEditing(null);
     setFName("");
     setFEmail("");
     setFRole("buyer");
-    setFPassword("");
     setFDisability("");
     setFNeeds("");
     setFConsent(false);
@@ -78,7 +100,6 @@ export function AdminUsersClient({
     setFName(u.name || "");
     setFEmail(u.email || "");
     setFRole(u.role);
-    setFPassword("");
     setFDisability(u.disability_type || "");
     setFNeeds(u.assistive_needs || "");
     setErr(null);
@@ -90,7 +111,12 @@ export function AdminUsersClient({
     detailsRef.current?.showModal();
   }
 
-  async function save(e: React.MouseEvent) {
+  function ask(p: Pending) {
+    setPendingError(null);
+    setPending(p);
+  }
+
+  async function save(e: React.FormEvent) {
     e.preventDefault();
     setErr(null);
     const input = {
@@ -100,87 +126,151 @@ export function AdminUsersClient({
       disability_type: fDisability || null,
       assistive_needs: fNeeds || null,
     };
-    if (!editing) {
-      if (!fPassword || fPassword.length < 8) {
-        setErr("Password must be at least 8 characters.");
-        return;
-      }
-    } else if (fPassword && fPassword.length < 8) {
-      setErr("New password must be at least 8 characters (or leave blank).");
-      return;
-    }
     setBusy(true);
     const res = editing ? await updateUser(editing.id, input) : await createUser(input, fConsent);
     setBusy(false);
     if (!res.ok) {
       setErr(res.error || "Could not save user.");
-      toast(res.error || "Could not save user.", "error");
       return;
     }
-    toast(editing ? `User "${fName}" updated.` : `User "${fName}" created.`, "success");
+    toast(
+      editing ? `User "${fName}" updated.` : `Invitation sent to ${fEmail}. They choose their own password.`,
+      "success"
+    );
     modalRef.current?.close();
     router.refresh();
   }
 
-  async function onDelete(u: UserRow) {
-    if (u.id === currentAdminId) {
-      toast("You cannot delete the account you are signed in with.", "error");
-      return;
+  async function runPending(reason: string) {
+    if (!pending) return;
+    const u = pending.user;
+    setBusy(true);
+    let res: { ok: boolean; error?: string };
+    let done = "";
+    switch (pending.kind) {
+      case "suspend":
+        res = await setAccountStatus(u.id, "suspended", reason);
+        done = `${u.name} is suspended and has been emailed the reason.`;
+        break;
+      case "restore":
+        res = await setAccountStatus(u.id, "active", reason);
+        done = `${u.name} can sign in again.`;
+        break;
+      case "delete":
+        res = await deleteUser(u.id);
+        done = `${u.name} was deleted.`;
+        break;
+      case "anonymize":
+        res = await anonymizeUser(u.id);
+        done = `${u.name}'s personal data was removed. Their orders stay in the records.`;
+        break;
+      case "role":
+        res = await updateUserRole(u.id, pending.next);
+        done = `${u.name} is now ${pending.next === "admin" ? "an" : "a"} ${pending.next}.`;
+        break;
+      case "feature": {
+        const next = !u.is_featured_seller;
+        res = await setSellerFeatured(u.id, next, next ? reason : undefined);
+        done = next ? `${u.name} is now a featured PWD seller.` : `${u.name} was removed from featured sellers.`;
+        break;
+      }
     }
-    const summary =
-      `Delete user "${u.name}" (${u.role})?\n\n` +
-      `This will cascade: ${u.footprint.products} product${s(u.footprint.products)}, ` +
-      `${u.footprint.orders} order${s(u.footprint.orders)}, ` +
-      `${u.footprint.reviews} review${s(u.footprint.reviews)}, and ` +
-      `${u.footprint.tickets} ticket${s(u.footprint.tickets)}.\n\nType YES to confirm.`;
-    const typed = prompt(summary);
-    if (typed !== "YES") {
-      toast("Deletion cancelled.", "warning");
-      return;
-    }
-    const res = await deleteUser(u.id);
+    setBusy(false);
     if (!res.ok) {
-      toast(res.error || "Delete failed.", "error");
+      setPendingError(res.error || "That did not work. Please try again.");
       return;
     }
-    toast(`User "${u.name}" deleted.`, "success");
+    setPending(null);
+    toast(done, "success");
     router.refresh();
   }
 
-  async function changeRole(u: UserRow, next: Role) {
-    if (u.id === currentAdminId && next !== "admin") {
-      toast("You cannot demote your own admin account.", "error");
-      return;
+  const dialog = (() => {
+    if (!pending) return null;
+    const u = pending.user;
+    switch (pending.kind) {
+      case "suspend":
+        return {
+          title: `Suspend ${u.name}?`,
+          body: (
+            <p>
+              They will be signed out and cannot sign in until you restore the account. Their
+              listings are hidden from the shop. We email them the reason you give.
+            </p>
+          ),
+          confirm: "Suspend account",
+          tone: "danger" as const,
+          reason: { label: "Reason (sent to the user)", required: true, minLength: 5, maxLength: 500 },
+        };
+      case "restore":
+        return {
+          title: `Restore ${u.name}?`,
+          body: <p>They can sign in again and their approved listings return to the shop.</p>,
+          confirm: "Restore account",
+          tone: "primary" as const,
+          reason: { label: "Note for the audit log", required: true, minLength: 5, maxLength: 500 },
+        };
+      case "delete":
+        return {
+          title: `Delete ${u.name}?`,
+          body: <p>This account has no orders or products. Deleting it removes it and its sign-in permanently.</p>,
+          confirm: "Delete permanently",
+          tone: "danger" as const,
+        };
+      case "anonymize":
+        return {
+          title: `Remove ${u.name}'s personal data?`,
+          body: (
+            <>
+              <p>
+                This account has {u.footprint.orders} order{s(u.footprint.orders)} and{" "}
+                {u.footprint.products} product{s(u.footprint.products)}, so it cannot be deleted without
+                erasing other people&apos;s records.
+              </p>
+              <p>
+                Anonymising replaces the name and email, clears disability and contact details, deletes
+                the cart, wishlist and sign-in, and keeps the orders. It cannot be undone.
+              </p>
+            </>
+          ),
+          confirm: "Anonymise account",
+          tone: "danger" as const,
+        };
+      case "role":
+        return {
+          title: `Change ${u.name}'s role?`,
+          body: (
+            <p>
+              From <strong>{u.role}</strong> to <strong>{pending.next}</strong>.
+              {pending.next === "admin" ? " Admins can see and change everything." : ""}
+            </p>
+          ),
+          confirm: "Change role",
+          tone: pending.next === "admin" ? ("danger" as const) : ("primary" as const),
+        };
+      case "feature":
+        return u.is_featured_seller
+          ? {
+              title: `Stop featuring ${u.name}?`,
+              body: <p>They are removed from the homepage&apos;s featured PWD sellers.</p>,
+              confirm: "Stop featuring",
+              tone: "primary" as const,
+            }
+          : {
+              title: `Feature ${u.name} as a PWD seller?`,
+              body: <p>Their card and story appear on the homepage.</p>,
+              confirm: "Feature seller",
+              tone: "primary" as const,
+              reason: {
+                label: "Seller story shown on the homepage",
+                required: false,
+                maxLength: 600,
+                hint: "Two or three sentences, in plain words. You can leave it empty.",
+                defaultValue: u.seller_story || "",
+              },
+            };
     }
-    if (!confirm(`Change role of "${u.name}" from "${u.role}" to "${next}"?`)) {
-      router.refresh();
-      return;
-    }
-    const res = await updateUserRole(u.id, next);
-    if (!res.ok) {
-      toast(res.error || "Could not change role.", "error");
-      return;
-    }
-    toast(`Role for "${u.name}" is now ${next}.`, "success");
-    router.refresh();
-  }
-
-  async function toggleFeaturedSeller(u: UserRow) {
-    const next = !u.is_featured_seller;
-    let story = u.seller_story || "";
-    if (next) {
-      const entered = prompt(`Short seller story for "${u.name}" (shown on the homepage):`, story);
-      if (entered == null) return; // cancelled
-      story = entered;
-    }
-    const res = await setSellerFeatured(u.id, next, story);
-    if (!res.ok) {
-      toast(res.error || "Could not update.", "error");
-      return;
-    }
-    toast(next ? `"${u.name}" is now a featured PWD seller.` : `Removed "${u.name}" from featured sellers.`, "success");
-    router.refresh();
-  }
+  })();
 
   return (
     <>
@@ -188,21 +278,7 @@ export function AdminUsersClient({
         <h1>User governance</h1>
         <div className="page-head__actions">
           <button type="button" className="btn btn--primary" id="add-user" onClick={openCreate}>
-            <svg
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
-              <path d="M12 5v14" />
-              <path d="M5 12h14" />
-            </svg>
-            Add new user
+            <Icon name="plus" size={18} /> Invite a user
           </button>
         </div>
       </div>
@@ -214,6 +290,12 @@ export function AdminUsersClient({
           <option value="buyer">Buyer</option>
           <option value="seller">Seller</option>
           <option value="admin">Admin</option>
+        </select>
+        <label htmlFor="usr-status">Status</label>
+        <select id="usr-status" value={status} onChange={(e) => setStatus(e.target.value)}>
+          <option value="">Any status</option>
+          <option value="active">Active</option>
+          <option value="suspended">Suspended</option>
         </select>
         <label htmlFor="usr-search" className="sr-only">
           Search
@@ -238,7 +320,7 @@ export function AdminUsersClient({
               <th scope="col">Name</th>
               <th scope="col">Email (masked)</th>
               <th scope="col">Role</th>
-              <th scope="col">Disability type</th>
+              <th scope="col">Status</th>
               <th scope="col">Featured</th>
               <th scope="col">Joined</th>
               <th scope="col">Actions</th>
@@ -247,6 +329,7 @@ export function AdminUsersClient({
           <tbody id="user-rows">
             {filtered.map((u) => {
               const isSelf = u.id === currentAdminId;
+              const suspended = u.account_status === "suspended";
               return (
                 <tr key={u.id} data-row-id={u.id}>
                   <td>
@@ -261,7 +344,8 @@ export function AdminUsersClient({
                       className="role-sel"
                       aria-label={`Change role for ${u.name}`}
                       value={u.role}
-                      onChange={(e) => changeRole(u, e.target.value as Role)}
+                      disabled={isSelf}
+                      onChange={(e) => ask({ kind: "role", user: u, next: e.target.value as Role })}
                     >
                       {ROLES.map((r) => (
                         <option key={r} value={r}>
@@ -270,7 +354,9 @@ export function AdminUsersClient({
                       ))}
                     </select>
                   </td>
-                  <td>{u.disability_type || "—"}</td>
+                  <td>
+                    <Pill status={u.account_status} />
+                  </td>
                   <td>
                     {u.role === "seller" ? (
                       <button
@@ -282,7 +368,7 @@ export function AdminUsersClient({
                             ? `Remove ${u.name} from featured PWD sellers`
                             : `Feature ${u.name} as a PWD seller`
                         }
-                        onClick={() => toggleFeaturedSeller(u)}
+                        onClick={() => ask({ kind: "feature", user: u })}
                       >
                         <Icon name="sparkles" size={16} />
                       </button>
@@ -292,21 +378,30 @@ export function AdminUsersClient({
                   </td>
                   <td>{formatDate(u.created_at)}</td>
                   <td className="row-actions">
-                    <button className="btn btn--ghost btn--sm" onClick={() => openDetails(u)}>
+                    <button type="button" className="btn btn--ghost btn--sm" onClick={() => openDetails(u)}>
                       Details
                     </button>{" "}
-                    <button className="btn btn--ghost btn--sm" onClick={() => openEdit(u)}>
+                    <button type="button" className="btn btn--ghost btn--sm" onClick={() => openEdit(u)}>
                       Edit
                     </button>{" "}
-                    <button
-                      className="btn btn--danger btn--sm"
-                      disabled={isSelf}
-                      aria-disabled={isSelf}
-                      title={isSelf ? "You cannot delete yourself" : undefined}
-                      onClick={() => onDelete(u)}
-                    >
-                      Delete
-                    </button>
+                    {isSelf ? null : (
+                      <>
+                        <button
+                          type="button"
+                          className="btn btn--ghost btn--sm"
+                          onClick={() => ask({ kind: suspended ? "restore" : "suspend", user: u })}
+                        >
+                          {suspended ? "Restore" : "Suspend"}
+                        </button>{" "}
+                        <button
+                          type="button"
+                          className="btn btn--danger btn--sm"
+                          onClick={() => ask({ kind: hasHistory(u) ? "anonymize" : "delete", user: u })}
+                        >
+                          {hasHistory(u) ? "Anonymise" : "Delete"}
+                        </button>
+                      </>
+                    )}
                   </td>
                 </tr>
               );
@@ -316,9 +411,32 @@ export function AdminUsersClient({
       </TableWrap>
       {filtered.length === 0 ? <p className="empty">No users match.</p> : null}
 
+      <ConfirmDialog
+        open={Boolean(pending)}
+        title={dialog?.title ?? ""}
+        confirmLabel={dialog?.confirm ?? "Confirm"}
+        tone={dialog?.tone}
+        busy={busy}
+        error={pendingError}
+        reason={dialog && "reason" in dialog ? dialog.reason : undefined}
+        onConfirm={runPending}
+        onCancel={() => {
+          setPending(null);
+          router.refresh(); // resets a role <select> the dialog was opened from
+        }}
+      >
+        {dialog?.body}
+      </ConfirmDialog>
+
       <dialog id="user-modal" className="modal modal--wide" ref={modalRef} aria-labelledby="um-title">
-        <form method="dialog" className="modal-form" id="user-form" noValidate>
-          <h2 id="um-title">{editing ? `Edit user #${editing.id}` : "Add new user"}</h2>
+        <form className="modal-form" id="user-form" noValidate onSubmit={save}>
+          <h2 id="um-title">{editing ? `Edit user #${editing.id}` : "Invite a new user"}</h2>
+          {!editing ? (
+            <p className="hint">
+              We email an invitation. The person sets their own password — no administrator ever
+              handles it.
+            </p>
+          ) : null}
           <div className="row">
             <div className="field">
               <label htmlFor="um-name">
@@ -330,7 +448,20 @@ export function AdminUsersClient({
               <label htmlFor="um-email">
                 Email <span aria-hidden="true" className="req">*</span>
               </label>
-              <input id="um-email" type="email" required value={fEmail} onChange={(e) => setFEmail(e.target.value)} />
+              <input
+                id="um-email"
+                type="email"
+                required
+                autoComplete="off"
+                value={fEmail}
+                onChange={(e) => setFEmail(e.target.value)}
+                aria-describedby={editing ? "um-email-hint" : undefined}
+              />
+              {editing ? (
+                <p id="um-email-hint" className="hint">
+                  Changing this also changes the address they sign in with.
+                </p>
+              ) : null}
             </div>
           </div>
           <div className="row">
@@ -338,29 +469,18 @@ export function AdminUsersClient({
               <label htmlFor="um-role">
                 Role <span aria-hidden="true" className="req">*</span>
               </label>
-              <select id="um-role" required value={fRole} onChange={(e) => setFRole(e.target.value as Role)}>
+              <select
+                id="um-role"
+                required
+                value={fRole}
+                disabled={editing?.id === currentAdminId}
+                onChange={(e) => setFRole(e.target.value as Role)}
+              >
                 <option value="buyer">Buyer</option>
                 <option value="seller">PWD Seller</option>
                 <option value="admin">Administrator</option>
               </select>
             </div>
-            <div className="field" id="um-password-field">
-              <label htmlFor="um-password">
-                Password {editing ? null : <span aria-hidden="true" className="req">*</span>}
-              </label>
-              <input
-                id="um-password"
-                type="password"
-                minLength={8}
-                autoComplete="new-password"
-                placeholder={editing ? "Leave blank to keep current password" : ""}
-                value={fPassword}
-                onChange={(e) => setFPassword(e.target.value)}
-              />
-              <small className="hint">Min 8 chars. Simulated bcrypt cost 12 hashing on save.</small>
-            </div>
-          </div>
-          <div className="row">
             <div className="field">
               <label htmlFor="um-disability">Disability type</label>
               <input
@@ -380,23 +500,23 @@ export function AdminUsersClient({
                 <option value="Cognitive"></option>
               </datalist>
             </div>
-            <div className="field">
-              <label htmlFor="um-needs">Assistive needs</label>
-              <input
-                id="um-needs"
-                maxLength={200}
-                placeholder="e.g. screen reader, high-contrast UI"
-                value={fNeeds}
-                onChange={(e) => setFNeeds(e.target.value)}
-              />
-            </div>
+          </div>
+          <div className="field">
+            <label htmlFor="um-needs">Assistive needs</label>
+            <input
+              id="um-needs"
+              maxLength={200}
+              placeholder="e.g. screen reader, high-contrast UI"
+              value={fNeeds}
+              onChange={(e) => setFNeeds(e.target.value)}
+            />
           </div>
 
           {!editing ? (
             <div className="field" id="um-consent-field">
               <label>
                 <input type="checkbox" id="um-consent" checked={fConsent} onChange={(e) => setFConsent(e.target.checked)} />{" "}
-                I confirm this user has consented to data processing under RA 10173 (Data Privacy Act) for IncluMarket.
+                I confirm this person has consented to data processing under RA 10173 (Data Privacy Act).
               </label>
             </div>
           ) : null}
@@ -408,18 +528,11 @@ export function AdminUsersClient({
           ) : null}
 
           <div className="form-actions">
-            <button
-              value="cancel"
-              className="btn btn--ghost"
-              onClick={(e) => {
-                e.preventDefault();
-                modalRef.current?.close();
-              }}
-            >
+            <button type="button" className="btn btn--ghost" onClick={() => modalRef.current?.close()}>
               Cancel
             </button>
-            <button value="submit" className="btn btn--primary" id="um-save" disabled={busy} onClick={save}>
-              Save user
+            <button type="submit" className="btn btn--primary" id="um-save" disabled={busy}>
+              {editing ? "Save user" : "Send invitation"}
             </button>
           </div>
         </form>
@@ -444,6 +557,12 @@ export function AdminUsersClient({
                     <dt>Role</dt>
                     <dd>
                       <span className="badge badge--blue">{detail.role}</span>
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Status</dt>
+                    <dd>
+                      <Pill status={detail.account_status} />
                     </dd>
                   </div>
                   <div>

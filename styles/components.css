@@ -106,6 +106,10 @@
 .pill--resolved   { background: var(--success-100);    color: var(--success); border-color: var(--success); }
 .pill--approved   { background: var(--success-100);    color: var(--success); border-color: var(--success); }
 .pill--flagged    { background: var(--brand-red-100);  color: var(--brand-red-800); border-color: var(--brand-red); }
+.pill--active     { background: var(--success-100);    color: var(--success); border-color: var(--success); }
+/* Body copy of ConfirmDialog: a few short paragraphs, evenly spaced. */
+.confirm-dialog__body { display: grid; gap: var(--space-2); }
+.pill--suspended  { background: var(--surface-gray-2); color: var(--text-charcoal); border-color: var(--text-muted); }
 
 /* Forms */
 .form { display: grid; gap: var(--space-4); }

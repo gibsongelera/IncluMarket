@@ -21,7 +21,8 @@ export type EmailKind =
   | "ticket_reply"
   | "newsletter_welcome"
   | "signup_confirm"
-  | "password_reset";
+  | "password_reset"
+  | "account_status";
 
 export type TemplateData = Record<string, unknown>;
 
@@ -240,6 +241,29 @@ export function renderTemplate(kind: EmailKind, d: TemplateData): RenderedEmail 
           `You will hear from us when new PWD-made products and flash sales go live.\n` +
           `We send rarely, and you can unsubscribe from any email.\n\n` +
           `Browse the marketplace: ${url}/home\n`,
+      };
+    }
+
+    case "account_status": {
+      const suspended = d.status === "suspended";
+      return {
+        subject: suspended
+          ? "Your IncluMarket account is suspended"
+          : "Your IncluMarket account is active again",
+        html: shell(
+          suspended ? "Your account is suspended" : "Your account is active again",
+          p(`Hello${d.name ? ` ${esc(d.name)}` : ""}.`) +
+            (suspended
+              ? p("An administrator has suspended your account, so you cannot sign in for now.") +
+                p(`Reason: <strong>${esc(d.reason)}</strong>`) +
+                p("If you think this is a mistake, reply through the Contact page and tell us your account email.")
+              : p("An administrator has restored your account. You can sign in again.")),
+          suspended ? "Contact us" : "Sign in",
+          suspended ? `${url}/contact` : `${url}/login`
+        ),
+        text: suspended
+          ? `Your account is suspended.\n\nReason: ${d.reason}\n\nIf you think this is a mistake, contact us: ${url}/contact\n`
+          : `Your account is active again. Sign in: ${url}/login\n`,
       };
     }
 

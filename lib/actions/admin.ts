@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getSession } from "@/lib/session";
 import { buildReportWorkbook } from "@/lib/reports/excel";
+import { boundedText } from "@/lib/validation/data-url";
+import { queueEmail } from "@/lib/email/send";
 import type { ProductStatus, ReportType, TicketStatus } from "@/lib/types";
 
 export interface ActionResult {
@@ -242,12 +244,25 @@ export async function createUser(input: UserInput, consent: boolean): Promise<Ac
 export async function updateUser(userId: number, input: UserInput): Promise<ActionResult> {
   const admin = await requireAdmin();
   if (!admin) return { ok: false, error: "Admin access required." };
-  const name = input.name?.trim();
+  const name = boundedText(input.name, 120);
   const email = input.email?.trim().toLowerCase();
   if (!name || name.length < 2) return { ok: false, error: "Full name is required." };
   if (!email || !EMAIL_RE.test(email)) return { ok: false, error: "Please enter a valid email address." };
+  if (!["buyer", "seller", "admin"].includes(input.role))
+    return { ok: false, error: "Please pick a valid role." };
+  // Same guard as updateUserRole, which this used to bypass: an admin editing
+  // their own row could demote themselves and lock the console.
+  if (userId === admin.user_id && input.role !== "admin")
+    return { ok: false, error: "You cannot demote your own admin account." };
 
   const db = createAdminClient();
+  const { data: target } = await db
+    .from("im_profiles")
+    .select("email, auth_user_id")
+    .eq("id", userId)
+    .maybeSingle();
+  if (!target) return { ok: false, error: "User not found." };
+
   const { data: clash } = await db
     .from("im_profiles")
     .select("id")
@@ -256,19 +271,159 @@ export async function updateUser(userId: number, input: UserInput): Promise<Acti
     .maybeSingle();
   if (clash) return { ok: false, error: "Another user already uses that email." };
 
+  // The sign-in email lives in Supabase Auth. Changing only the profile left
+  // the person signing in with the OLD address while every screen showed the
+  // new one. Auth first: if it refuses, nothing is changed.
+  if (email !== String(target.email).toLowerCase() && target.auth_user_id) {
+    const { error: authErr } = await db.auth.admin.updateUserById(target.auth_user_id, {
+      email,
+      email_confirm: true,
+    });
+    if (authErr) return { ok: false, error: "Could not change the sign-in email. It may already be in use." };
+  }
+
   const { error } = await db
     .from("im_profiles")
     .update({
       name,
       email,
       role: input.role,
-      disability_type: input.disability_type || null,
-      assistive_needs: input.assistive_needs || null,
+      disability_type: boundedText(input.disability_type ?? "", 120),
+      assistive_needs: boundedText(input.assistive_needs ?? "", 200),
       updated_at: new Date().toISOString(),
     })
     .eq("id", userId);
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: "Could not save the user. Please try again." };
   await audit(admin.user_id, "updated_user", `user:${userId}`);
+  revalidatePath("/admin/users");
+  return { ok: true };
+}
+
+/** Sign-in ban length for a suspended account (effectively indefinite). */
+const SUSPEND_BAN = "876000h";
+
+/**
+ * Suspend or restore an account, with a reason.
+ *
+ * getSession() has honoured account_status since migration 0007, but nothing
+ * ever wrote it, so suspension did not exist (B-14). The ban is applied in
+ * Supabase Auth too, so a suspended user cannot sign in or refresh a session
+ * at all, not just be bounced by the app.
+ */
+export async function setAccountStatus(
+  userId: number,
+  status: "active" | "suspended",
+  reason: string
+): Promise<ActionResult> {
+  const admin = await requireAdmin();
+  if (!admin) return { ok: false, error: "Admin access required." };
+  if (status !== "active" && status !== "suspended") return { ok: false, error: "Invalid status." };
+  if (userId === admin.user_id) return { ok: false, error: "You cannot suspend your own account." };
+  const why = boundedText(reason, 500);
+  if (!why || why.length < 5)
+    return { ok: false, error: "Please give a short reason (it is kept in the audit log)." };
+
+  const db = createAdminClient();
+  const { data: target } = await db
+    .from("im_profiles")
+    .select("id, name, email, auth_user_id, account_status")
+    .eq("id", userId)
+    .maybeSingle();
+  if (!target) return { ok: false, error: "User not found." };
+  if (target.account_status === status)
+    return { ok: false, error: status === "active" ? "This account is already active." : "This account is already suspended." };
+
+  if (target.auth_user_id) {
+    const { error: banErr } = await db.auth.admin.updateUserById(target.auth_user_id, {
+      ban_duration: status === "suspended" ? SUSPEND_BAN : "none",
+    });
+    if (banErr) return { ok: false, error: "Could not update sign-in access. Please try again." };
+  }
+
+  const { error } = await db
+    .from("im_profiles")
+    .update({ account_status: status, updated_at: new Date().toISOString() })
+    .eq("id", userId);
+  if (error) return { ok: false, error: "Could not update the account. Please try again." };
+
+  await audit(
+    admin.user_id,
+    status === "suspended" ? "suspended_user" : "restored_user",
+    `user:${userId} reason:${why}`
+  );
+  if (target.email && !String(target.email).endsWith(".invalid")) {
+    await queueEmail(
+      "account_status",
+      { email: target.email, name: target.name },
+      { status, reason: why, name: target.name }
+    );
+  }
+  revalidatePath("/admin/users");
+  revalidatePath("/home");
+  return { ok: true };
+}
+
+/** How much history an account carries — decides delete vs anonymize. */
+async function accountFootprint(db: ReturnType<typeof createAdminClient>, userId: number) {
+  const [orders, products] = await Promise.all([
+    db.from("im_orders").select("id", { count: "exact", head: true }).eq("buyer_id", userId),
+    db.from("im_products").select("id", { count: "exact", head: true }).eq("seller_id", userId),
+  ]);
+  return { orders: orders.count ?? 0, products: products.count ?? 0 };
+}
+
+/**
+ * Remove a person's identity but keep the marketplace record.
+ *
+ * Deleting a profile cascades through im_orders.buyer_id and
+ * im_products.seller_id, which erased sellers' sales history and buyers'
+ * purchases along with the person (B-14). Anonymising honours an RA 10173
+ * erasure request while orders, reviews and reports stay intact: name and
+ * contact details are replaced, sensitive fields cleared, personal lists
+ * deleted, and the sign-in itself removed.
+ */
+export async function anonymizeUser(userId: number): Promise<ActionResult> {
+  const admin = await requireAdmin();
+  if (!admin) return { ok: false, error: "Admin access required." };
+  if (userId === admin.user_id) return { ok: false, error: "You cannot anonymise your own account." };
+
+  const db = createAdminClient();
+  const { data: target } = await db
+    .from("im_profiles")
+    .select("id, auth_user_id, role")
+    .eq("id", userId)
+    .maybeSingle();
+  if (!target) return { ok: false, error: "User not found." };
+
+  const { error } = await db
+    .from("im_profiles")
+    .update({
+      name: "Anonymous",
+      email: `deleted-${userId}@users.invalid`,
+      phone: null,
+      disability_type: null,
+      assistive_needs: null,
+      seller_story: null,
+      pwd_id_url: null,
+      is_featured_seller: false,
+      account_status: "suspended",
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", userId);
+  if (error) return { ok: false, error: "Could not anonymise the account. Please try again." };
+
+  await Promise.all([
+    db.from("im_cart_items").delete().eq("user_id", userId),
+    db.from("im_wishlists").delete().eq("user_id", userId),
+    db.from("im_ui_prefs").delete().eq("user_id", userId),
+    db.from("im_notifications").delete().eq("user_id", userId),
+  ]);
+
+  if (target.auth_user_id) {
+    const { error: authErr } = await db.auth.admin.deleteUser(target.auth_user_id);
+    if (authErr) await audit(admin.user_id, "anonymize_auth_delete_failed", `user:${userId}`);
+  }
+  await audit(admin.user_id, `anonymized_user_${target.role}`, `user:${userId}`);
   revalidatePath("/admin/users");
   return { ok: true };
 }
@@ -285,6 +440,18 @@ export async function deleteUser(userId: number): Promise<ActionResult> {
     .eq("id", userId)
     .maybeSingle();
   if (!user) return { ok: false, error: "User not found." };
+
+  // Never hard-delete an account that has orders or products: the cascade
+  // would erase other people's records too. Suspend or anonymise instead.
+  const footprint = await accountFootprint(db, userId);
+  if (footprint.orders > 0 || footprint.products > 0) {
+    return {
+      ok: false,
+      error:
+        "This account has orders or products, so deleting it would erase sales records. Suspend it, or use Anonymise to remove the personal data.",
+    };
+  }
+
   const { error } = await db.from("im_profiles").delete().eq("id", userId);
   if (error) return { ok: false, error: error.message };
 
