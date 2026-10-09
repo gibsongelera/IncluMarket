@@ -19,6 +19,8 @@ export default async function ({ q, runSql, asUser, check }) {
     insert into im_product_variants (product_id, color_name, stock_qty, sku_code) values
       (1601, 'Natural', 5, 'BY-1'), (1601, 'Brown', 3, 'BY-2'), (1602, 'Blue', 2, 'LR-1');
     update im_profiles set account_status = 'suspended' where id = ${s2.id};
+    -- From 0017 a seller sells only when verified or in a grace period.
+    update im_profiles set pwd_grace_until = now() + interval '1 day' where id in (${s1.id}, ${s2.id});
     insert into im_flash_sales (product_id, discount_percent, starts_at, ends_at)
       values (1601, 50, now() - interval '1 hour', now() + interval '1 hour');
   `);
@@ -88,6 +90,6 @@ export default async function ({ q, runSql, asUser, check }) {
   check("pagination returns the total count", page.length === 1 && Number(page[0].total_count) === 2 && Number(page[0].id) === 1601, JSON.stringify(page));
   const sug = await q(`select id from public.im_suggest_products('runner', 6)`);
   check("suggestions", sug.length === 1 && Number(sug[0].id) === 1602, JSON.stringify(sug));
-  const fn = await q(`select has_function_privilege('anon','public.im_search_products(text,text,numeric,numeric,numeric,text[],bigint,text,integer,integer)','execute') as can`);
+  const fn = await q(`select has_function_privilege('anon','public.im_search_products(text,text,numeric,numeric,numeric,text[],bigint,text,integer,integer,boolean)','execute') as can`);
   check("clients cannot call the search function directly", fn[0].can === false);
 }

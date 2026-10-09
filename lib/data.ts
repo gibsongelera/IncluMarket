@@ -1,5 +1,6 @@
 import "server-only";
 import { createAdminClient } from "./supabase/admin";
+import { sellersWhoCanSell } from "./catalog";
 import type {
   AuditLog,
   Category,
@@ -82,21 +83,19 @@ async function hydrateImages(products: Product[]): Promise<Product[]> {
   return products.map((p) => ({ ...p, images: map[p.id] ?? [] }));
 }
 
-// Sellers whose listings must not appear publicly (suspended, or awaiting
-// approval). Storefront readers drop their products; see lib/catalog.ts for
-// the same rule applied to cart, checkout, wishlist and reviews.
-async function hiddenSellerIds(): Promise<Set<number>> {
-  const data = rows<{ id: number }>(
-    "seller status",
-    await db().from("im_profiles").select("id").eq("role", "seller").neq("account_status", "active")
-  );
-  return new Set(data.map((r) => r.id));
-}
-
+// Only sellers who may sell (active, and verified or in their grace period)
+// appear publicly — the rule lives in lib/catalog.ts and is shared with the
+// cart, checkout, wishlist, reviews and the pricing engine.
 async function publicOnly(products: Product[]): Promise<Product[]> {
   if (!products.length) return products;
-  const hidden = await hiddenSellerIds();
-  return hidden.size ? products.filter((p) => !hidden.has(p.seller_id)) : products;
+  let sellable: Set<number>;
+  try {
+    sellable = await sellersWhoCanSell(db(), products.map((p) => p.seller_id));
+  } catch (e) {
+    console.error("[data] seller status:", (e as Error).message);
+    throw new DataUnavailableError("seller status");
+  }
+  return products.filter((p) => sellable.has(p.seller_id));
 }
 
 export async function getCategories(): Promise<Category[]> {

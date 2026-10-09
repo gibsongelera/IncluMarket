@@ -13,6 +13,7 @@ import {
 } from "./core";
 import { MAX_LINE_QUANTITY, SHIPPING_FEE } from "./constants";
 import { loadPwdContext } from "./pwd";
+import { sellersWhoCanSell } from "@/lib/catalog";
 
 /**
  * Pricing engine — loads what lib/pricing/core.ts needs and runs it.
@@ -62,14 +63,13 @@ export async function loadCatalog(db: Db, productIds: number[]): Promise<Catalog
   const productRows = check<{
     id: number; seller_id: number; title: string; base_price: number; category: string | null; status: string; image: string | null;
   }>("products", products);
-  const sellerIds = [...new Set(productRows.map((p) => p.seller_id))];
-  const sellers = sellerIds.length
-    ? check<{ id: number; account_status: string }>(
-        "sellers",
-        await db.from("im_profiles").select("id, account_status").in("id", sellerIds)
-      )
-    : [];
-  const activeSeller = new Set(sellers.filter((s) => s.account_status === "active").map((s) => s.id));
+  let activeSeller: Set<number>;
+  try {
+    activeSeller = await sellersWhoCanSell(db, productRows.map((p) => p.seller_id));
+  } catch (e) {
+    console.error("[pricing] sellers:", (e as Error).message);
+    throw new PricingUnavailableError("sellers");
+  }
 
   const firstImage = new Map<number, string>();
   for (const img of check<{ product_id: number; url: string }>("images", images)) {
