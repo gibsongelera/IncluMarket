@@ -1,13 +1,27 @@
 /* InclusiveMarket Design Tokens
-   Default brand: DSWD Blue / Red / Yellow-Gold / White (accessibility-first).
+   Default brand: InclusiveMarket blue & brown (client decision, 2026-10-09).
+
+   COLOUR ROLES — each colour has one job, so it keeps its meaning:
+     blue   (--brand-blue*)   navigation, links, primary buttons, focus ring
+     brown  (--brand-brown*)  commerce accent: prices, discount and sale
+                              badges, verified-PWD badge, section accents,
+                              count badges; the footer is deep brown
+     yellow (--brand-yellow)  rating stars only, always next to a number
+     red    (--danger)        errors and destructive actions ONLY
+     green / olive            success / warning status, with a text label
+   Surfaces are neutral. Swap the values (not the structure) if the client
+   sends logo colours.
 
    CONTRAST GUARDRAILS
      1) Dark text on LIGHT and GOLD surfaces.
         Applies to: --canvas-white, --surface-gray, --brand-yellow,
         --palette-primary, and every *-100 tint.
      2) WHITE text on DARK surfaces.
-        Applies to: --brand-blue, --brand-blue-800, --brand-red, --success,
-        --color-nav, --color-footer.
+        Applies to: --brand-blue, --brand-blue-800, --brand-brown,
+        --brand-brown-800, --brand-red, --success, --color-nav,
+        --color-footer.
+        Brown on white and on --brand-brown-100 is also fine for text
+        (7.4:1 and 6.2:1).
 
      Red is a Guardrail 2 surface. --text-charcoal on --brand-red measures
      2.64:1 and fails AA at every size. Three rules had it, commented
@@ -59,6 +73,14 @@
   --brand-yellow: #F5C518;
   --brand-yellow-800: #B8860B;
 
+  /* Commerce accent. White on #7A4A21 measures 7.4:1. */
+  --brand-brown: #7A4A21;
+  --brand-brown-800: #5C3618;
+  --brand-brown-100: #F3E8DC;
+  --price-color: var(--brand-brown);
+  --accent: var(--brand-brown);
+  --accent-100: var(--brand-brown-100);
+
   --text-charcoal: #212529;
   --text-muted: #5A6169;
   --canvas-white: #FFFFFF;
@@ -87,9 +109,12 @@
   --color-nav: var(--brand-blue-800);
   --color-nav-text: #FFFFFF;
   --color-body: #F5F7FA;
-  --color-body-bg: var(--bg-rainbow);
-  --color-footer: #00205B;
-  --color-footer-text: #F5F7FA;
+  /* Neutral page background. The blue-to-white gradient is retired (§7:
+     no blue gradients); --bg-rainbow stays defined for older presets. */
+  --color-body-bg: var(--color-body);
+  /* Deep brown footer: white text measures 12.6:1. */
+  --color-footer: #4A2C14;
+  --color-footer-text: #FFFFFF;
 
   --radius-xs: 4px;
   --radius-sm: 6px;
@@ -107,8 +132,16 @@
   --font-display: "Rubik", "Nunito Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
-  --transition-fast: 150ms;
-  --transition-base: 200ms;
+  /* Motion (design-motion-principles audit, Emil-weighted): short, eased
+     out, never bouncy. Both reduced-motion switches null all of it. */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in: cubic-bezier(0.55, 0, 1, 0.45);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --dur-1: 120ms; /* colour, press */
+  --dur-2: 160ms; /* hover lift, popover enter */
+  --dur-3: 200ms; /* dialog enter */
+  --transition-fast: var(--dur-1);
+  --transition-base: var(--dur-2);
 
   --step-0: 1rem;
   --step-1: 1.125rem;
@@ -208,6 +241,10 @@
   --brand-blue: #00205B;
   --brand-blue-800: #00143D;
   --brand-red: #8E1529;
+  --brand-brown: #3D2410;
+  --brand-brown-800: #2A180A;
+  --brand-brown-100: #FFFFFF;
+  --color-footer: #2A180A;
   --shadow-sm: 0 0 0 1px #000;
   --shadow-md: 0 0 0 2px #000;
   --shadow-lg: 0 0 0 3px #000;

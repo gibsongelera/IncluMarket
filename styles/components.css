@@ -22,13 +22,22 @@
   transform: none;
 }
 
-/* Guardrail 2: white text on dark burgundy / forest surfaces */
+/* Primary action: brand blue, white text (Guardrail 2, 9.9:1). Hover goes
+   DARKER blue — it used to turn dark red, which reads as "danger". */
 .btn--primary {
-  background: var(--palette-deep);
+  background: var(--brand-blue);
   color: #FFFFFF;
-  border-color: var(--palette-deep);
+  border-color: var(--brand-blue);
 }
-.btn--primary:hover { background: var(--brand-red-800); border-color: var(--brand-red-800); }
+.btn--primary:hover { background: var(--brand-blue-800); border-color: var(--brand-blue-800); }
+
+/* Secondary action next to a primary one (Add to cart beside Buy now). */
+.btn--outline {
+  background: var(--canvas-white);
+  color: var(--brand-blue);
+  border-color: var(--brand-blue);
+}
+.btn--outline:hover { background: var(--brand-blue-100); }
 
 .btn--danger {
   background: var(--brand-red);
@@ -74,14 +83,16 @@
 .badge--success { background: var(--success-100);  color: var(--success); border-color: var(--success); }
 .badge--muted   { background: var(--surface-gray); color: var(--text-muted); }
 /* Discount badge ("−20%"): the commerce accent, white text — Guardrail 2. */
-.badge--sale    { background: var(--brand-red-800); color: #FFFFFF; border-color: var(--brand-red-800); }
+.badge--sale    { background: var(--brand-brown); color: #FFFFFF; border-color: var(--brand-brown-800); }
+/* Verified PWD seller: brown accent on its tint, with an icon and words. */
+.badge--verified { background: var(--brand-brown-100); color: var(--brand-brown-800); border-color: var(--brand-brown); }
 
 /* Money. Tabular numerals so prices in a column line up digit for digit. A
    sale price is the accent colour; the price it replaces is struck through
    AND announced as "was" to screen readers, so the change is never conveyed
    by colour or strike-through alone. */
 .price       { font-variant-numeric: tabular-nums; font-weight: 700; }
-.price--sale { color: var(--brand-red-800); font-weight: 800; }
+.price--sale { color: var(--price-color); font-weight: 800; }
 .price--was  { color: var(--text-muted); font-weight: 400; font-size: .875em; }
 
 /* Status pill (order/ticket lifecycles) */
@@ -781,13 +792,13 @@ fieldset {
   height: 56px;
   border-radius: 999px;
   border: none;
-  background: var(--brand-red);
+  background: var(--brand-blue);
   color: #FFFFFF;
   box-shadow: var(--shadow-lg);
   cursor: pointer;
   margin-left: auto;
 }
-.chat-fab:hover { background: var(--brand-red-800); }
+.chat-fab:hover { background: var(--brand-blue-800); }
 .chat-panel {
   position: absolute;
   right: 0;

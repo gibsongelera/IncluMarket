@@ -54,7 +54,14 @@ export function Chart({
 
     const draw = () => {
       if (kind === "line") charts.line(canvas, data as Series[], { currency });
-      else if (kind === "bar") charts.bar(canvas, data as Point[], { currency, color });
+      else if (kind === "bar") {
+        // Canvas cannot read CSS custom properties, so a token like
+        // "var(--brand-brown)" is resolved here; the theme still decides it.
+        const resolved = color?.startsWith("var(")
+          ? getComputedStyle(canvas).getPropertyValue(color.slice(4, -1).trim()).trim() || undefined
+          : color;
+        charts.bar(canvas, data as Point[], { currency, color: resolved });
+      }
       else charts.pie(canvas, data as Point[]);
     };
 

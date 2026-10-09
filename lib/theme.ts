@@ -32,6 +32,9 @@ export const THEME_VAR_KEYS = [
   "--brand-blue-100",
   "--brand-red",
   "--brand-red-100",
+  "--brand-brown",
+  "--brand-brown-800",
+  "--brand-brown-100",
   "--success",
   "--success-100",
   "--warning",
@@ -98,13 +101,26 @@ function eventText(deep: string, muted: string, heading?: string): Record<string
   };
 }
 
+/**
+ * The commerce accent (prices, sale and verified badges, count badges). It is
+ * the same brown in every preset: an event theme recolours the chrome, never
+ * the meaning of a price. Every preset must define it — a themeable colour
+ * missing from a preset is undefined under that preset (inclumarket-design).
+ */
+const BROWN_ACCENT: Record<string, string> = {
+  "--brand-brown": "#7A4A21",
+  "--brand-brown-800": "#5C3618",
+  "--brand-brown-100": "#F3E8DC",
+};
+
 export const THEME_PRESETS: Record<string, ThemePreset> = {
   default: {
     id: "default",
-    label: "DSWD default",
-    description: "Blue · red · gold · white",
-    swatches: ["#0038A8", "#C41E3A", "#F5C518", "#FFFFFF", "#0B5C3B"],
+    label: "InclusiveMarket blue & brown",
+    description: "Blue for navigation and actions · brown for prices and badges · neutral surfaces",
+    swatches: ["#0038A8", "#00287A", "#7A4A21", "#4A2C14", "#F3E8DC"],
     vars: {
+      ...BROWN_ACCENT,
       "--palette-primary": "#F5C518",
       "--palette-primary-dark": "#0038A8",
       "--palette-deep": "#00287A",
@@ -124,9 +140,9 @@ export const THEME_PRESETS: Record<string, ThemePreset> = {
       "--color-nav": "#00287A",
       "--color-nav-text": "#FFFFFF",
       "--color-body": "#F5F7FA",
-      "--color-body-bg": "linear-gradient(160deg,#E8EEF9 0%,#F5F7FA 42%,#FFFFFF 100%)",
-      "--color-footer": "#00205B",
-      "--color-footer-text": "#F5F7FA",
+      "--color-body-bg": "#F5F7FA",
+      "--color-footer": "#4A2C14",
+      "--color-footer-text": "#FFFFFF",
       "--text-on-canvas": "#00205B",
       "--text-on-canvas-muted": "#5A6169",
       "--text-on-canvas-shadow": "none",
@@ -139,6 +155,7 @@ export const THEME_PRESETS: Record<string, ThemePreset> = {
     description: "Pink-forward complementary",
     swatches: ["#C2185B", "#AD1457", "#6A1B4D", "#8E2448", "#2E7D6F"],
     vars: {
+      ...BROWN_ACCENT,
       "--palette-primary": "#C2185B",
       "--palette-primary-dark": "#AD1457",
       "--palette-deep": "#6A1B4D",
@@ -167,6 +184,7 @@ export const THEME_PRESETS: Record<string, ThemePreset> = {
     description: "Rainbow-inspired complementary",
     swatches: ["#E40303", "#FF8C00", "#5B2C6F", "#0047AB", "#009C49"],
     vars: {
+      ...BROWN_ACCENT,
       "--palette-primary": "#FF8C00",
       "--palette-primary-dark": "#E40303",
       "--palette-deep": "#5B2C6F",
@@ -194,6 +212,7 @@ export const THEME_PRESETS: Record<string, ThemePreset> = {
     description: "June 12 — blue · red · gold",
     swatches: ["#0038A8", "#CE1126", "#0A1F5C", "#FCD116", "#0B5C3B"],
     vars: {
+      ...BROWN_ACCENT,
       "--palette-primary": "#CE1126",
       "--palette-primary-dark": "#A50E1E",
       "--palette-deep": "#0038A8",
@@ -221,6 +240,7 @@ export const THEME_PRESETS: Record<string, ThemePreset> = {
     description: "Evergreen · berry · gold",
     swatches: ["#C41E3A", "#8B0000", "#0B3D2E", "#B8860B", "#145A32"],
     vars: {
+      ...BROWN_ACCENT,
       "--palette-primary": "#C41E3A",
       "--palette-primary-dark": "#8B0000",
       "--palette-deep": "#0B3D2E",
@@ -248,6 +268,7 @@ export const THEME_PRESETS: Record<string, ThemePreset> = {
     description: "Violet · ash · olive",
     swatches: ["#6B4C9A", "#4A2C6A", "#3D2B1F", "#6B5B2A", "#2F5D50"],
     vars: {
+      ...BROWN_ACCENT,
       "--palette-primary": "#6B4C9A",
       "--palette-primary-dark": "#4A2C6A",
       "--palette-deep": "#3D2B1F",
@@ -275,6 +296,7 @@ export const THEME_PRESETS: Record<string, ThemePreset> = {
     description: "Language month — warm gold · earth",
     swatches: ["#D4A017", "#B8860B", "#5C3317", "#6B4F1D", "#1B5E4B"],
     vars: {
+      ...BROWN_ACCENT,
       "--palette-primary": "#D4A017",
       "--palette-primary-dark": "#B8860B",
       "--palette-deep": "#5C3317",
@@ -302,6 +324,7 @@ export const THEME_PRESETS: Record<string, ThemePreset> = {
     description: "Awareness blue · teal · gold",
     swatches: ["#0077C8", "#005A9C", "#003D6B", "#6B5B00", "#00857C"],
     vars: {
+      ...BROWN_ACCENT,
       "--palette-primary": "#0077C8",
       "--palette-primary-dark": "#005A9C",
       "--palette-deep": "#003D6B",

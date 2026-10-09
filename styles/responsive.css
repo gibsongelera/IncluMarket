@@ -376,7 +376,7 @@ body {
   .mobile-nav__badge {
     position: absolute;
     transform: translate(14px, -10px);
-    background: var(--brand-red);
+    background: var(--brand-brown);
     color: #ffffff;
     border-radius: 999px;
     font-size: 0.625rem;

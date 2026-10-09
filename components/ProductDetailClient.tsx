@@ -284,7 +284,7 @@ export function ProductDetailClient({
         <div className="pd__actions">
           <button
             type="button"
-            className="btn btn--primary"
+            className="btn btn--outline"
             id="add-to-cart"
             disabled={soldOut}
             aria-disabled={soldOut}
@@ -294,7 +294,7 @@ export function ProductDetailClient({
           </button>
           <button
             type="button"
-            className="btn btn--danger"
+            className="btn btn--primary"
             id="buy-now"
             disabled={soldOut}
             aria-disabled={soldOut}

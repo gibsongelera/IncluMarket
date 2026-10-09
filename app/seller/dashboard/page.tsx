@@ -142,7 +142,7 @@ export default async function SellerDashboardPage() {
           </article>
           <article className="chart-card">
             <h2>Inventory turnover by product</h2>
-            <Chart kind="bar" ariaLabel="Inventory turnover chart" data={turnover} color="#EE1C25" />
+            <Chart kind="bar" ariaLabel="Inventory turnover chart" data={turnover} color="var(--brand-brown)" />
           </article>
         </section>
 
