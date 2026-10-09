@@ -224,7 +224,7 @@ export function BuyerHomeClient({
         stock={stock[p.id] || 0}
         rating={ratingAvg[p.id] || 0}
         ratingCount={ratingCount[p.id] || 0}
-        categoryLabel={catLabel[p.category || ""] || p.category || "Uncategorized"}
+        soldCount={popularity[p.id] || 0}
         wishlisted={wishlistSet.has(p.id)}
         showWishlist={!isGuest}
         flashSale={flashSales[p.id] ? { discountPercent: Number(flashSales[p.id].discount_percent) } : null}

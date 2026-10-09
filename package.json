@@ -10,7 +10,7 @@
     "test": "node --test \"tests/**/*.test.mjs\"",
     "test:db": "node supabase/tests/run.mjs",
     "smoke": "node scripts/smoke.mjs",
-    "verify": "node .claude/skills/inclumarket-design/scripts/check-contrast.mjs && node .claude/skills/inclumarket-security-audit/scripts/audit-actions.mjs && node .claude/skills/inclumarket-responsive/scripts/audit-responsive.mjs && node .claude/skills/inclumarket-feature-review/scripts/inventory.mjs && node scripts/check-page-props.mjs && node scripts/check-brand-name.mjs && npm run smoke && npm test && npm run test:db",
+    "verify": "node .claude/skills/inclumarket-design/scripts/check-contrast.mjs && node .claude/skills/inclumarket-security-audit/scripts/audit-actions.mjs && node .claude/skills/inclumarket-responsive/scripts/audit-responsive.mjs && node .claude/skills/inclumarket-feature-review/scripts/inventory.mjs && node scripts/check-page-props.mjs && node scripts/check-brand-name.mjs && node scripts/check-grid.mjs && npm run smoke && npm test && npm run test:db",
     "smoke:loop": "node scripts/smoke-loop.mjs",
     "provision-users": "node --env-file=.env.local scripts/provision-users.mjs",
     "seed-demo-products": "node --env-file=.env.local scripts/seed-demo-products.mjs",

@@ -867,10 +867,11 @@ fieldset {
 .chat-form input { flex: 1; min-height: 36px; }
 
 /* Featured badge (products + PWD sellers) */
+/* Featured: a section accent, so the brown tint (yellow is for stars only). */
 .badge--featured {
-  background: var(--palette-primary-100);
-  color: var(--brand-blue-800);
-  border-color: var(--brand-yellow);
+  background: var(--brand-brown-100);
+  color: var(--brand-brown-800);
+  border-color: var(--brand-brown);
 }
 
 /* Disclaimer / note */

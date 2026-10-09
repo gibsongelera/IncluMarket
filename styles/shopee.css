@@ -134,58 +134,7 @@ button[disabled], .btn[disabled], .variant-btn[disabled] {
 .category-chip[aria-pressed="true"] .chip-count,
 .category-chip.is-active .chip-count { color: rgba(255,255,255,.85); }
 
-/* Denser Shopee-style product grid */
-.product-grid {
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: .75rem;
-}
-.product-card {
-  border-radius: var(--radius-md);
-  transition: transform var(--transition-base) ease, box-shadow var(--transition-base) ease, border-color var(--transition-base) ease;
-}
-.product-card:hover {
-  border-color: var(--brand-red);
-  box-shadow: 0 4px 16px rgba(238, 28, 37, .12);
-  transform: translateY(-2px);
-}
-.product-card__thumb {
-  overflow: hidden;
-}
-.product-card__thumb img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  transition: transform var(--transition-base) ease;
-}
-.product-card:hover .product-card__thumb img {
-  transform: scale(1.03);
-}
-.product-card__body {
-  padding: .55rem .65rem .7rem;
-  gap: .3rem;
-}
-.product-card__title {
-  min-height: 2.6em;
-  font-size: .92rem;
-}
-.product-card__price {
-  font-size: 1rem;
-}
-.product-card__meta {
-  font-size: .75rem;
-}
 
-.tag--placeholder {
-  position: absolute;
-  bottom: 6px; left: 6px;
-  background: rgba(0, 0, 0, .55);
-  color: #FFFFFF;
-  border-radius: 999px;
-  padding: 2px 8px;
-  font-size: .7rem;
-  font-weight: 600;
-  letter-spacing: .02em;
-}
 
 /* Product detail gallery */
 .pd__gallery {

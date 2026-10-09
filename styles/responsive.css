@@ -679,9 +679,6 @@ h3 {
 }
 
 @media (max-width: 480px) {
-  .product-grid { grid-template-columns: repeat(2, 1fr); gap: .5rem; }
-  .product-card__title { font-size: .85rem; }
-  .product-card__price { font-size: .95rem; }
   .header-row { flex-wrap: wrap; }
   .search { order: 3; width: 100%; }
 }
@@ -829,42 +826,35 @@ h3 {
   }
 }
 
-/* --- Product grid: 2-up from the smallest screen ------------------------ */
-@media (max-width: 767px) {
-  .product-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: var(--space-2);
-  }
-  .product-card__body {
-    padding: var(--space-2);
-    gap: 2px;
-  }
-  .product-card__title {
-    font-size: 0.85rem;
-    line-height: 1.3;
-    /* Two lines then ellipsis: Shopee card behaviour, and it keeps every card
-       in a row the same height. */
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-  }
-  .product-card__price {
-    font-size: 0.95rem;
-  }
-  .product-card__cat {
-    font-size: 0.62rem;
-  }
-  .product-card__meta {
-    font-size: 0.7rem;
-  }
+/* --- The product grid: its ONLY definition (B-17) -----------------------
+   It was defined five times across three files, and `auto-fill` kept empty
+   tracks, which is the "large empty area" the client saw. Explicit column
+   counts, mobile-first:
+     < 480px  2 columns
+     480px+   3 columns (large phone, tablet portrait)
+     1024px+  4 columns beside the filter panel
+              5 columns when the panel is collapsed or there is none
+              (.product-grid--wide)
+   minmax(0, 1fr) lets a long title wrap instead of widening its track.
+   scripts/check-grid.mjs fails the build on any other definition. */
+.product-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
 }
-
-/* Three across once there is room, before the desktop grid takes over. */
-@media (min-width: 480px) and (max-width: 767px) {
+@media (min-width: 480px) {
   .product-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--space-3);
+  }
+}
+@media (min-width: 1024px) {
+  .product-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--space-4);
+  }
+  .product-grid--wide {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
   }
 }
 
