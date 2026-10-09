@@ -151,6 +151,15 @@ begin
     return 'reason_required';
   end if;
 
+  -- An unpaid online order shares one open PayMongo session with the rest of
+  -- its checkout. A seller cancelling it while the buyer may still pay would
+  -- leave money arriving for a cancelled order; the payment timeout (or the
+  -- buyer) cancels it instead.
+  if p_to = 'cancelled' and p_actor_role = 'seller'
+     and o.payment_provider = 'paymongo' and o.payment_status = 'pending' then
+    return 'forbidden';
+  end if;
+
   if p_to = 'return_requested' and p_actor_role = 'buyer' then
     v_window := public.im_setting_int('return_window_days', 7);
     if o.delivered_at is null or o.delivered_at < now() - make_interval(days => v_window) then
@@ -185,6 +194,11 @@ begin
     return_requested_at = case when p_to = 'return_requested' then now() else return_requested_at end,
     return_decided_at   = case when v_from = 'return_requested' then now() else return_decided_at end,
     returned_at         = case when p_to = 'returned' then now() else returned_at end,
+    -- Cancelling before an online payment arrived: nothing was charged.
+    payment_status      = case
+                            when p_to = 'cancelled' and o.payment_status = 'pending' then 'failed'
+                            else payment_status
+                          end,
     -- Money already taken must go back on cancellation or an accepted return.
     refund_due          = case
                             when p_to in ('cancelled', 'returned') and o.payment_status = 'paid' then true

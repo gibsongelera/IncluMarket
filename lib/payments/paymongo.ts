@@ -27,7 +27,10 @@ export interface CheckoutLine {
 }
 
 export interface CreateCheckoutArgs {
-  orderId: number;
+  /** Legacy single-order sessions. */
+  orderId?: number;
+  /** A checkout: one or more sellers' orders paid together (migration 0015). */
+  checkoutId?: number;
   lines: CheckoutLine[];
   shippingCentavos: number;
   billing: { name: string; email: string; phone: string };
@@ -92,10 +95,13 @@ export async function createCheckoutSession(
       attributes: {
         line_items: lineItems,
         payment_method_types: PAYMENT_METHOD_TYPES,
-        // reference_number and metadata both carry the order id so the webhook
-        // can resolve the order without trusting anything in the return URL.
-        reference_number: String(args.orderId),
-        metadata: { order_id: String(args.orderId) },
+        // reference_number and metadata identify what is being paid so the
+        // webhook can resolve it without trusting anything in the return URL:
+        // a checkout ("C<id>") for new payments, an order for legacy ones.
+        reference_number: args.checkoutId ? `C${args.checkoutId}` : String(args.orderId),
+        metadata: args.checkoutId
+          ? { checkout_id: String(args.checkoutId) }
+          : { order_id: String(args.orderId) },
         billing: {
           name: args.billing.name.slice(0, 120),
           email: args.billing.email,
@@ -103,7 +109,9 @@ export async function createCheckoutSession(
         },
         success_url: args.successUrl,
         cancel_url: args.cancelUrl,
-        description: `IncluMarket order #${args.orderId}`,
+        description: args.checkoutId
+          ? `IncluMarket checkout #${args.checkoutId}`
+          : `IncluMarket order #${args.orderId}`,
         send_email_receipt: false,
         show_line_items: true,
       },

@@ -46,7 +46,7 @@ async function orderLines(db: Db, orderId: number): Promise<Line[]> {
 }
 
 /** Give back every unit an order holds. Call only after a status gate. */
-async function releaseOrderStock(db: Db, orderId: number): Promise<void> {
+export async function releaseOrderStock(db: Db, orderId: number): Promise<void> {
   for (const line of await orderLines(db, orderId)) {
     await db.rpc("im_restore_variant_stock", { p_variant_id: line.variantId, p_qty: line.qty });
   }

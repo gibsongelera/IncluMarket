@@ -30,6 +30,8 @@ export interface ApplyPaymentArgs {
   /** Provider event id — the idempotency key. */
   eventId: string;
   providerId?: string;
+  /** Skip the per-order buyer email (a checkout sends one for all its orders). */
+  quiet?: boolean;
 }
 
 export type ApplyPaymentResult =
@@ -183,7 +185,7 @@ export async function applyPaymentResult(
     link: "/buyer/orders",
   });
 
-  await notifyBuyerAndSellers(db, order.id, order.buyer_id, Number(order.total_amount));
+  await notifyBuyerAndSellers(db, order.id, order.buyer_id, Number(order.total_amount), Boolean(args.quiet));
   await logActivity("payment_paid");
 
   return { ok: true, status: "applied" };
@@ -211,7 +213,8 @@ async function notifyBuyerAndSellers(
   db: ReturnType<typeof createAdminClient>,
   orderId: number,
   buyerId: number,
-  total: number
+  total: number,
+  skipBuyer = false
 ): Promise<void> {
   const { data: buyer } = await db
     .from("im_profiles")
@@ -219,7 +222,7 @@ async function notifyBuyerAndSellers(
     .eq("id", buyerId)
     .maybeSingle();
 
-  if (buyer?.email) {
+  if (buyer?.email && !skipBuyer) {
     await queueEmail(
       "order_paid",
       { email: buyer.email, name: buyer.name },
@@ -259,4 +262,80 @@ async function notifyBuyerAndSellers(
       { orderId, itemCount: countBySeller.get(seller.id) ?? 0 }
     );
   }
+}
+
+/**
+ * Apply a payment outcome to every order in a checkout (migration 0015).
+ *
+ * One PayMongo session pays for several sellers' orders. Each order is
+ * settled through applyPaymentResult() with its own idempotency key
+ * (`<event>:<order>`), so a redelivered event is still a no-op per order, and
+ * the buyer gets one email for the whole payment rather than one per seller.
+ */
+export async function applyCheckoutPayment(args: {
+  checkoutId: number;
+  outcome: PaymentOutcome;
+  reference: string;
+  eventId: string;
+  providerId?: string;
+}): Promise<ApplyPaymentResult> {
+  const db = createAdminClient();
+  const { data: checkout } = await db
+    .from("im_checkouts")
+    .select("id, buyer_id, grand_total")
+    .eq("id", args.checkoutId)
+    .maybeSingle();
+  if (!checkout) return { ok: false, error: `Checkout ${args.checkoutId} not found.` };
+
+  const { data: orders } = await db
+    .from("im_orders")
+    .select("id, order_status")
+    .eq("checkout_id", checkout.id)
+    .order("id");
+  if (!orders?.length) return { ok: false, error: `Checkout ${args.checkoutId} has no orders.` };
+
+  let applied = false;
+  for (const o of orders) {
+    // Money arriving for an order that was cancelled meanwhile is never
+    // turned into a sale: it is recorded and flagged for a refund.
+    if (args.outcome === "paid" && o.order_status === "cancelled") {
+      await db.from("im_orders").update({ refund_due: true, payment_status: "paid" }).eq("id", o.id);
+      await notifyAdmins({
+        type: "system",
+        title: `Refund needed: order #${o.id}`,
+        body: "A payment arrived for an order that had already been cancelled.",
+        link: "/admin/payments",
+      });
+      applied = true;
+      continue;
+    }
+    const r = await applyPaymentResult({
+      orderId: o.id,
+      outcome: args.outcome,
+      reference: args.reference,
+      eventId: `${args.eventId}:${o.id}`,
+      providerId: args.providerId,
+      quiet: true,
+    });
+    if (!r.ok) return r;
+    if (r.status === "applied") applied = true;
+  }
+
+  await db
+    .from("im_checkouts")
+    .update({ payment_status: args.outcome, payment_reference: args.reference })
+    .eq("id", checkout.id)
+    .neq("payment_status", "paid");
+
+  if (applied && args.outcome === "paid") {
+    const { data: buyer } = await db.from("im_profiles").select("email, name").eq("id", checkout.buyer_id).maybeSingle();
+    if (buyer?.email) {
+      await queueEmail(
+        "order_paid",
+        { email: buyer.email, name: buyer.name },
+        { orderId: orders.map((o) => o.id).join(", #"), total: Number(checkout.grand_total) }
+      );
+    }
+  }
+  return { ok: true, status: applied ? "applied" : "already_final" };
 }

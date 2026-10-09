@@ -47,6 +47,9 @@ export function canTransition(
   const who = TRANSITIONS[from]?.[to];
   if (!who || !who.includes(actor)) return false;
   if (to === "processing" && order.payment_provider === "paymongo" && order.payment_status !== "paid") return false;
+  // A seller cannot cancel an online order while its payment may still arrive.
+  if (to === "cancelled" && actor === "seller" && order.payment_provider === "paymongo" && order.payment_status === "pending")
+    return false;
   if (to === "return_requested" && actor === "buyer") {
     if (!order.delivered_at) return false;
     const deliveredMs = new Date(order.delivered_at).getTime();

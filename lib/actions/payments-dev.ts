@@ -2,7 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { getSession } from "@/lib/session";
-import { applyPaymentResult } from "@/lib/payments/apply";
+import { applyCheckoutPayment, applyPaymentResult } from "@/lib/payments/apply";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 /**
  * Development-only payment simulation.
@@ -53,15 +54,32 @@ export async function simulatePaymentAction(
     return { ok: false, error: "Invalid order id." };
   }
 
-  const result = await applyPaymentResult({
-    orderId,
-    outcome,
-    reference: `sim_${outcome}_${orderId}`,
-    // Deterministic per order+outcome so re-running it exercises the real
-    // idempotency gate rather than silently double-applying.
-    eventId: `sim_evt_${orderId}_${outcome}`,
-    providerId: "paymongo",
-  });
+  // Simulate exactly what PayMongo would send: a payment for the order's
+  // whole checkout when it has one (migration 0015), else for the order.
+  const { data: order } = await createAdminClient()
+    .from("im_orders")
+    .select("checkout_id")
+    .eq("id", orderId)
+    .maybeSingle();
+  const checkoutId = (order as { checkout_id?: number | null } | null)?.checkout_id ?? null;
+
+  // Deterministic per target+outcome so re-running it exercises the real
+  // idempotency gate rather than silently double-applying.
+  const result = checkoutId
+    ? await applyCheckoutPayment({
+        checkoutId,
+        outcome,
+        reference: `sim_${outcome}_c${checkoutId}`,
+        eventId: `sim_evt_c${checkoutId}_${outcome}`,
+        providerId: "paymongo",
+      })
+    : await applyPaymentResult({
+        orderId,
+        outcome,
+        reference: `sim_${outcome}_${orderId}`,
+        eventId: `sim_evt_${orderId}_${outcome}`,
+        providerId: "paymongo",
+      });
 
   if (!result.ok) return { ok: false, error: result.error };
 

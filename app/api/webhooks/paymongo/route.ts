@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { applyPaymentResult } from "@/lib/payments/apply";
+import { applyCheckoutPayment, applyPaymentResult } from "@/lib/payments/apply";
 import { payMongoMode, verifyWebhookSignature } from "@/lib/payments/paymongo";
 
 /**
@@ -42,11 +42,26 @@ interface PayMongoEvent {
   };
 }
 
-function resolveOrderId(event: PayMongoEvent): number | null {
+type Target = { checkoutId: number } | { orderId: number };
+
+/**
+ * What this payment is for. New sessions pay a checkout (metadata.checkout_id,
+ * reference "C<id>"); sessions created before migration 0015 pay one order.
+ */
+function resolveTarget(event: PayMongoEvent): Target | null {
   const attrs = event.data?.attributes?.data?.attributes;
-  const raw = attrs?.metadata?.order_id ?? attrs?.reference_number;
-  const parsed = Number(raw);
-  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+  const positive = (raw: unknown) => {
+    const n = Number(raw);
+    return Number.isInteger(n) && n > 0 ? n : null;
+  };
+  const checkout =
+    positive(attrs?.metadata?.checkout_id) ??
+    (typeof attrs?.reference_number === "string" && attrs.reference_number.startsWith("C")
+      ? positive(attrs.reference_number.slice(1))
+      : null);
+  if (checkout) return { checkoutId: checkout };
+  const order = positive(attrs?.metadata?.order_id) ?? positive(attrs?.reference_number);
+  return order ? { orderId: order } : null;
 }
 
 export async function POST(request: Request) {
@@ -90,22 +105,20 @@ export async function POST(request: Request) {
     return NextResponse.json({ received: true, handled: false });
   }
 
-  const orderId = resolveOrderId(event);
-  if (!orderId) {
-    console.error("[paymongo webhook] could not resolve order id for event", eventId);
+  const target = resolveTarget(event);
+  if (!target) {
+    console.error("[paymongo webhook] could not resolve a checkout or order for event", eventId);
     return NextResponse.json({ received: true, handled: false });
   }
 
   const inner = event.data?.attributes?.data;
   const reference = inner?.attributes?.payments?.[0]?.id ?? inner?.id ?? eventId;
+  const outcome = isPaid ? "paid" : "failed";
 
-  const result = await applyPaymentResult({
-    orderId,
-    outcome: isPaid ? "paid" : "failed",
-    reference,
-    eventId,
-    providerId: "paymongo",
-  });
+  const result =
+    "checkoutId" in target
+      ? await applyCheckoutPayment({ checkoutId: target.checkoutId, outcome, reference, eventId, providerId: "paymongo" })
+      : await applyPaymentResult({ orderId: target.orderId, outcome, reference, eventId, providerId: "paymongo" });
 
   if (!result.ok) {
     // A genuine server-side failure — let PayMongo retry this one.

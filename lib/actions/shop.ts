@@ -13,7 +13,9 @@ import {
 import { boundedText } from "@/lib/validation/data-url";
 import { checkPublicProduct } from "@/lib/catalog";
 import { priceCartForBuyer } from "@/lib/pricing/engine";
-import type { PricedLine } from "@/lib/pricing/core";
+import type { PricedCart, PricedLine } from "@/lib/pricing/core";
+import { failPendingPayment } from "@/lib/payments/stock";
+import { isMissingObject } from "@/lib/db-errors";
 import type { Priority } from "@/lib/types";
 
 const LOW_STOCK_THRESHOLD = 5;
@@ -37,6 +39,8 @@ export interface PlaceOrderInput {
 }
 
 export interface PlaceOrderResult extends ActionResult {
+  /** Every order created (one per seller). */
+  orderIds?: number[];
   /** Present for online payment: send the browser here to pay. */
   redirectUrl?: string;
 }
@@ -97,7 +101,7 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
   const selected = Array.isArray(input?.cartItemIds)
     ? input.cartItemIds.map(Number).filter((n) => Number.isInteger(n) && n > 0)
     : null;
-  let cart;
+  let cart: PricedCart;
   try {
     cart = await priceCartForBuyer(session.user_id, selected);
   } catch {
@@ -107,10 +111,163 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
   if (!cart.purchasable) return { ok: false, error: cart.firstProblem || "Please review your cart." };
 
   const db = createAdminClient();
+  const shipping = { name: shippingName, address: shippingAddress, city: shippingCity, phone };
+  const cartItemIds = cart.lines.map((l) => l.cartItemId).filter((n): n is number => n != null);
+  const groups = cart.groups.filter((g) => g.lines.length);
+
+  // ---- one transaction: checkout, one order per seller, lines, stock -------
+  // Migration 0015. A line that no longer fits rolls back everything, so
+  // there is no half-written order to unwind (B-07, B-09).
+  const { data: placed, error: placeErr } = await db.rpc("im_place_checkout", {
+    p: {
+      buyer_id: session.user_id,
+      payment_provider: paymentMethod,
+      shipping,
+      cart_item_ids: cartItemIds,
+      groups: groups.map((g) => ({
+        seller_id: g.sellerId,
+        shipping_fee: g.shippingFee,
+        lines: g.lines.map(lineRecord),
+      })),
+    },
+  });
+  if (placeErr) {
+    if (isMissingObject(placeErr)) {
+      return placeLegacyOrder(db, session, cart, paymentMethod, shipping);
+    }
+    return { ok: false, error: friendlyPlaceError(placeErr.message, cart) };
+  }
+
+  const checkoutId = Number((placed as { checkout_id: number }).checkout_id);
+  const orderIds = ((placed as { order_ids: number[] }).order_ids ?? []).map(Number);
+  const total = cart.grandTotal;
+
+  const orderedLines = cart.lines.map((l) => ({ variant_id: l.variantId as number, product_id: l.productId }));
+  await alertLowStock(db, orderedLines);
+  for (const [i, g] of groups.entries()) {
+    const orderId = orderIds[i];
+    await createNotification({
+      userId: g.sellerId,
+      type: "new_order",
+      title: `New order #${orderId}`,
+      body:
+        paymentMethod === "cod"
+          ? "Cash on delivery. Please accept and prepare it."
+          : "Waiting for the buyer's online payment. You'll be told when it's paid.",
+      link: "/seller/orders",
+    });
+  }
+  await db.from("im_audit_logs").insert(
+    orderIds.map((id) => ({
+      actor_id: session.user_id,
+      actor_role: "buyer",
+      action: "placed_order",
+      target: `order:${id} checkout:${checkoutId}`,
+    }))
+  );
+
+  // ---- settle --------------------------------------------------------------
+  if (paymentMethod === "paymongo") {
+    const origin = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+    const checkout = await createCheckoutSession({
+      checkoutId,
+      lines: cart.lines.map((l) => ({
+        name: checkoutLineName(l),
+        amountCentavos: toCentavos(l.unitPrice),
+        quantity: l.quantity,
+        description: lineDescription(l),
+      })),
+      shippingCentavos: toCentavos(cart.shippingTotal),
+      billing: { name: shippingName, email: session.email, phone },
+      successUrl: `${origin}/buyer/orders?paid=${orderIds[0]}`,
+      cancelUrl: `${origin}/buyer/checkout?cancelled=${orderIds[0]}`,
+    });
+
+    if (!checkout.ok) {
+      // Give the stock back — the buyer never paid.
+      for (const id of orderIds) {
+        await failPendingPayment(db, id, "The online payment could not be started. Items released back to stock.");
+      }
+      await db.from("im_checkouts").update({ payment_status: "failed" }).eq("id", checkoutId);
+      return { ok: false, error: checkout.error };
+    }
+
+    await db.from("im_checkouts").update({ payment_reference: checkout.sessionId }).eq("id", checkoutId);
+    await db.from("im_orders").update({ payment_reference: checkout.sessionId }).in("id", orderIds);
+
+    // The cart is deliberately NOT cleared here. The webhook removes the
+    // ordered lines once payment succeeds, so abandoning the hosted checkout
+    // page leaves the buyer's cart intact and they can retry.
+    revalidatePath("/buyer/orders");
+    return { ok: true, orderId: orderIds[0], orderIds, redirectUrl: checkout.checkoutUrl };
+  }
+
+  // Cash on delivery: the cart lines were removed inside the transaction.
+  await queueEmail(
+    "order_confirmation",
+    { email: session.email, name: session.name },
+    { orderId: orderIds.join(", #"), total, buyerName: session.name, paymentMethod: "cod" }
+  );
+
+  revalidatePath("/buyer/orders");
+  revalidatePath("/buyer/cart");
+  return { ok: true, orderId: orderIds[0], orderIds };
+}
+
+/** One order line as im_place_checkout() stores it, with its price breakdown. */
+function lineRecord(l: PricedLine) {
+  return {
+    product_id: l.productId,
+    variant_id: l.variantId,
+    quantity: l.quantity,
+    unit_price: l.unitPrice,
+    base_unit_price: l.baseUnitPrice,
+    flash_sale_id: l.sale?.id ?? null,
+    sale_discount_pct: l.sale?.percent ?? null,
+    pwd_rule_id: l.pwd?.ruleId ?? null,
+    pwd_rate: l.pwd?.ratePercent ?? null,
+    pwd_discount_amount: l.pwd ? Math.round(l.pwd.unitDiscount * l.quantity * 100) / 100 : 0,
+    pwd_eligible_amount: l.pwd?.eligibleAmount ?? 0,
+    vat_exempt_amount: l.pwd ? Math.round(l.pwd.unitVatExempt * l.quantity * 100) / 100 : 0,
+    legal_basis: l.pwd?.legalBasis ?? null,
+    verification_id: l.pwd?.verificationId ?? null,
+  };
+}
+
+function lineDescription(l: PricedLine): string | undefined {
+  const parts: string[] = [];
+  if (l.sale) parts.push(`${l.sale.percent}% flash sale`);
+  if (l.pwd) parts.push(`PWD discount ${l.pwd.ratePercent}% (${l.pwd.legalBasis})`);
+  return parts.length ? parts.join("; ") : undefined;
+}
+
+function friendlyPlaceError(message: string, cart: PricedCart): string {
+  const m = message.match(/(out_of_stock|unavailable):(\d+)/);
+  if (m) {
+    const title = cart.lines.find((l) => l.productId === Number(m[2]))?.title ?? "an item";
+    return m[1] === "out_of_stock"
+      ? `Someone just bought the last of ${title}. Please review your cart.`
+      : `${title} is no longer available. Please remove it from your cart.`;
+  }
+  console.error("[placeOrder] im_place_checkout:", message);
+  return "Could not place your order. Your cart is safe — please try again.";
+}
+
+/**
+ * The pre-0015 path: one order for the whole cart, written step by step with
+ * compensating restores. Used only while migration 0015 is not applied yet,
+ * so code can deploy before the database is migrated.
+ */
+async function placeLegacyOrder(
+  db: ReturnType<typeof createAdminClient>,
+  session: { user_id: number; email: string; name: string },
+  cart: PricedCart,
+  paymentMethod: PaymentMethod,
+  shipping: { name: string; address: string; city: string; phone: string }
+): Promise<PlaceOrderResult> {
   const lines = cart.lines;
   const total = cart.grandTotal;
 
-  // ---- create the order ----------------------------------------------------
   const { data: order, error } = await db
     .from("im_orders")
     .insert({
@@ -119,10 +276,10 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
       order_status: "pending",
       payment_status: paymentMethod === "cod" ? "unpaid" : "pending",
       payment_provider: paymentMethod,
-      shipping_name: shippingName,
-      shipping_address: shippingAddress,
-      shipping_city: shippingCity,
-      shipping_phone: phone,
+      shipping_name: shipping.name,
+      shipping_address: shipping.address,
+      shipping_city: shipping.city,
+      shipping_phone: shipping.phone,
     })
     .select("id")
     .single();
@@ -144,18 +301,11 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
     }))
   );
   if (itemsErr) {
-    // An order with no lines is worse than no order: it shows up in My Orders
-    // and in seller and admin reports with a total and nothing in it (B-07).
-    // History rows cascade with the order.
+    // An order with no lines is worse than no order (B-07). History cascades.
     await db.from("im_orders").delete().eq("id", order.id);
     return { ok: false, error: "Could not place your order. Your cart is safe — please try again." };
   }
 
-  // ---- reserve stock atomically -------------------------------------------
-  // im_decrement_variant_stock only succeeds when stock_qty >= qty, so the
-  // check and the write are a single statement and cannot race another buyer.
-  // PostgREST gives us no multi-statement transaction here, so a partial
-  // failure is unwound with compensating restores rather than a rollback.
   const reserved: { variantId: number; qty: number }[] = [];
   for (const line of lines) {
     const variantId = line.variantId as number;
@@ -163,16 +313,12 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
       p_variant_id: variantId,
       p_qty: line.quantity,
     });
-
     if (decremented !== true) {
       for (const r of reserved) {
         await db.rpc("im_restore_variant_stock", { p_variant_id: r.variantId, p_qty: r.qty });
       }
       await db.from("im_orders").delete().eq("id", order.id);
-      return {
-        ok: false,
-        error: `Someone just bought the last of ${line.title}. Please review your cart.`,
-      };
+      return { ok: false, error: `Someone just bought the last of ${line.title}. Please review your cart.` };
     }
     reserved.push({ variantId, qty: line.quantity });
   }
@@ -180,7 +326,6 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
   const orderedLines = lines.map((l) => ({ variant_id: l.variantId as number, product_id: l.productId }));
   await alertLowStock(db, orderedLines);
   await notifySellersOfNewOrder(db, orderedLines, order.id);
-
   await db.from("im_audit_logs").insert({
     actor_id: session.user_id,
     actor_role: "buyer",
@@ -190,7 +335,6 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
 
   const cartItemIds = lines.map((l) => l.cartItemId).filter((n): n is number => n != null);
 
-  // ---- settle --------------------------------------------------------------
   if (paymentMethod === "paymongo") {
     const origin = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
     const checkout = await createCheckoutSession({
@@ -199,28 +343,21 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
         name: checkoutLineName(l),
         amountCentavos: toCentavos(l.unitPrice),
         quantity: l.quantity,
-        description: l.sale ? `${l.sale.percent}% flash sale price` : undefined,
+        description: lineDescription(l),
       })),
       shippingCentavos: toCentavos(cart.shippingTotal),
-      billing: { name: shippingName, email: session.email, phone },
+      billing: { name: shipping.name, email: session.email, phone: shipping.phone },
       successUrl: `${origin}/buyer/orders?paid=${order.id}`,
       cancelUrl: `${origin}/buyer/checkout?cancelled=${order.id}`,
     });
-
     if (!checkout.ok) {
-      // Give the stock back and mark the payment failed — the buyer never paid.
       for (const r of reserved) {
         await db.rpc("im_restore_variant_stock", { p_variant_id: r.variantId, p_qty: r.qty });
       }
       await db.from("im_orders").update({ payment_status: "failed" }).eq("id", order.id);
       return { ok: false, error: checkout.error };
     }
-
     await db.from("im_orders").update({ payment_reference: checkout.sessionId }).eq("id", order.id);
-
-    // The cart is deliberately NOT cleared here. The webhook removes the
-    // ordered lines once payment succeeds, so abandoning the hosted checkout
-    // page leaves the buyer's cart intact and they can retry.
     revalidatePath("/buyer/orders");
     return { ok: true, orderId: order.id, redirectUrl: checkout.checkoutUrl };
   }
@@ -233,7 +370,6 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
     { email: session.email, name: session.name },
     { orderId: order.id, total, buyerName: session.name, paymentMethod: "cod" }
   );
-
   revalidatePath("/buyer/orders");
   revalidatePath("/buyer/cart");
   return { ok: true, orderId: order.id };
