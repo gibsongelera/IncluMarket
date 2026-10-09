@@ -192,7 +192,14 @@ export function SellerProductsClient({
       toast(res.error || "Could not save product.", "error");
       return;
     }
-    toast(editingId ? "Product updated." : "Product submitted for verification.", "success");
+    toast(
+      res.backToReview
+        ? "Saved. Because buyers see these details, the listing is hidden until an admin reviews it again."
+        : editingId
+          ? "Product updated."
+          : "Product submitted for review. It appears in the shop once approved.",
+      res.backToReview ? "info" : "success"
+    );
     dialogRef.current?.close();
     router.refresh();
   }

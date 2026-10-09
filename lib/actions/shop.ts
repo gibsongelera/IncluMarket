@@ -11,6 +11,7 @@ import {
   toCentavos,
 } from "@/lib/payments/paymongo";
 import { boundedText } from "@/lib/validation/data-url";
+import { checkPublicProduct } from "@/lib/catalog";
 import { priceCartForBuyer } from "@/lib/pricing/engine";
 import type { PricedLine } from "@/lib/pricing/core";
 import type { Priority } from "@/lib/types";
@@ -298,10 +299,33 @@ export async function addReview(
   const session = await getSession();
   if (!session || session.role !== "buyer")
     return { ok: false, error: "Sign in as a buyer to leave a review." };
-  if (!(rating >= 1 && rating <= 5))
-    return { ok: false, error: "Rating must be between 1 and 5." };
+  if (!Number.isInteger(rating) || rating < 1 || rating > 5)
+    return { ok: false, error: "Please choose from 1 to 5 stars." };
 
   const db = createAdminClient();
+  const visible = await checkPublicProduct(db, productId);
+  if (!visible.ok) return { ok: false, error: visible.error };
+
+  // Only a buyer who received the product may review it. Anyone could review
+  // anything before, which made the "verified purchase" badge meaningless
+  // (B-11).
+  const { data: delivered } = await db
+    .from("im_orders")
+    .select("id")
+    .eq("buyer_id", session.user_id)
+    .eq("order_status", "delivered");
+  const deliveredIds = (delivered ?? []).map((o) => o.id);
+  const { data: bought } = deliveredIds.length
+    ? await db
+        .from("im_order_items")
+        .select("id")
+        .in("order_id", deliveredIds)
+        .eq("product_id", productId)
+        .limit(1)
+    : { data: [] as { id: number }[] };
+  if (!bought?.length)
+    return { ok: false, error: "You can review a product once it has been delivered to you." };
+
   const { error } = await db.from("im_product_reviews").upsert(
     {
       product_id: productId,
@@ -312,7 +336,7 @@ export async function addReview(
     },
     { onConflict: "product_id,buyer_id" }
   );
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: "Could not save your review. Please try again." };
   await db.from("im_audit_logs").insert({
     actor_id: session.user_id,
     actor_role: "buyer",
