@@ -137,6 +137,7 @@ if (upTo === "9999") {
       check(`${f} applies`, true);
     } catch (e) {
       check(`${f} applies`, false, e.message);
+      await runSql("rollback").catch(() => {});
     }
   }
 }
