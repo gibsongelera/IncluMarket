@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createNotification } from "@/lib/notify";
 import { rateLimit } from "@/lib/security/rate-limit";
 import { PAYMENT_HOLD_MINUTES } from "@/lib/pricing/constants";
+import { transitionOrder } from "@/lib/orders/transition";
 
 /**
  * Stock held by unpaid online orders.
@@ -149,6 +150,36 @@ export async function expireStalePayments(): Promise<number> {
       title: `Payment for order #${order.id} timed out`,
       body: "No money was taken. You can pay again from My Orders while the items are still in stock.",
       link: "/buyer/orders",
+    });
+  }
+
+  // An order whose payment failed stays in "To pay" for a day so the buyer
+  // can try again; after that it is cancelled so it stops cluttering the list
+  // and the seller's queue. Its stock was released when the payment failed.
+  const dayAgoMs = Date.now() - 24 * 60 * 60_000;
+  const { data: failed } = await db
+    .from("im_orders")
+    .select("id")
+    .eq("payment_provider", "paymongo")
+    .eq("payment_status", "failed")
+    .eq("order_status", "pending")
+    .lt("created_at", new Date(dayAgoMs).toISOString())
+    .limit(50);
+  for (const order of failed ?? []) {
+    const { data: last } = await db
+      .from("im_order_status_history")
+      .select("created_at")
+      .eq("order_id", order.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (last && new Date(last.created_at).getTime() > dayAgoMs) continue;
+    await transitionOrder(db, {
+      orderId: order.id,
+      to: "cancelled",
+      actorId: null,
+      actorRole: "system",
+      meta: { reason: "Payment was not completed." },
     });
   }
   return released;

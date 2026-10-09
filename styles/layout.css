@@ -600,6 +600,8 @@
 .cart-summary__blocked { display: grid; gap: var(--space-1); justify-items: end; }
 
 /* Orders */
+.order-card__tracking { margin: 0; padding: var(--space-2) var(--space-3); background: var(--surface-gray); border-radius: var(--radius-sm); }
+.field__label { font-weight: 600; color: var(--text-charcoal); }
 .order-card {
   background: var(--canvas-white);
   border: 1px solid var(--border);

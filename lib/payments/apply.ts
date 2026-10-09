@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createNotification, notifyAdmins } from "@/lib/notify";
 import { queueEmail } from "@/lib/email/send";
 import { failPendingPayment, reserveOrderStock } from "./stock";
+import { transitionOrder } from "@/lib/orders/transition";
 
 /**
  * Apply a payment outcome to an order.
@@ -159,13 +160,15 @@ export async function applyPaymentResult(
     lateNote = "Payment arrived after the hold was released; items were reserved again.";
   }
 
-  await db.from("im_order_status_history").insert({
-    order_id: order.id,
-    status: "processing",
-    note: lateNote,
-    created_by: order.buyer_id,
+  // Paid: the order moves to processing through the state machine (0014),
+  // which also writes the history row.
+  await transitionOrder(db, {
+    orderId: order.id,
+    to: "processing",
+    actorId: null,
+    actorRole: "system",
+    note: lateNote ?? "Payment received.",
   });
-  await db.from("im_orders").update({ order_status: "processing" }).eq("id", order.id);
 
   // The cart is cleared on payment, not at order creation: an abandoned
   // checkout leaves it intact so the buyer can retry. Only the lines that were

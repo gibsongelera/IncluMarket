@@ -44,6 +44,11 @@ export default async function SellerOrdersPage() {
     shipping_address: o.shipping_address,
     shipping_city: o.shipping_city,
     shipping_phone: o.shipping_phone,
+    courier: o.courier ?? null,
+    tracking_number: o.tracking_number ?? null,
+    delivered_at: o.delivered_at ?? null,
+    return_reason: o.return_reason ?? null,
+    cancel_reason: o.cancel_reason ?? null,
     subtotal: roundMoney(
       myItems.filter((it) => it.order_id === o.id).reduce((n, it) => n + it.unit_price * it.quantity, 0)
     ),

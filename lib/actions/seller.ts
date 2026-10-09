@@ -4,6 +4,9 @@ import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getSession } from "@/lib/session";
 import { createNotification, notifyAdmins } from "@/lib/notify";
+import { transitionOrder } from "@/lib/orders/transition";
+import { orderSellerIds } from "@/lib/orders/sellers";
+import type { OrderState } from "@/lib/orders/state";
 import {
   boundedText,
   validateImageDataUrls,
@@ -273,97 +276,80 @@ export async function updateProduct(
   return { ok: true, productId, backToReview };
 }
 
-const ORDER_STATUSES = ["pending", "processing", "shipped", "delivered", "returned"] as const;
-type OrderStatusValue = (typeof ORDER_STATUSES)[number];
+const SELLER_TARGETS: OrderState[] = ["processing", "shipped", "delivered", "cancelled", "returned"];
 
-/**
- * Allowed next steps. Until the database enforces the order state machine
- * (migration 0014), this is the gate: a seller could previously jump an order
- * from pending straight to delivered, or back again (B-10).
- */
-const NEXT_STATUS: Partial<Record<OrderStatusValue, OrderStatusValue[]>> = {
-  pending: ["processing"],
-  processing: ["shipped"],
-  shipped: ["delivered"],
-  delivered: ["returned"],
-};
-
-const STATUS_MESSAGES: Partial<Record<OrderStatusValue, string>> = {
+const STATUS_MESSAGES: Partial<Record<OrderState, string>> = {
   processing: "Your seller is preparing your order.",
   shipped: "Your order is on its way.",
   delivered: "Your order has been delivered.",
-  returned: "Your order was marked as returned.",
+  cancelled: "Your seller cancelled this order. Anything you paid will be refunded.",
+  returned: "Your return was accepted.",
 };
 
+export interface StatusDetails {
+  courier?: string;
+  trackingNumber?: string;
+  /** Required when cancelling or deciding a return. */
+  reason?: string;
+}
+
+/**
+ * Move one of the seller's orders to its next step.
+ *
+ * The rules live in the database (migration 0014, im_transition_order) and
+ * are mirrored in lib/orders/state.ts; this action adds the ownership check.
+ * A seller could previously jump an order from pending to delivered, mark
+ * `returned` on their own, or prepare an unpaid online order (B-10).
+ */
 export async function updateOrderStatus(
   orderId: number,
-  status: OrderStatusValue
+  status: OrderState,
+  details: StatusDetails = {}
 ): Promise<ActionResult> {
   const seller = await requireSeller();
   if (!seller) return { ok: false, error: "Seller access required." };
-  if (!ORDER_STATUSES.includes(status)) return { ok: false, error: "Invalid status." };
+  if (!SELLER_TARGETS.includes(status)) return { ok: false, error: "Invalid status." };
   const db = createAdminClient();
 
   const { data: order } = await db
     .from("im_orders")
-    .select("id, buyer_id, order_status, payment_status, payment_provider")
+    .select("id, buyer_id, order_status")
     .eq("id", orderId)
     .maybeSingle();
   if (!order) return { ok: false, error: "Order not found." };
 
   // A seller may act only on an order made up entirely of their own lines.
-  // One order can still hold several sellers' items until checkouts are split
-  // per seller (migration 0015); until then such orders are admin-only rather
-  // than any one seller changing everyone's parcel (B-09).
   if (seller.role !== "admin") {
-    const { data: lines } = await db
-      .from("im_order_items")
-      .select("product_id")
-      .eq("order_id", orderId);
-    const productIds = [...new Set((lines ?? []).map((l) => l.product_id).filter(Boolean))] as number[];
-    const { data: owners } = productIds.length
-      ? await db.from("im_products").select("id, seller_id").in("id", productIds)
-      : { data: [] as { id: number; seller_id: number }[] };
-    const sellers = new Set((owners ?? []).map((p) => p.seller_id));
-    if (!sellers.has(seller.user_id)) return { ok: false, error: "This order has none of your products." };
-    if (sellers.size > 1)
+    const sellers = await orderSellerIds(db, orderId);
+    if (!sellers.includes(seller.user_id)) return { ok: false, error: "This order has none of your products." };
+    if (sellers.length > 1)
       return {
         ok: false,
         error: "This order includes another seller's items, so an administrator will update it.",
       };
   }
 
-  const allowed = NEXT_STATUS[order.order_status as OrderStatusValue] ?? [];
-  if (!allowed.includes(status)) {
-    return {
-      ok: false,
-      error: allowed.length
-        ? `This order is ${order.order_status}; the next step is "${allowed.join('" or "')}".`
-        : `This order is ${order.order_status} and cannot be changed.`,
-    };
+  const reason = boundedText(details.reason, 500);
+  if (status === "shipped" && !boundedText(details.trackingNumber, 80)) {
+    return { ok: false, error: "Please enter the courier tracking number so the buyer can follow the parcel." };
   }
 
-  if (order.payment_provider === "paymongo" && order.payment_status !== "paid") {
-    return { ok: false, error: "Wait until the buyer's online payment is complete before preparing this order." };
-  }
-
-  // Conditional on the status we just read, so two clicks (or two sellers'
-  // tabs) cannot both advance the same order.
-  const { data: moved, error } = await db
-    .from("im_orders")
-    .update({ order_status: status })
-    .eq("id", orderId)
-    .eq("order_status", order.order_status)
-    .select("id")
-    .maybeSingle();
-  if (error) return { ok: false, error: "Could not update the order. Please try again." };
-  if (!moved) return { ok: false, error: "This order was just updated. Please refresh." };
-
-  await db.from("im_order_status_history").insert({
-    order_id: orderId,
-    status,
-    created_by: seller.user_id,
+  // Deciding a return: accept (returned) or reject (back to delivered).
+  const to: OrderState = status;
+  const result = await transitionOrder(db, {
+    orderId,
+    to,
+    actorId: seller.user_id,
+    actorRole: seller.role === "admin" ? "admin" : "seller",
+    note: reason,
+    meta: {
+      courier: boundedText(details.courier, 80),
+      tracking_number: boundedText(details.trackingNumber, 80),
+      reason,
+    },
   });
+  if (!result.ok) return { ok: false, error: result.error };
+
   await db.from("im_audit_logs").insert({
     actor_id: seller.user_id,
     actor_role: seller.role,
@@ -371,12 +357,17 @@ export async function updateOrderStatus(
     target: `order:${orderId}`,
   });
 
+  const rejectedReturn = order.order_status === "return_requested" && status === "delivered";
   await createNotification({
     userId: order.buyer_id,
     type: "shipping_update",
-    title: `Order #${orderId} is now ${status}`,
-    body: STATUS_MESSAGES[status] || undefined,
-    link: "/buyer/orders",
+    title: rejectedReturn ? `Return request for order #${orderId} was declined` : `Order #${orderId}: ${status.replace(/_/g, " ")}`,
+    body: rejectedReturn
+      ? reason || "The seller declined the return. You can contact support if you disagree."
+      : status === "shipped" && details.trackingNumber
+        ? `On its way${details.courier ? ` with ${details.courier}` : ""}. Tracking number: ${details.trackingNumber}.`
+        : STATUS_MESSAGES[status] || undefined,
+    link: `/buyer/orders`,
   });
 
   revalidatePath("/seller/orders");

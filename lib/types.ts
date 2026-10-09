@@ -7,6 +7,8 @@ export type OrderStatus =
   | "processing"
   | "shipped"
   | "delivered"
+  | "cancelled"
+  | "return_requested"
   | "returned";
 export type TicketStatus = "open" | "in_progress" | "resolved";
 export type Priority = "low" | "medium" | "high";
@@ -130,6 +132,13 @@ export interface Order {
   shipping_address: string | null;
   shipping_city: string | null;
   shipping_phone: string | null;
+  /** Lifecycle details from migration 0014 (null on older rows). */
+  courier?: string | null;
+  tracking_number?: string | null;
+  delivered_at?: string | null;
+  cancel_reason?: string | null;
+  return_reason?: string | null;
+  refund_due?: boolean;
   created_at: string;
 }
 
