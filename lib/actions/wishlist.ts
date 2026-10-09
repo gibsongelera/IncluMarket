@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getSession } from "@/lib/session";
+import { checkPublicProduct } from "@/lib/catalog";
 
 export interface WishlistActionResult {
   ok: boolean;
@@ -35,6 +36,11 @@ export async function toggleWishlistAction(productId: number): Promise<WishlistA
     revalidateWishlist();
     return { ok: true, inWishlist: false };
   }
+
+  // Saving is only allowed for listings the public can see. Removing (above)
+  // always works, so a buyer can clean out an item that was later flagged.
+  const visible = await checkPublicProduct(db, productId);
+  if (!visible.ok) return { ok: false, error: visible.error };
 
   const { error } = await db
     .from("im_wishlists")

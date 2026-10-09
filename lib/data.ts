@@ -82,6 +82,23 @@ async function hydrateImages(products: Product[]): Promise<Product[]> {
   return products.map((p) => ({ ...p, images: map[p.id] ?? [] }));
 }
 
+// Sellers whose listings must not appear publicly (suspended, or awaiting
+// approval). Storefront readers drop their products; see lib/catalog.ts for
+// the same rule applied to cart, checkout, wishlist and reviews.
+async function hiddenSellerIds(): Promise<Set<number>> {
+  const data = rows<{ id: number }>(
+    "seller status",
+    await db().from("im_profiles").select("id").eq("role", "seller").neq("account_status", "active")
+  );
+  return new Set(data.map((r) => r.id));
+}
+
+async function publicOnly(products: Product[]): Promise<Product[]> {
+  if (!products.length) return products;
+  const hidden = await hiddenSellerIds();
+  return hidden.size ? products.filter((p) => !hidden.has(p.seller_id)) : products;
+}
+
 export async function getCategories(): Promise<Category[]> {
   return rows<Category>("categories", await db().from("im_categories").select("*").order("label"));
 }
@@ -95,7 +112,7 @@ export async function getApprovedProducts(): Promise<Product[]> {
       .eq("status", "approved")
       .order("created_at", { ascending: false })
   );
-  return hydrateImages(data);
+  return hydrateImages(await publicOnly(data));
 }
 
 export async function getAllProducts(): Promise<Product[]> {
@@ -118,13 +135,32 @@ export async function getProductsBySeller(sellerId: number): Promise<Product[]> 
   return hydrateImages(data);
 }
 
+/** Any product regardless of status. Owner/admin views only — never public. */
 export async function getProductById(id: number): Promise<Product | null> {
+  if (!Number.isInteger(id) || id <= 0) return null;
   const data = one<Product>(
     "product",
     await db().from("im_products").select("*").eq("id", id).maybeSingle()
   );
   if (!data) return null;
   return (await hydrateImages([data]))[0];
+}
+
+/**
+ * A product as the public may see it: approved, from an active seller.
+ * Returns null otherwise, so a pending or flagged listing 404s for guests and
+ * buyers instead of rendering (and being purchasable) by URL.
+ */
+export async function getPublicProductById(id: number): Promise<Product | null> {
+  if (!Number.isInteger(id) || id <= 0) return null;
+  const data = one<Product>(
+    "product",
+    await db().from("im_products").select("*").eq("id", id).eq("status", "approved").maybeSingle()
+  );
+  if (!data) return null;
+  const [visible] = await publicOnly([data]);
+  if (!visible) return null;
+  return (await hydrateImages([visible]))[0];
 }
 
 export async function getFeaturedProducts(limit = 8): Promise<Product[]> {
@@ -138,7 +174,7 @@ export async function getFeaturedProducts(limit = 8): Promise<Product[]> {
       .order("updated_at", { ascending: false })
       .limit(limit)
   );
-  return hydrateImages(data);
+  return hydrateImages(await publicOnly(data));
 }
 
 // "Customers also viewed" — same category, excludes the current product.
@@ -159,7 +195,7 @@ export async function getRelatedProducts(
       .order("created_at", { ascending: false })
       .limit(limit)
   );
-  return hydrateImages(data);
+  return hydrateImages(await publicOnly(data));
 }
 
 export async function getVerifiedBuyerIds(productId: number): Promise<Set<number>> {
@@ -227,9 +263,25 @@ export async function getFeaturedSellers(): Promise<Profile[]> {
       .from("im_profiles")
       .select("*")
       .eq("role", "seller")
+      .eq("account_status", "active")
       .eq("is_featured_seller", true)
       .order("name")
   );
+}
+
+/**
+ * Display names for a known set of profile ids — the scoped alternative to
+ * getProfiles(), which returns every user's full row. Pages that only need to
+ * print "who" must use this so no other column is ever read for them.
+ */
+export async function getDisplayNames(ids: number[]): Promise<Record<number, string>> {
+  const unique = [...new Set(ids.filter((n) => Number.isInteger(n) && n > 0))];
+  if (!unique.length) return {};
+  const data = rows<{ id: number; name: string }>(
+    "names",
+    await db().from("im_profiles").select("id, name").in("id", unique)
+  );
+  return Object.fromEntries(data.map((r) => [r.id, r.name]));
 }
 
 export async function getProfileByEmail(email: string): Promise<Profile | null> {
@@ -406,9 +458,13 @@ export async function getWishlistProducts(userId: number): Promise<Product[]> {
   const ids = wish.map((r) => r.product_id);
   if (!ids.length) return [];
 
-  const products = rows<Product>(
-    "wishlist products",
-    await db().from("im_products").select("*").in("id", ids)
+  // Only listings that are still public: a product flagged or archived after
+  // it was saved must not keep showing (and selling) from a wishlist.
+  const products = await publicOnly(
+    rows<Product>(
+      "wishlist products",
+      await db().from("im_products").select("*").in("id", ids).eq("status", "approved")
+    )
   );
   const byId = new Map(products.map((p) => [p.id, p]));
   const ordered = ids.map((id) => byId.get(id)).filter((p): p is Product => Boolean(p));

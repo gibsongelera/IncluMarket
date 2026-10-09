@@ -111,6 +111,25 @@
   color: var(--text-charcoal);
 }
 .hint { color: var(--text-muted); font-size: .8rem; }
+
+/* Inline notice: one sentence of status in context (preview banner, payment
+   cancelled, verification pending). The text always states the status; the
+   colour bar only reinforces it (WCAG 1.4.1). Dark text on light tints —
+   Guardrail 1. */
+.notice {
+  display: block;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border);
+  border-left-width: 4px;
+  border-radius: var(--radius-sm);
+  background: var(--canvas-white);
+  color: var(--text-charcoal);
+}
+.notice--info    { background: var(--info-100);    border-color: var(--info); }
+.notice--warning { background: var(--warning-100); border-color: var(--warning); }
+.notice--success { background: var(--success-100); border-color: var(--success); }
+.notice--danger  { background: var(--danger-100);  border-color: var(--danger); }
+
 .form-error {
   color: var(--brand-red);
   font-weight: 600;
