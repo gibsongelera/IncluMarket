@@ -1,13 +1,25 @@
 "use server";
 
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getSession } from "@/lib/session";
 import { guardByIp, rateLimit, RATE_LIMITED_MESSAGE } from "@/lib/security/rate-limit";
 import { clearRecoveryMarker, hasRecoveryMarker, setRecoveryMarker } from "@/lib/auth/recovery";
+import { mintAndSendAuthEmail } from "@/lib/email/auth-mail";
 import type { Role } from "@/lib/types";
+
+function describeAuthError(
+  error: { message?: string; status?: number; name?: string } | null | undefined,
+  fallback: string
+): string {
+  const msg = (error?.message || "").trim();
+  if (msg && msg !== "{}") return msg;
+  if (error?.status === 500 || error?.name === "AuthRetryableFetchError") {
+    return "We could not send the email. Please try again in a minute.";
+  }
+  return fallback;
+}
 
 export interface AuthResult {
   ok: boolean;
@@ -16,14 +28,6 @@ export interface AuthResult {
   name?: string;
   needsEmailConfirm?: boolean;
   message?: string;
-}
-
-async function siteOrigin(): Promise<string> {
-  const h = await headers();
-  const proto = h.get("x-forwarded-proto") || "http";
-  const host = h.get("x-forwarded-host") || h.get("host");
-  if (host) return `${proto}://${host}`;
-  return process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 }
 
 async function audit(actorId: number, role: string, action: string, target: string) {
@@ -55,7 +59,7 @@ export async function loginAction(email: string, password: string): Promise<Auth
   });
 
   if (error) {
-    const msg = error.message || "Sign in failed.";
+    const msg = describeAuthError(error, "Sign in failed.");
     if (/confirm|not confirmed|email not confirmed/i.test(msg)) {
       return {
         ok: false,
@@ -108,43 +112,41 @@ export async function signupAction(
   const signupGuard = await guardByIp("signup", { limit: 5, windowSeconds: 3600 });
   if (signupGuard) return signupGuard;
 
-  const origin = await siteOrigin();
-  const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase.auth.signUp({
+  // Mint the user + token without going through GoTrue's mailer, then send
+  // via Resend (EMAIL_PROVIDER). signUp() used to fail here as "{}" when
+  // Supabase could not deliver the confirmation email.
+  const mailed = await mintAndSendAuthEmail({
+    type: "signup",
     email: cleanEmail,
     password,
-    options: {
-      emailRedirectTo: `${origin}/auth/callback`,
-      data: { name: cleanName, role },
-    },
+    data: { name: cleanName, role },
   });
 
-  if (error) {
-    if (/already registered|already been registered/i.test(error.message)) {
-      return { ok: false, error: "An account with that email already exists." };
-    }
-    return { ok: false, error: error.message };
+  if (!mailed.ok) {
+    return { ok: false, error: mailed.error || "Could not create account." };
   }
 
-  // If email confirmations are disabled, a session may already exist.
-  if (data.session) {
-    const session = await getSession();
-    if (session) {
+  if (mailed.userId) {
+    const { data: profile } = await createAdminClient()
+      .from("im_profiles")
+      .select("id")
+      .eq("auth_user_id", mailed.userId)
+      .maybeSingle();
+    if (profile) {
       await createAdminClient().from("im_consent_logs").insert({
-        user_id: session.user_id,
+        user_id: profile.id,
         action: "account_created",
         consent: true,
         purpose: "RA 10173 DPA registration consent",
       });
-      await audit(session.user_id, role, "account_created", `user:${session.user_id}`);
-      return { ok: true, role: session.role, name: session.name };
+      await audit(profile.id, role, "account_created", `user:${profile.id}`);
     }
   }
 
   return {
     ok: true,
     needsEmailConfirm: true,
-    message: "Check your email to confirm your account before signing in.",
+    message: "Check your email for a confirmation link and a code before signing in.",
   };
 }
 
@@ -160,34 +162,15 @@ export async function resendConfirmationAction(email: string): Promise<AuthResul
   });
   if (!resend.ok) return { ok: false, error: RATE_LIMITED_MESSAGE };
 
-  const origin = await siteOrigin();
-  const supabase = await createSupabaseServerClient();
-  const { error } = await supabase.auth.resend({
-    type: "signup",
-    email: normalized,
-    options: { emailRedirectTo: `${origin}/auth/callback` },
-  });
-  if (error) return { ok: false, error: error.message };
+  const mailed = await mintAndSendAuthEmail({ type: "magiclink", email: normalized });
+  if (!mailed.ok) {
+    return { ok: false, error: mailed.error || "Could not resend confirmation." };
+  }
   return {
     ok: true,
     message: "Confirmation email sent. Please check your inbox.",
   };
 }
-
-/**
- * Where the emailed link lands.
- *
- * This is the FALLBACK target, used when the Supabase email template still
- * builds its link from {{ .ConfirmationURL }}. That path is PKCE, so it only
- * works if the link is opened in the browser that requested it.
- *
- * The template should instead point at /auth/confirm with {{ .TokenHash }},
- * which works on any device. See lib/auth/email-link.ts.
- *
- * The URL must be allow-listed in Supabase Auth under Redirect URLs, or
- * Supabase silently substitutes the Site URL.
- */
-const RESET_REDIRECT = "/auth/callback?next=/reset-password";
 
 /** Minimum we will accept. Supabase enforces its own floor as well. */
 const MIN_PASSWORD = 8;
@@ -200,8 +183,8 @@ const MIN_PASSWORD = 8;
  * — and on a marketplace where every seller is a person with a disability,
  * confirming that a given person has an account here is itself a disclosure.
  *
- * The link Supabase sends lands on /auth/callback, which exchanges the code
- * for a session and forwards to /reset-password.
+ * The message is minted with generateLink and sent through EMAIL_PROVIDER
+ * (Resend). The link lands on /auth/confirm, which works on any device.
  */
 export async function requestPasswordResetAction(email: string): Promise<AuthResult> {
   const normalized = String(email || "").trim().toLowerCase();
@@ -220,31 +203,10 @@ export async function requestPasswordResetAction(email: string): Promise<AuthRes
   // Note the ordering: the generic success message is returned even when
   // rate-limited, so timing and wording cannot be used to probe for accounts.
   if (perEmail.ok && !ipGuard) {
-    const supabase = await createSupabaseServerClient();
-    // Deliberately NOT siteOrigin(): that trusts the request Host, and a reset
-    // link built from an attacker-supplied Host is the classic password-reset
-    // poisoning bug — the victim gets a real token pointing at the attacker.
-    // The configured origin wins; the request host is only a dev fallback.
-    const site = process.env.NEXT_PUBLIC_SITE_URL || (await siteOrigin());
-    const { error } = await supabase.auth.resetPasswordForEmail(normalized, {
-      redirectTo: `${site}${RESET_REDIRECT}`,
-    });
-    if (error) {
+    const mailed = await mintAndSendAuthEmail({ type: "recovery", email: normalized });
+    if (!mailed.ok) {
       // Logged, not surfaced — the caller still sees the neutral message.
-      //
-      // Log the status and name too, not just the message. Supabase's mailer
-      // failures arrive as AuthRetryableFetchError with an EMPTY message, so
-      // logging error.message alone prints "{}" and tells you nothing about
-      // the one failure mode that silences this whole feature.
-      console.error(
-        `[auth] password reset request failed: ${error.name} status=${error.status ?? "?"} ` +
-          `message=${JSON.stringify(error.message)}` +
-          (error.status === 500
-            ? " — a 500 with an empty message is Supabase's auth mailer failing." +
-              " Auth emails do NOT use EMAIL_PROVIDER; configure custom SMTP in" +
-              " Supabase (Project Settings -> Authentication -> SMTP Settings)."
-            : "")
-      );
+      console.error(`[auth] password reset mail failed: ${mailed.error ?? "unknown"}`);
     }
   }
 
@@ -265,9 +227,9 @@ export async function requestPasswordResetAction(email: string): Promise<AuthRes
  * in a URL fragment. A code has no such coupling — you carry six digits across
  * to whatever device you are already sitting at.
  *
- * Requires the Supabase recovery template to include {{ .Token }}. Its length
- * is a Supabase setting (8 digits on this project), so nothing here assumes
- * one -- non-digits are stripped and whatever remains is sent as the token.
+ * The code is the email_otp from generateLink, included in the Resend
+ * template. Its length is a Supabase setting, so non-digits are stripped and
+ * whatever remains is sent as the token.
  *
  * Same neutral-response rule as the request step: a wrong code and an unknown
  * address must be indistinguishable, or this becomes the enumeration oracle
@@ -309,6 +271,57 @@ export async function verifyPasswordResetCodeAction(
   await setRecoveryMarker(data.user.id);
 
   return { ok: true, message: "Code accepted. Choose your new password." };
+}
+
+/**
+ * Confirm a new account with the numeric code from the Resend email.
+ *
+ * Same idea as verifyPasswordResetCodeAction: the code is not tied to the
+ * browser that requested it, unlike a PKCE link.
+ */
+export async function verifySignupCodeAction(
+  email: string,
+  code: string
+): Promise<AuthResult> {
+  const normalized = String(email || "").trim().toLowerCase();
+  const token = String(code || "").replace(/\D/g, "");
+  if (!normalized || !token) {
+    return { ok: false, error: "Enter the code from your email." };
+  }
+
+  const perEmail = await rateLimit("signup_verify", `email:${normalized}`, {
+    limit: 8,
+    windowSeconds: 900,
+  });
+  const ipGuard = await guardByIp("signup_verify_ip", { limit: 20, windowSeconds: 900 });
+  if (!perEmail.ok || ipGuard) return { ok: false, error: RATE_LIMITED_MESSAGE };
+
+  const supabase = await createSupabaseServerClient();
+  const kinds = ["signup", "magiclink", "email"] as const;
+  for (const type of kinds) {
+    const { data, error } = await supabase.auth.verifyOtp({
+      email: normalized,
+      token,
+      type,
+    });
+    if (error || !data.user) continue;
+
+    const session = await getSession();
+    if (!session) {
+      return { ok: false, error: "Account profile not found. Contact support." };
+    }
+
+    await createAdminClient().from("im_consent_logs").insert({
+      user_id: session.user_id,
+      action: "email_confirmed",
+      consent: true,
+      purpose: "RA 10173 DPA registration consent",
+    });
+    await audit(session.user_id, session.role, "email_confirmed", `user:${session.user_id}`);
+    return { ok: true, role: session.role, name: session.name };
+  }
+
+  return { ok: false, error: "That code is not valid, or it has expired. Request a new one." };
 }
 
 /**

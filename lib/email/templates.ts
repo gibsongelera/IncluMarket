@@ -19,7 +19,9 @@ export type EmailKind =
   | "seller_new_order"
   | "seller_decision"
   | "ticket_reply"
-  | "newsletter_welcome";
+  | "newsletter_welcome"
+  | "signup_confirm"
+  | "password_reset";
 
 export type TemplateData = Record<string, unknown>;
 
@@ -238,6 +240,56 @@ export function renderTemplate(kind: EmailKind, d: TemplateData): RenderedEmail 
           `You will hear from us when new PWD-made products and flash sales go live.\n` +
           `We send rarely, and you can unsubscribe from any email.\n\n` +
           `Browse the marketplace: ${url}/home\n`,
+      };
+    }
+
+    case "signup_confirm": {
+      const code = String(d.code || "").trim();
+      const codeBlock = code
+        ? p("Or enter this confirmation code on the sign-in page:") +
+          `<p style="margin:0 0 16px;font-size:28px;letter-spacing:.18em;font-weight:800;font-family:ui-monospace,Menlo,Consolas,monospace;color:${BRAND_DEEP}">${esc(code)}</p>`
+        : "";
+      return {
+        subject: "Confirm your IncluMarket account",
+        html: shell(
+          "Confirm your email",
+          p(`Hello${d.name ? ` ${esc(d.name)}` : ""}.`) +
+            p("Welcome to IncluMarket. Confirm your email to finish creating your account.") +
+            codeBlock,
+          "Confirm my email",
+          String(d.confirmUrl || url)
+        ),
+        text:
+          `Confirm your IncluMarket account\n\n` +
+          `Hello${d.name ? ` ${d.name}` : ""}.\n` +
+          `Confirm your email to finish creating your account.\n\n` +
+          (code ? `Confirmation code: ${code}\n\n` : "") +
+          `Confirm: ${d.confirmUrl || url}\n`,
+      };
+    }
+
+    case "password_reset": {
+      const code = String(d.code || "").trim();
+      const codeBlock = code
+        ? p("Or type this code on the reset page (it expires in one hour):") +
+          `<p style="margin:0 0 16px;font-size:28px;letter-spacing:.18em;font-weight:800;font-family:ui-monospace,Menlo,Consolas,monospace;color:${BRAND_DEEP}">${esc(code)}</p>`
+        : "";
+      return {
+        subject: "Reset your IncluMarket password",
+        html: shell(
+          "Reset your password",
+          p("We received a request to reset your password.") +
+            p("Use the button below, or enter the code on the reset page. If you did not ask for this, you can ignore this email.") +
+            codeBlock,
+          "Reset password",
+          String(d.confirmUrl || url)
+        ),
+        text:
+          `Reset your IncluMarket password\n\n` +
+          `We received a request to reset your password.\n` +
+          (code ? `Reset code: ${code}\n\n` : "") +
+          `Reset: ${d.confirmUrl || url}\n\n` +
+          `If you did not ask for this, you can ignore this email.\n`,
       };
     }
   }

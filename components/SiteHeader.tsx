@@ -8,7 +8,7 @@ import { CartBadge } from "./CartBadge";
 import { SearchBox } from "./SearchBox";
 import { ScopedSearchBox } from "./ScopedSearchBox";
 import { NotificationBell } from "./NotificationBell";
-import { ContrastToggle, LogoutButton } from "./HeaderActions";
+import { LogoutButton } from "./HeaderActions";
 import { MobileNav } from "./MobileNav";
 
 type NavItem = { href: string; label: string; key: string };
@@ -68,7 +68,6 @@ export async function SiteHeader({
           <SearchBox />
 
           <nav className="header-nav" aria-label="Primary">
-            <ContrastToggle />
             <Link className="btn btn--primary btn--sm" href="/login">
               Sign in
             </Link>
@@ -122,7 +121,6 @@ export async function SiteHeader({
               </Link>
             ) : null}
             <NotificationBell initialUnread={unread} initialNotifications={notifications} />
-            <ContrastToggle />
             <LogoutButton />
           </nav>
         </div>

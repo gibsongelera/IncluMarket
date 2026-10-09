@@ -46,6 +46,7 @@ const required = [
   "lib/actions/messages.ts",
   "lib/actions/wishlist.ts",
   "lib/actions/payments.ts",
+  "lib/email/auth-mail.ts",
   "lib/chatbot/responder.ts",
   "app/layout.tsx",
   "app/admin/payments/page.tsx",
@@ -99,6 +100,22 @@ try {
   assert(mod.clampFontSize(11) === 12, "imported clampFontSize(11)===12");
   assert(mod.clampFontSize(25) === 24, "imported clampFontSize(25)===24");
   assert(mod.matchVoiceCommand("go to wishlist")?.href === "/buyer/wishlist", "imported voice wishlist");
+  // A fatal code must not be retried: restarting on not-allowed is the loop
+  // that made voice commands sit at "Off" forever with no explanation.
+  assert(mod.classifyVoiceError("not-allowed").fatal === true, "voice error: not-allowed is fatal");
+  assert(mod.classifyVoiceError("audio-capture").fatal === true, "voice error: audio-capture is fatal");
+  assert(mod.classifyVoiceError("no-speech").fatal === false, "voice error: no-speech retries");
+  assert(mod.classifyVoiceError("aborted").fatal === false, "voice error: aborted retries");
+  assert(Boolean(mod.classifyVoiceError("not-allowed").message), "voice error carries a message");
+  assert(mod.checkVoiceSupport({}) === "unsupported", "voice support: no API");
+  assert(
+    mod.checkVoiceSupport({ webkitSpeechRecognition: function () {}, isSecureContext: false }) === "insecure",
+    "voice support: insecure origin"
+  );
+  assert(
+    mod.checkVoiceSupport({ SpeechRecognition: function () {}, isSecureContext: true }) === "ready",
+    "voice support: ready"
+  );
 } catch (err) {
   console.log(`  SKIP  TS prefs import (${err.message.split("\n")[0]}) — inline asserts used`);
 }
@@ -179,6 +196,27 @@ const resetPage = read("app/reset-password/page.tsx");
 assert(resetPage.includes("hasRecoveryMarker"), "reset page gates on the recovery marker");
 const landing = read("components/LandingClient.tsx");
 assert(landing.includes("requestPasswordResetAction"), "sign-in panel offers the reset");
+assert(
+  authAction.includes("mintAndSendAuthEmail"),
+  "signup and reset send through EMAIL_PROVIDER, not GoTrue's mailer"
+);
+assert(
+  !/supabase\.auth\.signUp\(/.test(authAction),
+  "signupAction does not call signUp() (that path is the empty {} mailer error)"
+);
+assert(
+  authAction.includes("export async function verifySignupCodeAction"),
+  "verifySignupCodeAction exported"
+);
+assert(
+  /verifySignupCodeAction[\s\S]{0,1200}rateLimit\(/.test(authAction),
+  "signup code redemption is rate limited"
+);
+const authMail = read("lib/email/auth-mail.ts");
+assert(authMail.includes("generateLink"), "auth mail mints tokens without sending via GoTrue");
+const emailTemplates = read("lib/email/templates.ts");
+assert(emailTemplates.includes('"signup_confirm"'), "signup_confirm template exists");
+assert(emailTemplates.includes('"password_reset"'), "password_reset template exists");
 
 console.log("\n=== Smoke: chatbot responder rules ===");
 const responder = read("lib/chatbot/responder.ts");

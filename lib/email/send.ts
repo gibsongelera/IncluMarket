@@ -19,6 +19,10 @@ import type { DeliveryResult } from "./types";
  * arriving, and an email outage must not look to a buyer like a failed order.
  * Verified against a live provider outage: sendEmail returned false, threw
  * nothing, and logged the reason.
+ *
+ * Auth mail (signup confirm, password reset) also goes through this module —
+ * see lib/email/auth-mail.ts. Those callers DO treat a failed send as a
+ * failed action, because an unconfirmed account with no email is a dead end.
  */
 
 export type { EmailKind } from "./templates";

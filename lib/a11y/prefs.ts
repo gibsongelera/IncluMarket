@@ -66,6 +66,61 @@ export function applyReadingMode(on: boolean) {
   else document.documentElement.removeAttribute("data-reading-mode");
 }
 
+/**
+ * Whether voice commands can run at all.
+ *
+ * Both answers have to be distinguishable in the UI. Silently doing nothing is
+ * what made the toggle look broken: Firefox has no SpeechRecognition, and the
+ * API is also gated on a secure context, so a phone hitting the dev server at
+ * http://192.168.x.x gets an object that errors the instant it starts.
+ */
+export type VoiceSupport = "ready" | "unsupported" | "insecure";
+
+export function checkVoiceSupport(scope: {
+  SpeechRecognition?: unknown;
+  webkitSpeechRecognition?: unknown;
+  isSecureContext?: boolean;
+}): VoiceSupport {
+  if (!scope.SpeechRecognition && !scope.webkitSpeechRecognition) return "unsupported";
+  if (scope.isSecureContext === false) return "insecure";
+  return "ready";
+}
+
+/**
+ * Split Web Speech error codes into "retry" and "stop and explain".
+ *
+ * Restarting on a fatal code is an infinite loop: the browser ends the session
+ * immediately, onend fires, the restart raises the same error. `no-speech` and
+ * `aborted`, by contrast, are the normal way a continuous session ends and
+ * must be retried or recognition dies after the first pause.
+ */
+export function classifyVoiceError(code: string): { fatal: boolean; message: string } {
+  switch (code) {
+    case "not-allowed":
+    case "service-not-allowed":
+      return {
+        fatal: true,
+        message:
+          "Microphone access is blocked. Allow the microphone for this site in your browser settings, then switch voice commands on again.",
+      };
+    case "audio-capture":
+      return {
+        fatal: true,
+        message: "No microphone was found. Connect one, then switch voice commands on again.",
+      };
+    case "network":
+      return {
+        fatal: true,
+        message: "Speech recognition could not reach the browser's speech service. Check your connection.",
+      };
+    case "language-not-supported":
+      return { fatal: true, message: "This browser cannot recognise the language used for commands." };
+    default:
+      // no-speech, aborted, and anything unknown: let onend retry.
+      return { fatal: false, message: "" };
+  }
+}
+
 /** Match inclumarket-style voice command phrases to routes / actions. */
 export type VoiceAction =
   | { type: "navigate"; href: string }

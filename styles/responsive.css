@@ -453,19 +453,30 @@ body {
    6. Forms and dense editors
    ------------------------------------------------------------------------ */
 .variant-row {
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-3);
 }
 
 @media (min-width: 768px) {
   .variant-row {
-    grid-template-columns: 1fr 1fr 90px 1fr auto;
+    grid-template-columns:
+      minmax(0, 1fr) minmax(0, 1fr) 6rem minmax(0, 1fr) auto;
     gap: var(--space-2);
+  }
+}
+
+/* Dialogs get a roomier gutter once there is room for one. Phones keep the
+   base --space-4 so the sticky action bar does not swallow a short viewport. */
+@media (min-width: 768px) {
+  .modal-form {
+    --modal-pad: var(--space-5);
+    gap: var(--space-5);
   }
 }
 
 /* Inputs at least 44px tall and 16px text — anything under 16px makes iOS
    Safari zoom the viewport on focus, which strands the user mid-form. */
+input:not([type]),
 input[type="text"],
 input[type="email"],
 input[type="password"],
@@ -661,8 +672,8 @@ h3 {
   .support-grid { grid-template-columns: 1fr; }
   .ticket-workspace { grid-template-columns: 1fr; }
   .hero { grid-template-columns: 1fr; }
-  .row { grid-template-columns: 1fr; }
-  .variant-row { grid-template-columns: 1fr 1fr; }
+  .row { grid-template-columns: minmax(0, 1fr); }
+  .variant-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
   .cart-item { grid-template-columns: 60px 1fr; gap: .5rem; }
   .cart-item > *:nth-child(n+3) { grid-column: 1 / -1; }
 }
@@ -1125,17 +1136,16 @@ h3 {
     max-height: 92dvh;
     margin: auto auto 0;
     border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-    padding: var(--space-4);
-    padding-bottom: calc(var(--space-4) + env(safe-area-inset-bottom, 0px));
     overflow-y: auto;
   }
-  .modal-form .form-actions {
-    position: sticky;
-    bottom: 0;
-    background: var(--canvas-white);
-    padding-top: var(--space-3);
-    margin-top: var(--space-3);
-    border-top: 1px solid var(--border);
+  /* The sheet's gutter belongs to .modal-form, not to the dialog. The sticky
+     title and action bands cancel the form padding with a negative margin to
+     reach the sheet edge; a second padding on the dialog itself would leave a
+     strip of scrolling content showing above and below them. components.css
+     already makes both bands sticky at every width, so the phone-only copy of
+     that rule is gone -- only the safe-area inset is width-specific. */
+  .modal-form > .form-actions {
+    padding-bottom: calc(var(--space-3) + env(safe-area-inset-bottom, 0px));
   }
 }
 

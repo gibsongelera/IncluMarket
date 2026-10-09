@@ -98,10 +98,13 @@
 .pill--flagged    { background: var(--brand-red-100);  color: var(--brand-red-800); border-color: var(--brand-red); }
 
 /* Forms */
-.form { display: grid; gap: 1rem; }
+.form { display: grid; gap: var(--space-4); }
 .field {
   display: grid;
-  gap: .35rem;
+  /* minmax(0,·) so an input inside a grid or flex row can shrink below its
+     intrinsic width instead of pushing the dialog sideways. */
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-2);
 }
 .field > label, fieldset > legend {
   font-weight: 600;
@@ -170,6 +173,13 @@
 /* Lead paragraph. Existed as a class on the landing hero only; promoted here
    so static pages get the same treatment. */
 .lede { font-size: var(--step-1); color: var(--text-charcoal); }
+/* `input:not([type])` matters more than it looks. An <input> with no type
+   attribute IS a text input, but the attribute selector does not match it, so
+   14 fields across checkout, signup, support, admin users and the seller
+   product form were rendering with no width, no padding and no 44px floor --
+   raw UA controls sitting in a styled form. That is the "fields don't fill
+   the row" symptom. */
+input:not([type]),
 input[type="text"], input[type="email"], input[type="password"],
 input[type="number"], input[type="search"], input[type="tel"], select, textarea {
   width: 100%;
@@ -181,20 +191,25 @@ input[type="number"], input[type="search"], input[type="tel"], select, textarea 
   background: var(--canvas-white);
   min-height: 40px;
 }
-textarea { min-height: 96px; resize: vertical; }
+/* rem so the box grows with the accessibility font instead of showing three
+   lines at 12px and one and a half at 24px. */
+textarea { min-height: 6rem; resize: vertical; }
 input:focus, select:focus, textarea:focus { border-color: var(--brand-blue); }
-.row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--space-4); }
 .form-actions {
   display: flex;
-  gap: .5rem;
+  gap: var(--space-2);
   flex-wrap: wrap;
   align-items: center;
 }
 fieldset {
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  padding: 1rem;
-  margin: 0 0 1rem;
+  padding: var(--space-4);
+  margin: 0 0 var(--space-4);
+  /* A fieldset is a flex/grid child in several layouts and defaults to
+     min-width: min-content, which its inner grids then refuse to shrink. */
+  min-width: 0;
 }
 
 /* Cards */
@@ -351,14 +366,91 @@ fieldset {
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
-  width: min(560px, calc(100% - 2rem));
+  /* rem, not px. A dialog sized in px holds still while its contents grow with
+     the 12-24px accessibility font, so the same form that is comfortable at
+     16px wraps every label at 24px. min() keeps it inside the viewport. */
+  width: min(35rem, calc(100% - 2rem));
+  /* The product form is taller than a laptop viewport once a seller adds a
+     few variants. Cap it here and scroll inside, so the sticky title and
+     action bar below have a scroll port to pin themselves to. */
+  max-height: min(88svh, calc(100% - 2rem));
+  overflow: auto;
+  overscroll-behavior: contain;
   color: var(--text-charcoal);
   background: var(--canvas-white);
 }
-.modal--wide { width: min(760px, calc(100% - 2rem)); }
+.modal--wide { width: min(47.5rem, calc(100% - 2rem)); }
 .modal::backdrop { background: rgba(33, 37, 41, .55); }
-.modal-form { padding: 1.25rem; display: grid; gap: 1rem; }
-.modal-form h2 { margin: 0; }
+
+/* Entrance. A dialog going from display:none to open needs allow-discrete
+   plus @starting-style to animate at all; browsers without them simply show
+   it, which is the current behaviour. Deliberately a short fade and a few
+   pixels of lift — no scale, because a modal that zooms is exactly the kind
+   of movement that triggers vestibular symptoms. Both reduced-motion
+   switches (base.css and the toolbar's data-reduce-motion) null it out. */
+@media (prefers-reduced-motion: no-preference) {
+  .modal {
+    opacity: 0;
+    translate: 0 var(--space-1);
+    transition:
+      opacity var(--transition-base) ease,
+      translate var(--transition-base) ease,
+      overlay var(--transition-base) allow-discrete,
+      display var(--transition-base) allow-discrete;
+  }
+  .modal[open] { opacity: 1; translate: 0 0; }
+  @starting-style {
+    .modal[open] { opacity: 0; translate: 0 var(--space-1); }
+  }
+}
+.modal-form {
+  display: grid;
+  gap: var(--space-4);
+  /* No block padding: the sticky title and action bands below supply the top
+     and bottom gutter themselves, and the row gap supplies the rest. A block
+     padding here would have to be cancelled with a negative margin on those
+     bands, and sticky positioning constrains the MARGIN box -- a negative
+     bottom margin pins the bar that far short of the edge and lets content
+     scroll through the gap underneath it. */
+  padding: 0 var(--modal-pad);
+  /* Every direct child spans one full-width track, so a .row or a fieldset
+     fills the dialog instead of shrink-wrapping its content and leaving the
+     right side of a 760px modal empty. minmax(0,·) lets them shrink too. */
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+}
+
+/* Title and actions are full-bleed bands pinned to the dialog edges. Before
+   this the form scrolled as one block: on a laptop the seller lost both the
+   heading and "Save product" and had to scroll a nameless column of inputs
+   to find the primary action. The negative margins cancel the form padding
+   so the bands reach the dialog border. */
+.modal-form > h2,
+.modal-form > .form-actions {
+  position: sticky;
+  z-index: var(--z-modal-sticky);
+  background: var(--canvas-white);
+  /* Inline only. These cancel the form's side padding so each band reaches
+     the dialog border; inline margins do not affect the top/bottom sticky
+     constraint the way block margins do. */
+  margin-inline: calc(var(--modal-pad) * -1);
+  padding: var(--space-3) var(--modal-pad);
+}
+.modal-form > h2 {
+  top: 0;
+  border-bottom: 1px solid var(--border);
+}
+.modal-form > .form-actions {
+  bottom: 0;
+  border-top: 1px solid var(--border);
+  justify-content: flex-end;
+}
+
+/* fieldset ships a 1rem bottom margin for prose layouts. Inside this grid it
+   stacks with the row gap, so the space after the photo and variant panels
+   was double the space everywhere else. The gap owns the rhythm here. */
+.modal-form > fieldset { margin: 0; }
+.modal-form > .field > textarea { min-height: 7rem; }
 
 /* Utility */
 .empty {
@@ -573,6 +665,9 @@ fieldset {
   align-items: center;
   justify-content: space-between;
   gap: .75rem;
+  /* WCAG 2.5.5. The padding alone left these at ~42px, and this is the one
+     panel where a near-miss target is least acceptable. */
+  min-height: 44px;
   padding: .6rem .75rem;
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
@@ -598,6 +693,17 @@ fieldset {
 .a11y-rate input { width: 100%; accent-color: var(--brand-blue); }
 .a11y-quick { display: flex; gap: .4rem; flex-wrap: wrap; }
 .a11y-hint { margin: .25rem 0 .1rem; line-height: 1.35; }
+/* Same shape as .form-error. The speech API reports permission and service
+   failures only through onerror, so this is the only place the panel can
+   explain why a toggle that says "On" is not listening. */
+.a11y-hint--error {
+  color: var(--brand-red);
+  background: var(--brand-red-100);
+  border: 1px solid var(--brand-red);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2);
+  font-weight: 600;
+}
 .a11y-help { display: grid; gap: .55rem; }
 .a11y-reset { justify-self: stretch; margin-top: .25rem; }
 

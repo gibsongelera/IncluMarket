@@ -9,9 +9,20 @@ export interface ToastDetail {
   variant: ToastVariant;
 }
 
+/** Coerce action errors so a serialized `{}` AuthError never reaches the toast. */
+export function errorText(value: unknown, fallback: string): string {
+  if (typeof value === "string") {
+    const t = value.trim();
+    if (t && t !== "{}" && t !== "[object Object]") return t;
+  }
+  return fallback;
+}
+
 export function toast(message: string, variant: ToastVariant = "success") {
   if (typeof window === "undefined") return;
   window.dispatchEvent(
-    new CustomEvent<ToastDetail>("im:toast", { detail: { message, variant } })
+    new CustomEvent<ToastDetail>("im:toast", {
+      detail: { message: errorText(message, "Something went wrong."), variant },
+    })
   );
 }

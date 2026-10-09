@@ -302,6 +302,13 @@ async function checkEmail() {
   }
 
   add("Email", "ok", `provider: ${provider}`);
+  if (provider === "resend") {
+    add(
+      "Email",
+      "ok",
+      "signup confirmation and password-reset emails are sent through Resend (not Supabase SMTP)."
+    );
+  }
   return provider === "resend" ? checkResend() : checkBrevo();
 }
 

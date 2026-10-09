@@ -640,15 +640,26 @@
 .filter-bar select, .filter-bar input { min-height: 36px; }
 
 /* Variant rows (seller product modal) */
-.variants { margin-top: .5rem; }
+.variants { margin-top: var(--space-2); }
 .variant-row {
   display: grid;
-  grid-template-columns: 1fr 1fr 90px 1fr auto;
-  gap: .5rem;
+  /* Stock is the one narrow column; sized in rem so it still fits a
+     four-digit quantity at the 24px accessibility font. */
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 6rem minmax(0, 1fr) auto;
+  gap: var(--space-2);
   align-items: end;
-  margin-bottom: .5rem;
+  margin-bottom: var(--space-2);
 }
 .variant-row .field { margin: 0; }
+/* Each row is its own record; a rule between them reads faster than relying
+   on the gap alone once a seller has five of them. */
+.variant-row + .variant-row {
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--border);
+}
+/* The last cell's label is a &nbsp; spacer that aligns the button with the
+   inputs. Let the button own the full cell so it lines up with their edges. */
+.variant-row .field > .btn { width: 100%; }
 
 /* Admin ticket workspace */
 .ticket-workspace {

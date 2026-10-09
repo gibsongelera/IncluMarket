@@ -133,9 +133,19 @@
   /* Comfortable reading measure. Admin body copy ran the full 1200px container. */
   --measure: 68ch;
 
+  /* Dialog gutter. A token rather than a literal on .modal-form because the
+     sticky title and action bands cancel it with a negative margin to reach
+     the dialog border, and the two must not drift. responsive.css widens it
+     from md up; phones keep the tighter value so a stacked action bar does
+     not eat a 568px-tall viewport. */
+  --modal-pad: var(--space-4);
+
   /* Stacking order, named. These were literals scattered across three files,
      which is how the toast region ended up painting over the chat button and
      both floating buttons ended up over the checkout bar. */
+  /* Inside a scrolling <dialog>, above the form's own positioned children
+     (.image-thumb is position:relative) but below every page-level layer. */
+  --z-modal-sticky: 1;
   --z-sticky-bar: 20;
   --z-header: 40;
   --z-fab: 60;

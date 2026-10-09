@@ -6,11 +6,11 @@ import {
   loginAction,
   requestPasswordResetAction,
   verifyPasswordResetCodeAction,
+  verifySignupCodeAction,
   resendConfirmationAction,
   signupAction,
 } from "@/lib/actions/auth";
-import { toast } from "@/lib/toast";
-import { ContrastToggle } from "@/components/HeaderActions";
+import { errorText, toast } from "@/lib/toast";
 import type { Role } from "@/lib/types";
 
 const HOME_BY_ROLE: Record<Role, string> = {
@@ -80,6 +80,7 @@ export function LandingClient({
   // typed — people check it against the message they are reading.
   const [resetStep, setResetStep] = useState<"request" | "code">("request");
   const [resetCode, setResetCode] = useState("");
+  const [confirmCode, setConfirmCode] = useState("");
 
   async function onRequestReset(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -127,9 +128,9 @@ export function LandingClient({
     const res = await loginAction(nextEmail, nextPassword);
     setBusy(false);
     if (!res.ok) {
-      setLoginErr(res.error || "Sign in failed.");
+      setLoginErr(errorText(res.error, "Sign in failed."));
       setNeedsConfirm(!!res.needsEmailConfirm);
-      toast(res.error || "Sign in failed.", "error");
+      toast(errorText(res.error, "Sign in failed."), "error");
       return;
     }
     toast(`Welcome back, ${res.name}.`, "success");
@@ -145,10 +146,29 @@ export function LandingClient({
     const res = await resendConfirmationAction(email);
     setBusy(false);
     if (!res.ok) {
-      toast(res.error || "Could not resend confirmation.", "error");
+      toast(errorText(res.error, "Could not resend confirmation."), "error");
       return;
     }
     toast(res.message || "Confirmation email sent.", "success");
+  }
+
+  async function onVerifySignupCode(e: React.FormEvent) {
+    e.preventDefault();
+    if (!email.trim() || !confirmCode.trim()) {
+      setLoginErr("Enter the code from your email.");
+      return;
+    }
+    setBusy(true);
+    setLoginErr(null);
+    const res = await verifySignupCodeAction(email, confirmCode);
+    setBusy(false);
+    if (!res.ok) {
+      setLoginErr(errorText(res.error, "That code did not work."));
+      toast(errorText(res.error, "That code did not work."), "error");
+      return;
+    }
+    toast(`Welcome, ${res.name}.`, "success");
+    router.push(HOME_BY_ROLE[res.role!]);
   }
 
   async function onSignup(e: React.FormEvent<HTMLFormElement>) {
@@ -166,12 +186,12 @@ export function LandingClient({
     );
     setBusy(false);
     if (!res.ok) {
-      setSignupErr(res.error || "Could not create account.");
-      toast(res.error || "Could not create account.", "error");
+      setSignupErr(errorText(res.error, "Could not create account."));
+      toast(errorText(res.error, "Could not create account."), "error");
       return;
     }
     if (res.needsEmailConfirm) {
-      toast(res.message || "Check your email to confirm your account.", "success");
+      toast(res.message || "Check your email for a confirmation link and a code.", "success");
       setEmail(String(data.get("email") || "").trim().toLowerCase());
       setTab("signin");
       setNeedsConfirm(true);
@@ -260,10 +280,6 @@ export function LandingClient({
         </aside>
 
         <section className="landing-auth" aria-labelledby="auth-title">
-          <div className="landing-auth__top">
-            <ContrastToggle />
-          </div>
-
           <div className="auth-card">
             <div className="auth-tabs" role="tablist" aria-label="Sign in or create account">
               <button
@@ -413,26 +429,16 @@ export function LandingClient({
                 noValidate
                 onSubmit={(e) => {
                   e.preventDefault();
+                  if (needsConfirm && confirmCode) {
+                    void onVerifySignupCode(e);
+                    return;
+                  }
                   doLogin(email, password);
                 }}
               >
                 {loginErr ? (
                   <p className="form-error" role="alert">
                     {loginErr}
-                  </p>
-                ) : null}
-
-                {needsConfirm ? (
-                  <p className="hint" role="status">
-                    Didn&apos;t get the email?{" "}
-                    <button
-                      type="button"
-                      className="btn btn--ghost btn--sm"
-                      disabled={busy}
-                      onClick={onResendConfirm}
-                    >
-                      Resend confirmation
-                    </button>
                   </p>
                 ) : null}
 
@@ -453,6 +459,46 @@ export function LandingClient({
                     />
                   </div>
                 </div>
+
+                {needsConfirm ? (
+                  <>
+                    <div className="field">
+                      <label htmlFor="signup-code">Confirmation code</label>
+                      <input
+                        id="signup-code"
+                        name="signup-code"
+                        type="text"
+                        inputMode="numeric"
+                        autoComplete="one-time-code"
+                        pattern="[0-9]*"
+                        maxLength={12}
+                        placeholder="12345678"
+                        className="otp-input"
+                        value={confirmCode}
+                        onChange={(e) => setConfirmCode(e.target.value.replace(/\D/g, ""))}
+                      />
+                    </div>
+                    <p className="hint" role="status">
+                      Enter the code we emailed you, or{" "}
+                      <button
+                        type="button"
+                        className="btn btn--ghost btn--sm"
+                        disabled={busy}
+                        onClick={onResendConfirm}
+                      >
+                        resend confirmation
+                      </button>
+                    </p>
+                    <button
+                      type="button"
+                      className="btn btn--primary"
+                      disabled={busy || !confirmCode}
+                      onClick={(e) => void onVerifySignupCode(e)}
+                    >
+                      {busy ? "Checking…" : "Confirm email"}
+                    </button>
+                  </>
+                ) : null}
 
                 <div className="field">
                   <label htmlFor="login-password">Password</label>
