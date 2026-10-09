@@ -186,6 +186,16 @@
   padding: .85rem 0;
 }
 .static-page { padding: 2rem 1rem 3rem; max-width: 760px; }
+
+/* Full-page states: error, not found, suspended account. A heading, one
+   sentence that says what happened, and the next step — never a blank page. */
+.page-state {
+  display: grid;
+  gap: var(--space-4);
+  max-width: var(--measure);
+  padding-block: var(--space-7);
+}
+.page-state h1 { font-size: var(--step-4); }
 .prose { display: grid; gap: 1rem; line-height: 1.65; }
 .prose h1 { font-size: var(--step-4); }
 .prose h2 { font-size: 1.15rem; margin-top: 1rem; }
