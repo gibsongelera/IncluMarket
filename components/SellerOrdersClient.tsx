@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { money, formatDate } from "@/lib/format";
@@ -239,6 +240,13 @@ export function SellerOrdersClient({
                       ) : null}
                       {o.return_reason && o.order_status === "return_requested" ? (
                         <p className="notice notice--warning small">Return reason: {o.return_reason}</p>
+                      ) : null}
+                      {o.order_status === "pending" || o.order_status === "processing" || o.order_status === "shipped" ? (
+                        <p className="small">
+                          <Link href={`/seller/orders/${o.id}/slip`}>
+                            Packing slip<span className="sr-only"> for order #{o.id}</span>
+                          </Link>
+                        </p>
                       ) : null}
                     </td>
                     <td className="price">{money(o.subtotal)}</td>

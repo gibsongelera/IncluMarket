@@ -454,6 +454,20 @@ a.banners__link:focus-visible { outline: var(--focus-ring); outline-offset: var(
 .shop-card__name { margin: 0; font-size: var(--step-1); }
 .shop-card__story { margin: var(--space-2) 0 0; max-width: var(--measure); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 
+/* --- Packing slip (/seller/orders/[id]/slip, C-33) ------------------------ */
+.slip { background: #FFFFFF; color: #000000; border: 1px solid var(--border); border-radius: var(--radius-md); padding: var(--space-5); max-width: 48rem; display: grid; gap: var(--space-4); }
+.slip p { margin: 0; }
+.slip__head { display: flex; justify-content: space-between; gap: var(--space-4); flex-wrap: wrap; border-bottom: 2px solid #000000; padding-bottom: var(--space-3); }
+.slip__shop { font-size: var(--step-2); font-weight: 800; }
+.slip__order { text-align: right; }
+.slip__order h1 { margin: 0; font-size: var(--step-2); }
+.slip__to h2 { font-size: var(--step-0); margin: 0 0 var(--space-1); text-transform: uppercase; letter-spacing: .06em; }
+.slip__items { width: 100%; border-collapse: collapse; }
+.slip__items th, .slip__items td { border-bottom: 1px solid #999999; padding: var(--space-2); text-align: left; vertical-align: top; }
+.slip__items .num, .slip__check { text-align: center; width: 4rem; }
+.slip__pay { border: 2px solid #000000; padding: var(--space-3); display: grid; gap: var(--space-1); }
+.slip__foot { font-size: .875rem; }
+
 /* --- Wishlist ------------------------------------------------------------ */
 .wishlist-grid { list-style: none; margin: 0; padding: 0; }
 .wishlist-item { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }

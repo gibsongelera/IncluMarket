@@ -1402,3 +1402,52 @@ h3 {
     align-items: start;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Print: the packing slip (and any page) without the site's chrome, on A4.
+   Sizes in pt so the accessibility font setting does not push the slip onto
+   a second page.
+   ------------------------------------------------------------------------ */
+@media print {
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+  .site-header,
+  .mobile-nav,
+  .console-nav,
+  .site-footer,
+  .a11y-widget,
+  .chat-widget,
+  .toast-region,
+  .skip-link,
+  .no-print {
+    display: none !important;
+  }
+  html,
+  body,
+  main {
+    background: #FFFFFF !important;
+    padding: 0 !important;
+  }
+  /* Black on white: printers and photocopies drop colour and light tints. */
+  .slip,
+  .slip * {
+    color: #000000 !important;
+  }
+  .console {
+    display: block !important;
+  }
+  .slip {
+    border: 0;
+    padding: 0;
+    max-width: none;
+    font-size: 11pt;
+    gap: 10pt;
+    break-inside: avoid;
+  }
+  .slip__shop,
+  .slip__order h1 {
+    font-size: 16pt;
+  }
+}
