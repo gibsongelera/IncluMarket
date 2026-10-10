@@ -54,6 +54,21 @@ export function applyReduceMotion(on: boolean) {
   else document.documentElement.removeAttribute("data-reduce-motion");
 }
 
+/**
+ * Whether to skip motion: the OS setting or the toolbar Reduce motion switch.
+ * CSS honours both for animations; JS smooth scrolling has to ask (M-01).
+ */
+export function prefersReducedMotion(): boolean {
+  if (typeof window === "undefined") return true;
+  if (document.documentElement.getAttribute("data-reduce-motion") === "true") return true;
+  return typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+/** "smooth", unless the person asked for less motion. */
+export function scrollBehavior(): ScrollBehavior {
+  return prefersReducedMotion() ? "auto" : "smooth";
+}
+
 export function applyLargeCursors(on: boolean) {
   if (typeof document === "undefined") return;
   if (on) document.documentElement.setAttribute("data-large-cursors", "true");

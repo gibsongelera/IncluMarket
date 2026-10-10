@@ -19,6 +19,7 @@ import {
   matchVoiceCommand,
   nextFontSize,
   parseStoredFontSize,
+  scrollBehavior,
 } from "@/lib/a11y/prefs";
 
 type TabId = "display" | "speech" | "voice" | "help";
@@ -160,8 +161,14 @@ export function AccessibilityWidget() {
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape") {
         stopSpeaking();
-        setOpen(false);
-        fabRef.current?.focus();
+        // Only reclaim focus when closing our own panel. This listener is on
+        // the whole document, so doing it unconditionally pulled focus to the
+        // accessibility button on every Escape — out of search boxes, dialogs
+        // and toasts.
+        if (open) {
+          setOpen(false);
+          fabRef.current?.focus();
+        }
       }
       if (e.altKey && (e.key === "a" || e.key === "A")) {
         e.preventDefault();
@@ -298,8 +305,8 @@ export function AccessibilityWidget() {
           if (ttsRef.current) speakText(action.text, rateRef.current);
           break;
         case "scroll":
-          if (action.direction === "top") window.scrollTo({ top: 0, behavior: "smooth" });
-          else window.scrollBy({ top: action.direction === "down" ? 400 : -400, behavior: "smooth" });
+          if (action.direction === "top") window.scrollTo({ top: 0, behavior: scrollBehavior() });
+          else window.scrollBy({ top: action.direction === "down" ? 400 : -400, behavior: scrollBehavior() });
           break;
         case "focus-search":
           (document.querySelector('input[type="search"], input[name="q"], #search') as HTMLInputElement | null)?.focus();

@@ -370,7 +370,9 @@ export function BuyerHomeClient({
 
         <div className="feed-head">
           <h2 id="feed-title">Discover</h2>
-          <p className="muted">
+          {/* The count is the live region, not the grid: a live grid made screen
+              readers read every card after each filter change (N-11). */}
+          <p className="muted" role="status" aria-live="polite" aria-atomic="true">
             {results.length} result{results.length === 1 ? "" : "s"}
           </p>
           <div className="field sort-field">
@@ -450,7 +452,7 @@ export function BuyerHomeClient({
         {results.length === 0 ? (
           <p className="empty">No products match your filters.</p>
         ) : (
-          <div className="product-grid" aria-live="polite">
+          <div className="product-grid" aria-labelledby="feed-title">
             {results.map(renderCard)}
           </div>
         )}

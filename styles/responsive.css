@@ -35,6 +35,9 @@
 html {
   /* In-page anchors and the skip link must not land under the sticky header. */
   scroll-padding-top: calc(var(--header-total) + var(--space-2));
+  /* ...and focus scrolling must not park a control under a floating button
+     or the commit bar (WCAG 2.4.11 Focus Not Obscured). */
+  scroll-padding-bottom: calc(var(--fab-clearance) + var(--commit-bar-h) + var(--bottom-inset));
 }
 
 body {
@@ -246,9 +249,19 @@ body {
   bottom: calc(var(--space-3) + var(--bottom-inset) + env(safe-area-inset-bottom, 0px));
 }
 
+/* Toasts stack above the chat button rather than over it. */
 .toast-region {
   z-index: var(--z-toast);
-  bottom: calc(var(--space-4) + var(--bottom-inset) + env(safe-area-inset-bottom, 0px));
+  bottom: calc(var(--fab-clearance) + var(--bottom-inset) + env(safe-area-inset-bottom, 0px));
+}
+
+/* The last thing on a page (footer links, Subscribe) scrolls clear of the
+   floating buttons instead of ending underneath them (N-14). */
+.site-footer {
+  padding-bottom: var(--fab-clearance);
+}
+body:not(:has(.site-footer)) {
+  padding-bottom: calc(var(--bottom-inset) + var(--fab-clearance));
 }
 
 .site-header {
@@ -282,7 +295,7 @@ body {
   }
   body:has(.cart-summary--sticky) .toast-region {
     bottom: calc(
-      var(--commit-bar-h) + 64px + var(--space-4) + var(--bottom-inset) +
+      var(--commit-bar-h) + var(--fab-clearance) + var(--bottom-inset) +
         env(safe-area-inset-bottom, 0px)
     );
   }
@@ -1179,7 +1192,7 @@ h3 {
   }
   body:has(.pd__actions) .toast-region {
     bottom: calc(
-      var(--commit-bar-h) + 64px + var(--space-4) + var(--bottom-inset) +
+      var(--commit-bar-h) + var(--fab-clearance) + var(--bottom-inset) +
         env(safe-area-inset-bottom, 0px)
     );
   }

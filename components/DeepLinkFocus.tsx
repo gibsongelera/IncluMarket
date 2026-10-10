@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useSearchParams } from "next/navigation";
+import { scrollBehavior } from "@/lib/a11y/prefs";
 
 /**
  * Scrolls to, highlights and focuses the row named by a `?focus=` parameter.
@@ -42,7 +43,7 @@ export function DeepLinkFocus({
         return;
       }
 
-      el.scrollIntoView({ block: "center", behavior: "smooth" });
+      el.scrollIntoView({ block: "center", behavior: scrollBehavior() });
       el.classList.add("is-deeplinked");
 
       // Make the row focusable only for as long as it needs to be, so it does

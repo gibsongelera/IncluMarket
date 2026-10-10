@@ -200,6 +200,12 @@
      never guess it: the bar wraps to two rows once its buttons no longer fit,
      and grows with the 12-24px accessibility font scale. */
   --commit-bar-h: 0px;
+  /* The accessibility and chat buttons are fixed at --fab-size in the bottom
+     corners. --fab-clearance is the strip they occupy, gaps included: page
+     content, the footer and focus scrolling keep clear of it so nothing a
+     person needs ends up under a floating button (N-14, WCAG 2.4.11). */
+  --fab-size: 56px;
+  --fab-clearance: calc(var(--fab-size) + 2 * var(--space-3));
 
   /* Star rating.
      --star-filled is the requested bright gold. On white it measures 1.43:1,

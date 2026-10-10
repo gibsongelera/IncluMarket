@@ -32,7 +32,7 @@ export function WishlistClient({
   }
 
   return (
-    <div className="product-grid" aria-live="polite">
+    <div className="product-grid">
       {products.map((p) => (
         <ProductCard
           key={p.id}

@@ -643,8 +643,8 @@ fieldset {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 56px;
-  height: 56px;
+  width: var(--fab-size);
+  height: var(--fab-size);
   border-radius: 999px;
   border: none;
   background: var(--brand-blue);
@@ -811,8 +811,8 @@ fieldset {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 56px;
-  height: 56px;
+  width: var(--fab-size);
+  height: var(--fab-size);
   border-radius: 999px;
   border: none;
   background: var(--brand-blue);
