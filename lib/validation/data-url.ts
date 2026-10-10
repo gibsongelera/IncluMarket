@@ -35,6 +35,19 @@ const CONTROL_CHARS_RE = new RegExp(
 
 export type ValidationResult<T> = { ok: true; value: T } | { ok: false; error: string };
 
+/**
+ * Product photos now live in the public product-media Storage bucket (ADR-4,
+ * migration 0019); the server action that uploads them returns these URLs.
+ * Only this project's own bucket is accepted — never an arbitrary URL, which
+ * would let a listing hotlink or track buyers.
+ */
+export function isProductMediaUrl(raw: string): boolean {
+  const base = (process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").replace(/\/+$/, "");
+  if (!base) return false;
+  const prefix = `${base}/storage/v1/object/public/product-media/`;
+  return raw.startsWith(prefix) && /^[0-9]+\/[0-9a-f-]{36}\.(?:jpg|png)$/.test(raw.slice(prefix.length));
+}
+
 /** Decoded byte length of a base64 payload, without allocating a Buffer. */
 function decodedBytes(base64: string): number {
   const padding = base64.endsWith("==") ? 2 : base64.endsWith("=") ? 1 : 0;
@@ -62,6 +75,10 @@ export function validateImageDataUrls(
   for (const [i, raw] of input.entries()) {
     if (typeof raw !== "string") {
       return { ok: false, error: `Image ${i + 1} is not valid image data.` };
+    }
+    if (isProductMediaUrl(raw)) {
+      clean.push(raw);
+      continue;
     }
     const match = raw.match(DATA_URL_RE);
     if (!match) {

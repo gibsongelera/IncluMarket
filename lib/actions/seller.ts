@@ -6,6 +6,9 @@ import { getSession } from "@/lib/session";
 import { createNotification, emailIfWanted, notifyAdmins } from "@/lib/notify";
 import { transitionOrder } from "@/lib/orders/transition";
 import { isMissingObject } from "@/lib/db-errors";
+import { randomUUID } from "node:crypto";
+import { rateLimit } from "@/lib/security/rate-limit";
+import { checkIdImage } from "@/lib/pwd/image-check";
 import { orderSellerIds } from "@/lib/orders/sellers";
 import type { OrderState } from "@/lib/orders/state";
 import {
@@ -38,6 +41,57 @@ export interface ProductInput {
   image: string;
   images?: string[];
   variants: VariantInput[];
+  /** PWD-friendly features (0016 adaptive_tags). */
+  adaptiveTags?: string[];
+}
+
+const ADAPTIVE_TAG_KEYS = ["one_handed", "braille_large_print", "sensory_friendly", "seated_fit", "easy_grip", "easy_closure"];
+
+function cleanTags(input: unknown): string[] | undefined {
+  if (!Array.isArray(input)) return undefined;
+  return [...new Set(input.map(String).filter((t) => ADAPTIVE_TAG_KEYS.includes(t)))];
+}
+
+/** Save the PWD-friendly features; nothing to do before migration 0016. */
+async function saveTags(db: ReturnType<typeof createAdminClient>, productId: number, tags: string[] | undefined) {
+  if (tags === undefined) return;
+  const { error } = await db.from("im_products").update({ adaptive_tags: tags }).eq("id", productId);
+  if (error && !isMissingObject(error)) console.error(`[seller] tags: ${error.message}`);
+}
+
+/**
+ * Upload one product photo to Storage (ADR-4). The browser re-encodes every
+ * photo through a canvas first (no EXIF or GPS); the server still checks the
+ * bytes itself. Returns the public URL to put in the product's images.
+ * Before migration 0019 (no bucket), returns the photo as an inline data URL —
+ * the old storage — so sellers are never blocked.
+ */
+export async function uploadProductPhoto(form: FormData): Promise<ActionResult & { url?: string }> {
+  const seller = await requireSeller();
+  if (!seller || seller.role !== "seller") return { ok: false, error: "Seller access required." };
+  const limited = await rateLimit("product_photo", `user:${seller.user_id}`, { limit: 60, windowSeconds: 3600 });
+  if (!limited.ok) return { ok: false, error: "Too many uploads. Please wait a few minutes." };
+
+  const file = form.get("photo");
+  if (!(file instanceof File) || !file.size) return { ok: false, error: "Choose a photo." };
+  if (file.size > 1_048_576) return { ok: false, error: "That photo is over 1 MB after resizing. Try another." };
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const checked = checkIdImage(bytes, "photo");
+  if (!checked.ok) return { ok: false, error: checked.error };
+  const ext = checked.kind === "png" ? "png" : "jpg";
+  const type = checked.kind === "png" ? "image/png" : "image/jpeg";
+
+  const db = createAdminClient();
+  const path = `${seller.user_id}/${randomUUID()}.${ext}`;
+  const { error } = await db.storage.from("product-media").upload(path, bytes, { contentType: type, upsert: false });
+  if (error) {
+    if (/bucket not found|not found/i.test(error.message)) {
+      return { ok: true, url: `data:${type};base64,${Buffer.from(bytes).toString("base64")}` };
+    }
+    console.error(`[seller] photo upload: ${error.message}`);
+    return { ok: false, error: "Could not upload the photo. Please try again." };
+  }
+  return { ok: true, url: db.storage.from("product-media").getPublicUrl(path).data.publicUrl };
 }
 
 async function replaceImages(
@@ -140,6 +194,7 @@ export async function createProduct(input: ProductInput): Promise<ActionResult> 
   }
 
   if (imageCheck.value) await replaceImages(db, product.id, imageCheck.value);
+  await saveTags(db, product.id, cleanTags(input.adaptiveTags));
 
   await db.from("im_audit_logs").insert({
     actor_id: seller.user_id,
@@ -172,14 +227,26 @@ export async function updateProduct(
 
   const db = createAdminClient();
 
-  const { data: existing } = await db
-    .from("im_products")
-    .select("seller_id, status, title")
-    .eq("id", productId)
-    .maybeSingle();
+  const { data: existingRow } = await db.from("im_products").select("*").eq("id", productId).maybeSingle();
+  const existing = existingRow as {
+    seller_id: number;
+    status: string;
+    title: string;
+    description: string | null;
+    base_price: number | string;
+    category: string | null;
+    image: string | null;
+    adaptive_tags?: string[] | null;
+  } | null;
   if (!existing) return { ok: false, error: "Product not found." };
   if (seller.role !== "admin" && existing.seller_id !== seller.user_id)
     return { ok: false, error: "You can only edit your own products." };
+  const { data: currentImages } = await db
+    .from("im_product_images")
+    .select("url")
+    .eq("product_id", productId)
+    .order("position");
+  const tags = cleanTags(input.adaptiveTags);
 
   const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if (input.title !== undefined) patch.title = boundedText(input.title, 200) ?? "";
@@ -194,17 +261,27 @@ export async function updateProduct(
     patch.image = validateImageToken(input.image, "\u{1F6CD}\u{FE0F}");
   }
 
-  // Editing what buyers see — name, description, price, category, photos —
-  // sends an approved listing back to review. It used to stay approved, so a
-  // listing could be approved and then changed into anything (B-12). Stock
-  // and option changes do not need review. Admin edits keep the status.
+  // Editing what buyers see — name, description, price, category, photos,
+  // PWD-friendly features — sends an approved listing back to review. It used
+  // to stay approved, so a listing could be approved and then changed into
+  // anything (B-12). Stock and option changes do not need review, and neither
+  // does saving the form unchanged: values are compared, not just present.
+  // Admin edits keep the status.
+  const same = (a: unknown, b: unknown) => String(a ?? "") === String(b ?? "");
+  const sameList = (a: string[], b: string[]) => a.length === b.length && a.every((x, i) => x === b[i]);
+  // Rewriting identical photos would fire the 0016 image trigger and hide the
+  // listing for review, so photos are only replaced when they differ.
+  const imagesChanged =
+    imageCheck.value !== undefined &&
+    !sameList(imageCheck.value, ((currentImages ?? []) as { url: string }[]).map((i) => i.url));
   const contentChanged =
-    input.title !== undefined ||
-    input.description !== undefined ||
-    input.base_price !== undefined ||
-    input.category !== undefined ||
-    input.image !== undefined ||
-    Boolean(imageCheck.value);
+    ("title" in patch && !same(patch.title, existing.title)) ||
+    ("description" in patch && !same(patch.description, existing.description)) ||
+    ("base_price" in patch && Number(patch.base_price) !== Number(existing.base_price)) ||
+    ("category" in patch && !same(patch.category, existing.category)) ||
+    ("image" in patch && !same(patch.image, existing.image)) ||
+    imagesChanged ||
+    (tags !== undefined && !sameList([...tags].sort(), [...(existing.adaptive_tags ?? [])].sort()));
   const backToReview = seller.role !== "admin" && existing.status === "approved" && contentChanged;
   if (backToReview) patch.status = "pending";
   // An admin's edit is a moderation act: stamping moderated_at tells the
@@ -229,7 +306,14 @@ export async function updateProduct(
       return { ok: false, error: "One of those options does not belong to this product." };
   }
 
-  const { error } = await db.from("im_products").update(patch).eq("id", productId);
+  // Tags go in the same UPDATE, so an admin edit stays one moderation act.
+  if (tags !== undefined) patch.adaptive_tags = tags;
+  let { error } = await db.from("im_products").update(patch).eq("id", productId);
+  if (error && isMissingObject(error) && "adaptive_tags" in patch) {
+    // Before migration 0016: no adaptive_tags column.
+    delete patch.adaptive_tags;
+    ({ error } = await db.from("im_products").update(patch).eq("id", productId));
+  }
   if (error) return { ok: false, error: "Could not save your changes. Please try again." };
 
   if (incoming) {
@@ -257,7 +341,7 @@ export async function updateProduct(
     }
   }
 
-  if (imageCheck.value) await replaceImages(db, productId, imageCheck.value);
+  if (imagesChanged && imageCheck.value) await replaceImages(db, productId, imageCheck.value);
 
   if (backToReview) {
     await notifyAdmins({
@@ -600,4 +684,59 @@ export async function updateShopSettings(input: {
   revalidatePath(`/shop/${seller.user_id}`);
   revalidatePath("/seller/dashboard");
   return { ok: true };
+}
+
+/**
+ * Duplicate one of the seller's listings (C-32): same details, photos,
+ * options and PWD-friendly features, as a new listing waiting for review.
+ * Options start at 0 stock with new SKUs, so nothing is sold twice by
+ * accident.
+ */
+export async function duplicateProduct(productId: number): Promise<ActionResult> {
+  const seller = await requireSeller();
+  if (!seller || seller.role !== "seller") return { ok: false, error: "Seller access required." };
+  const db = createAdminClient();
+  const { data: src } = await db.from("im_products").select("*").eq("id", Number(productId)).maybeSingle();
+  if (!src || src.seller_id !== seller.user_id) return { ok: false, error: "You can only duplicate your own products." };
+
+  const { data: copy, error } = await db
+    .from("im_products")
+    .insert({
+      seller_id: seller.user_id,
+      title: `${String(src.title).slice(0, 190)} (copy)`,
+      description: src.description,
+      base_price: src.base_price,
+      category: src.category,
+      image: src.image,
+      status: "pending",
+    })
+    .select("id")
+    .single();
+  if (error || !copy) return { ok: false, error: "Could not duplicate the product. Please try again." };
+
+  const [{ data: variants }, { data: images }] = await Promise.all([
+    db.from("im_product_variants").select("color_name, size").eq("product_id", src.id),
+    db.from("im_product_images").select("url, position").eq("product_id", src.id).order("position"),
+  ]);
+  const opts = (variants ?? []) as { color_name: string; size: string | null }[];
+  await db.from("im_product_variants").insert(
+    (opts.length ? opts : [{ color_name: "Standard", size: null }]).map((v, i) => ({
+      product_id: copy.id,
+      color_name: v.color_name,
+      size: v.size,
+      stock_qty: 0,
+      sku_code: autoSku(copy.id, i),
+    }))
+  );
+  if (images?.length) await replaceImages(db, copy.id, (images as { url: string }[]).map((i) => i.url));
+  await saveTags(db, copy.id, Array.isArray(src.adaptive_tags) ? src.adaptive_tags : undefined);
+
+  await db.from("im_audit_logs").insert({
+    actor_id: seller.user_id,
+    actor_role: "seller",
+    action: "duplicated_product",
+    target: `product:${src.id} -> product:${copy.id}`,
+  });
+  revalidatePath("/seller/products");
+  return { ok: true, productId: copy.id };
 }

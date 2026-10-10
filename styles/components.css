@@ -244,6 +244,21 @@
 .notif-settings__table th[scope="row"] { font-weight: 700; text-align: left; }
 .notif-settings__table td { white-space: nowrap; }
 
+/* --- Product wizard (components/ProductWizard.tsx, C-32) ----------------- */
+.wizard { display: grid; gap: var(--space-4); }
+.wizard__title { margin: 0; }
+.wizard__body { display: grid; gap: var(--space-3); margin: 0; padding: 0; border: 0; }
+.wizard__body > p { margin: 0; max-width: var(--measure); }
+.steps__jump { display: flex; align-items: center; gap: var(--space-2); background: none; border: 0; padding: 0; font: inherit; color: inherit; cursor: pointer; min-height: 2.75rem; text-align: left; }
+.photo-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-3); grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr)); }
+.photo-list li { display: grid; gap: var(--space-2); }
+.photo-list img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: var(--radius-sm); border: 1px solid var(--border); }
+.photo-list li:first-child img { outline: 3px solid var(--brand-blue); outline-offset: -3px; }
+.photo-list__actions { display: flex; flex-wrap: wrap; gap: var(--space-1); }
+.option-list { display: grid; gap: var(--space-3); }
+.option-row { display: grid; gap: var(--space-2); grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr)); align-items: end; margin: 0; padding: var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-md); }
+.option-row__remove { justify-self: start; min-height: 2.75rem; }
+
 /* --- Seller Centre to-dos and setup (C-31) -------------------------------- */
 .shop-settings { max-width: 44rem; }
 .seller-todos { display: grid; gap: var(--space-4); margin-bottom: var(--space-5); }

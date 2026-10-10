@@ -2,62 +2,14 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Icon } from "./Icon";
 import { Pill } from "./Pill";
 import { money, formatDate, productImageSrc } from "@/lib/format";
 import { toast } from "@/lib/toast";
-import { createProduct, updateProduct, setProductPublished, createFlashSale } from "@/lib/actions/seller";
+import { setProductPublished, createFlashSale, duplicateProduct } from "@/lib/actions/seller";
+import { ProductWizard } from "./ProductWizard";
 import type { Category, Product, ProductVariant } from "@/lib/types";
 import { TableWrap } from "./TableWrap";
 import { DeepLinkFocus } from "./DeepLinkFocus";
-
-type VariantDraft = {
-  id?: number | null;
-  color_name: string;
-  size: string;
-  stock_qty: number;
-  sku_code: string;
-};
-
-const MAX_IMAGES = 3;
-const MAX_BYTES = 1 * 1024 * 1024;
-
-function resizeToDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement("canvas");
-        const max = 800;
-        let w = img.width;
-        let h = img.height;
-        if (w > h && w > max) {
-          h = Math.round((h * max) / w);
-          w = max;
-        } else if (h >= w && h > max) {
-          w = Math.round((w * max) / h);
-          h = max;
-        }
-        canvas.width = w;
-        canvas.height = h;
-        const ctx = canvas.getContext("2d")!;
-        ctx.fillStyle = "#ffffff";
-        ctx.fillRect(0, 0, w, h);
-        ctx.drawImage(img, 0, 0, w, h);
-        try {
-          resolve(canvas.toDataURL("image/jpeg", 0.82));
-        } catch (e) {
-          reject(e);
-        }
-      };
-      img.onerror = () => reject(new Error("Could not read image."));
-      img.src = reader.result as string;
-    };
-    reader.onerror = () => reject(new Error("Could not read file."));
-    reader.readAsDataURL(file);
-  });
-}
 
 export function SellerProductsClient({
   products,
@@ -69,140 +21,22 @@ export function SellerProductsClient({
   categories: Category[];
 }) {
   const router = useRouter();
-  const dialogRef = useRef<HTMLDialogElement>(null);
   const flashDialogRef = useRef<HTMLDialogElement>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
-
+  const [editing, setEditing] = useState<Product | "new" | null>(null);
   const [flashProductId, setFlashProductId] = useState<number | null>(null);
   const [flashDiscount, setFlashDiscount] = useState(20);
   const [flashHours, setFlashHours] = useState(24);
   const [flashBusy, setFlashBusy] = useState(false);
 
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [title, setTitle] = useState("");
-  const [category, setCategory] = useState("");
-  const [price, setPrice] = useState("");
-  const [image, setImage] = useState("");
-  const [desc, setDesc] = useState("");
-  const [uploaded, setUploaded] = useState<string[]>([]);
-  const [vBuffer, setVBuffer] = useState<VariantDraft[]>([]);
-  const [busy, setBusy] = useState(false);
+  async function duplicate(p: Product) {
+    const res = await duplicateProduct(p.id);
+    if (!res.ok) return toast(res.error || "Could not duplicate.", "error");
+    toast(`Copied “${p.title}”. The copy has 0 stock and is waiting for review.`, "success");
+    router.refresh();
+  }
 
   const categoryLabel = (id: string | null) =>
     categories.find((c) => c.id === id)?.label || id || "Uncategorized";
-
-  function openModal(product?: Product) {
-    if (product) {
-      setEditingId(product.id);
-      setTitle(product.title);
-      setCategory(product.category || "");
-      setPrice(String(product.base_price));
-      setImage(product.image || "");
-      setDesc(product.description || "");
-      setUploaded(Array.isArray(product.images) ? product.images.slice() : []);
-      setVBuffer(
-        variants
-          .filter((v) => v.product_id === product.id)
-          .map((v) => ({
-            id: v.id,
-            color_name: v.color_name,
-            size: v.size || "One size",
-            stock_qty: v.stock_qty,
-            sku_code: v.sku_code,
-          }))
-      );
-    } else {
-      setEditingId(null);
-      setTitle("");
-      setCategory("");
-      setPrice("");
-      setImage("");
-      setDesc("");
-      setUploaded([]);
-      setVBuffer([
-        { color_name: "Natural", size: "One size", stock_qty: 10, sku_code: "SKU-NEW-" + Date.now() },
-      ]);
-    }
-    dialogRef.current?.showModal();
-  }
-
-  async function onFiles(e: React.ChangeEvent<HTMLInputElement>) {
-    const files = Array.from(e.target.files || []);
-    if (!files.length) return;
-    const next = [...uploaded];
-    for (const f of files) {
-      if (next.length >= MAX_IMAGES) {
-        toast(`Maximum ${MAX_IMAGES} photos per product.`, "warning");
-        break;
-      }
-      if (!/^image\//.test(f.type)) {
-        toast("Not an image: " + f.name, "error");
-        continue;
-      }
-      if (f.size > MAX_BYTES) {
-        toast(f.name + " is over 1 MB.", "error");
-        continue;
-      }
-      try {
-        next.push(await resizeToDataUrl(f));
-      } catch (err) {
-        toast((err as Error).message || "Image failed to load.", "error");
-      }
-    }
-    setUploaded(next);
-    if (fileRef.current) fileRef.current.value = "";
-  }
-
-  function setVariant(i: number, patch: Partial<VariantDraft>) {
-    setVBuffer((b) => b.map((v, idx) => (idx === i ? { ...v, ...patch } : v)));
-  }
-
-  async function save(e: React.MouseEvent) {
-    e.preventDefault();
-    if (!title.trim() || !category || !(Number(price) >= 0)) {
-      toast("Please complete the required fields.", "warning");
-      return;
-    }
-    const variantInputs = vBuffer.map((v) => ({
-      id: v.id ?? null,
-      color_name: v.color_name.trim(),
-      size: v.size.trim(),
-      stock_qty: Math.max(0, Number(v.stock_qty) || 0),
-      sku_code: v.sku_code.trim(),
-    }));
-    if (!variantInputs.length || variantInputs.some((v) => !v.color_name || !v.sku_code)) {
-      toast("Add at least one complete variant.", "warning");
-      return;
-    }
-    setBusy(true);
-    const payload = {
-      title: title.trim(),
-      description: desc.trim(),
-      base_price: Number(price),
-      category,
-      image: image.trim() || "\u{1F6CD}\u{FE0F}",
-      images: uploaded.slice(0, MAX_IMAGES),
-      variants: variantInputs,
-    };
-    const res = editingId
-      ? await updateProduct(editingId, payload)
-      : await createProduct(payload);
-    setBusy(false);
-    if (!res.ok) {
-      toast(res.error || "Could not save product.", "error");
-      return;
-    }
-    toast(
-      res.backToReview
-        ? "Saved. Because buyers see these details, the listing is hidden until an admin reviews it again."
-        : editingId
-          ? "Product updated."
-          : "Product submitted for review. It appears in the shop once approved.",
-      res.backToReview ? "info" : "success"
-    );
-    dialogRef.current?.close();
-    router.refresh();
-  }
 
   function openFlash(id: number) {
     setFlashProductId(id);
@@ -245,7 +79,7 @@ export function SellerProductsClient({
     <>
       <div className="page-head">
         <h1>Product catalog</h1>
-        <button type="button" className="btn btn--primary" id="add-product" onClick={() => openModal()}>
+        <button type="button" className="btn btn--primary" id="add-product" onClick={() => setEditing("new")}>
           Add new product
         </button>
       </div>
@@ -310,8 +144,11 @@ export function SellerProductsClient({
                       {vs.length} variants &middot; {totalStock} units
                     </td>
                     <td>
-                      <button className="btn btn--ghost btn--sm" onClick={() => openModal(p)}>
-                        Edit
+                      <button className="btn btn--ghost btn--sm" onClick={() => setEditing(p)}>
+                        Edit<span className="sr-only"> {p.title}</span>
+                      </button>{" "}
+                      <button type="button" className="btn btn--ghost btn--sm" onClick={() => duplicate(p)}>
+                        Duplicate<span className="sr-only"> {p.title}</span>
                       </button>{" "}
                       <button
                         className="btn btn--ghost btn--sm"
@@ -339,172 +176,16 @@ export function SellerProductsClient({
         </table>
       </TableWrap>
 
-      <dialog id="product-modal" className="modal modal--wide" ref={dialogRef} aria-labelledby="pm-title">
-        <form method="dialog" className="modal-form" id="product-form" noValidate>
-          <h2 id="pm-title">Product</h2>
-          <div className="row">
-            <div className="field">
-              <label htmlFor="pm-title-inp">Title</label>
-              <input
-                id="pm-title-inp"
-                required
-                maxLength={200}
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-              />
-            </div>
-            <div className="field">
-              <label htmlFor="pm-category">Category</label>
-              <select id="pm-category" required value={category} onChange={(e) => setCategory(e.target.value)}>
-                <option value="">Select…</option>
-                {categories.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-          <div className="row">
-            <div className="field">
-              <label htmlFor="pm-price">Base price (PHP)</label>
-              <input
-                id="pm-price"
-                type="number"
-                min={0}
-                step={0.01}
-                required
-                value={price}
-                onChange={(e) => setPrice(e.target.value)}
-              />
-            </div>
-            <div className="field">
-              <label htmlFor="pm-image">Emoji / icon fallback</label>
-              <input
-                id="pm-image"
-                placeholder="e.g. 👜, 🥭, 🎨"
-                maxLength={4}
-                value={image}
-                onChange={(e) => setImage(e.target.value)}
-              />
-              <small className="hint">Used when no photos are uploaded.</small>
-            </div>
-          </div>
-
-          <fieldset className="uploader">
-            <legend>Product photos (up to 3)</legend>
-            <div className="uploader-controls">
-              <label className="btn btn--ghost" htmlFor="pm-photos">
-                <span className="btn-icon" aria-hidden="true"></span>
-                Choose photos
-              </label>
-              <input id="pm-photos" ref={fileRef} type="file" accept="image/*" multiple hidden onChange={onFiles} />
-              <small className="hint">
-                JPG / PNG / WebP, max 1 MB each. Images are resized to ~800px.
-              </small>
-            </div>
-            <div className="image-thumbs" id="pm-thumbs" role="list" aria-label="Uploaded photos">
-              {uploaded.length === 0 ? (
-                <p className="muted small">
-                  No photos yet. A colored emoji card will be used as the thumbnail.
-                </p>
-              ) : (
-                uploaded.map((src, i) => (
-                  <div className="image-thumb" role="listitem" key={i}>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={src} alt={`Preview ${i + 1}`} />
-                    <button
-                      type="button"
-                      className="image-thumb__remove"
-                      aria-label={`Remove photo ${i + 1}`}
-                      onClick={() => setUploaded((u) => u.filter((_, idx) => idx !== i))}
-                    >
-                      <Icon name="x" size={14} />
-                    </button>
-                    {i === 0 ? <span className="image-thumb__flag">Cover</span> : null}
-                  </div>
-                ))
-              )}
-            </div>
-          </fieldset>
-
-          <div className="field">
-            <label htmlFor="pm-desc">Description</label>
-            <textarea id="pm-desc" rows={3} value={desc} onChange={(e) => setDesc(e.target.value)}></textarea>
-          </div>
-
-          <fieldset className="variants">
-            <legend>Variants (color / size / stock)</legend>
-            <div id="variant-rows">
-              {vBuffer.map((v, i) => (
-                <div className="variant-row" data-idx={i} key={i}>
-                  <div className="field">
-                    <label>Color</label>
-                    <input value={v.color_name} onChange={(e) => setVariant(i, { color_name: e.target.value })} required />
-                  </div>
-                  <div className="field">
-                    <label>Size</label>
-                    <input value={v.size} onChange={(e) => setVariant(i, { size: e.target.value })} required />
-                  </div>
-                  <div className="field">
-                    <label>Stock</label>
-                    <input
-                      type="number"
-                      min={0}
-                      value={v.stock_qty}
-                      onChange={(e) => setVariant(i, { stock_qty: Number(e.target.value) })}
-                      required
-                    />
-                  </div>
-                  <div className="field">
-                    <label>SKU</label>
-                    <input value={v.sku_code} onChange={(e) => setVariant(i, { sku_code: e.target.value })} required />
-                  </div>
-                  <div className="field">
-                    <label>&nbsp;</label>
-                    <button
-                      type="button"
-                      className="btn btn--ghost btn--sm"
-                      onClick={() => setVBuffer((b) => b.filter((_, idx) => idx !== i))}
-                    >
-                      Remove
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <button
-              type="button"
-              className="btn btn--ghost"
-              id="add-variant"
-              onClick={() =>
-                setVBuffer((b) => [
-                  ...b,
-                  { color_name: "", size: "One size", stock_qty: 0, sku_code: "SKU-" + Date.now() },
-                ])
-              }
-            >
-              Add variant
-            </button>
-          </fieldset>
-
-          <div className="form-actions">
-            <button
-              value="cancel"
-              className="btn btn--ghost"
-              onClick={(e) => {
-                e.preventDefault();
-                dialogRef.current?.close();
-              }}
-            >
-              Cancel
-            </button>
-            <button value="submit" className="btn btn--primary" id="pm-save" disabled={busy} onClick={save}>
-              Save product
-            </button>
-          </div>
-        </form>
-      </dialog>
+      <ProductWizard
+        product={editing}
+        variants={variants}
+        categories={categories}
+        onClose={() => setEditing(null)}
+        onSaved={() => {
+          setEditing(null);
+          router.refresh();
+        }}
+      />
 
       <dialog id="flash-modal" className="modal" ref={flashDialogRef} aria-labelledby="flash-title">
         <form method="dialog" className="modal-form" id="flash-form">
