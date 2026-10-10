@@ -40,6 +40,14 @@ export default async function ({ q, runSql, asUser, check }) {
   check("a payout within the balance is accepted", first.id != null, first.error);
   check("requested money is reserved", Number((await bal()).available) === 260);
   check("a second request cannot spend the same money", /insufficient_balance/.test((await pay(800)).error || ""));
+  await runSql(`update im_payouts set status = 'approved' where id = ${first.id}`);
+  await runSql(`update im_payouts set status = 'paid', paid_at = now(), reference = 'GC-123' where id = ${first.id}`);
+  const afterPaid = await bal();
+  check("a paid payout stays out of the available balance and counts as paid out",
+    Number(afterPaid.available) === 260 && Number(afterPaid.paid_out) === 800 && Number(afterPaid.reserved) === 0, JSON.stringify(afterPaid));
+  const second = await pay(200);
+  await runSql(`update im_payouts set status = 'rejected', note = 'Wrong number' where id = ${second.id}`);
+  check("a rejected payout returns its money to the available balance", Number((await bal()).available) === 260);
 
   // A return request moves the money back out of "available".
   await q(`select public.im_transition_order(2001, 'return_requested', null, 'admin', null, '{"reason":"broken"}'::jsonb)`);

@@ -259,6 +259,8 @@
 .option-row { display: grid; gap: var(--space-2); grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr)); align-items: end; margin: 0; padding: var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-md); }
 .option-row__remove { justify-self: start; min-height: 2.75rem; }
 
+.finance-earnings { margin-top: var(--space-5); }
+
 /* --- Seller Centre to-dos and setup (C-31) -------------------------------- */
 .shop-settings { max-width: 44rem; }
 .seller-todos { display: grid; gap: var(--space-4); margin-bottom: var(--space-5); }
