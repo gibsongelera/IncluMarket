@@ -850,6 +850,11 @@ h3 {
   }
 }
 
+/* --- Loading skeleton: two columns for the product-page skeleton -------- */
+@media (min-width: 768px) {
+  .skeleton__split { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+}
+
 /* --- The product grid: its ONLY definition (B-17) -----------------------
    It was defined five times across three files, and `auto-fill` kept empty
    tracks, which is the "large empty area" the client saw. Explicit column

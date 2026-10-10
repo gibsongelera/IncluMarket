@@ -500,14 +500,37 @@ fieldset {
 .modal-form > .field > textarea { min-height: 7rem; }
 
 /* Utility */
+/* Empty state: says what is empty and offers the next step (a button or a
+   link), never a bare "nothing here". */
 .empty {
-  padding: 2rem;
+  display: grid;
+  justify-items: center;
+  gap: var(--space-3);
+  padding: var(--space-6) var(--space-4);
   text-align: center;
   color: var(--text-muted);
   border: 1px dashed var(--border);
   border-radius: var(--radius-md);
   background: var(--surface-gray);
 }
+.empty p { margin: 0; }
+.empty strong { color: var(--text-charcoal); }
+
+/* Loading skeletons. Static neutral blocks — no shimmer, no pulse (a looping
+   animation is both "AI-slop" and a vestibular trigger, M-10). The container
+   is a role="status" region that says "Loading…" to screen readers. */
+.skeleton { display: grid; gap: var(--space-4); padding-block: var(--space-5); }
+.skeleton__block {
+  background: var(--surface-gray-2);
+  border-radius: var(--radius-sm);
+}
+.skeleton__line { height: 1rem; }
+.skeleton__line--title { height: 1.75rem; width: min(60%, 24rem); }
+.skeleton__line--short { width: 40%; }
+.skeleton__card { aspect-ratio: 3 / 4; border-radius: var(--radius-md); }
+.skeleton__row { height: 3.5rem; }
+.skeleton__media { aspect-ratio: 1 / 1; border-radius: var(--radius-md); }
+.skeleton__split { display: grid; gap: var(--space-5); }
 
 /* Inline sort control (buyer home feed head) */
 .sort-field {

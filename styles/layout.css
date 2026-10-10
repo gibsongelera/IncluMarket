@@ -196,6 +196,9 @@
   padding-block: var(--space-7);
 }
 .page-state h1 { font-size: var(--step-4); }
+.page-state__search { max-width: 32rem; }
+.page-state__subtitle { font-size: var(--step-1); margin: 0 0 var(--space-2); }
+.page-state__links { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--space-2); }
 .prose { display: grid; gap: 1rem; line-height: 1.65; }
 .prose h1 { font-size: var(--step-4); }
 .prose h2 { font-size: 1.15rem; margin-top: 1rem; }
