@@ -839,14 +839,74 @@ h3 {
   }
 }
 
+/* --- Seller Centre / Admin links (md): one scrolling row ---------------
+   Between the phone tab bar and the lg sidebar the console links used to sit
+   in the header — twelve of them for an admin, and pages without a header
+   link were unreachable. The sidebar's links show as one row instead. */
+@media (min-width: 768px) {
+  .console-nav {
+    display: flex;
+    gap: var(--space-1);
+    overflow-x: auto;
+    margin-top: 1rem;
+    padding: var(--space-2);
+    background: var(--canvas-white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+  }
+  .console-nav__title,
+  .console-nav__section {
+    display: none;
+  }
+  .console-nav__group + .console-nav__group {
+    margin-top: 0;
+  }
+  .console-nav ul {
+    display: flex;
+    gap: var(--space-1);
+  }
+  .console-nav__link {
+    white-space: nowrap;
+    border-left: 0;
+    border-bottom: 3px solid transparent;
+  }
+  .console-nav__link.is-current {
+    border-bottom-color: var(--brand-blue);
+  }
+  .site-header--seller .header-nav .nav-link,
+  .site-header--admin .header-nav .nav-link {
+    display: none;
+  }
+}
+
 /* --- Seller Centre / Admin sidebar (lg) ------------------------------- */
 @media (min-width: 1024px) {
+  .console-nav__title,
+  .console-nav__section {
+    display: block;
+  }
+  .console-nav__group + .console-nav__group {
+    margin-top: var(--space-4);
+  }
+  .console-nav ul {
+    display: grid;
+    gap: 2px;
+  }
+  .console-nav__link {
+    white-space: normal;
+    border-left: 3px solid transparent;
+    border-bottom: 0;
+  }
+  .console-nav__link.is-current {
+    border-left-color: var(--brand-blue);
+  }
   .console {
     grid-template-columns: 14rem minmax(0, 1fr);
     align-items: start;
   }
   .console-nav {
     display: block;
+    overflow-x: visible;
     position: sticky;
     top: calc(var(--header-total) + var(--space-4));
     margin-top: 1.5rem;
@@ -854,12 +914,6 @@ h3 {
     background: var(--canvas-white);
     border: 1px solid var(--border);
     border-radius: var(--radius-md);
-  }
-  /* The sidebar carries these links now; the header keeps search, the bell
-     and sign-out. */
-  .site-header--seller .header-nav .nav-link,
-  .site-header--admin .header-nav .nav-link {
-    display: none;
   }
 }
 

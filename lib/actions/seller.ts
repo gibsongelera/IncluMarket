@@ -6,9 +6,8 @@ import { getSession } from "@/lib/session";
 import { createNotification, emailIfWanted, notifyAdmins } from "@/lib/notify";
 import { transitionOrder } from "@/lib/orders/transition";
 import { isMissingObject } from "@/lib/db-errors";
-import { randomUUID } from "node:crypto";
 import { rateLimit } from "@/lib/security/rate-limit";
-import { checkIdImage } from "@/lib/pwd/image-check";
+import { storePublicImage } from "@/lib/media";
 import { orderSellerIds } from "@/lib/orders/sellers";
 import type { OrderState } from "@/lib/orders/state";
 import {
@@ -73,26 +72,8 @@ export async function uploadProductPhoto(form: FormData): Promise<ActionResult &
   const limited = await rateLimit("product_photo", `user:${seller.user_id}`, { limit: 60, windowSeconds: 3600 });
   if (!limited.ok) return { ok: false, error: "Too many uploads. Please wait a few minutes." };
 
-  const file = form.get("photo");
-  if (!(file instanceof File) || !file.size) return { ok: false, error: "Choose a photo." };
-  if (file.size > 1_048_576) return { ok: false, error: "That photo is over 1 MB after resizing. Try another." };
-  const bytes = new Uint8Array(await file.arrayBuffer());
-  const checked = checkIdImage(bytes, "photo");
-  if (!checked.ok) return { ok: false, error: checked.error };
-  const ext = checked.kind === "png" ? "png" : "jpg";
-  const type = checked.kind === "png" ? "image/png" : "image/jpeg";
-
-  const db = createAdminClient();
-  const path = `${seller.user_id}/${randomUUID()}.${ext}`;
-  const { error } = await db.storage.from("product-media").upload(path, bytes, { contentType: type, upsert: false });
-  if (error) {
-    if (/bucket not found|not found/i.test(error.message)) {
-      return { ok: true, url: `data:${type};base64,${Buffer.from(bytes).toString("base64")}` };
-    }
-    console.error(`[seller] photo upload: ${error.message}`);
-    return { ok: false, error: "Could not upload the photo. Please try again." };
-  }
-  return { ok: true, url: db.storage.from("product-media").getPublicUrl(path).data.publicUrl };
+  const stored = await storePublicImage(seller.user_id, form.get("photo"));
+  return stored.ok ? { ok: true, url: stored.url } : { ok: false, error: stored.error };
 }
 
 async function replaceImages(
