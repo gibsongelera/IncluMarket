@@ -881,3 +881,49 @@ export async function getSellerFlashSales(sellerId: number): Promise<SellerFlash
     endsAt: f.ends_at,
   }));
 }
+
+export type AdminOrderView = "all" | "refunds" | "returns" | "open" | "cancelled";
+
+export interface AdminOrderLite {
+  id: number;
+  createdAt: string;
+  buyerName: string;
+  sellerName: string | null;
+  total: number;
+  paymentProvider: string | null;
+  paymentStatus: string;
+  status: string;
+  refundDue: boolean;
+  returnReason: string | null;
+  cancelReason: string | null;
+}
+
+/** Admin → Orders (C-40). Names only; no emails or addresses. */
+export async function getAdminOrders(view: AdminOrderView): Promise<AdminOrderLite[]> {
+  let q = db().from("im_orders").select("*").order("created_at", { ascending: false }).limit(150);
+  if (view === "refunds") q = q.eq("refund_due", true);
+  if (view === "returns") q = q.eq("order_status", "return_requested");
+  if (view === "open") q = q.in("order_status", ["pending", "processing", "shipped"]);
+  if (view === "cancelled") q = q.eq("order_status", "cancelled");
+  const res = await q;
+  if (res.error) {
+    // Before migration 0014 there is no refund_due column.
+    if (view === "refunds") return [];
+    fail("orders", res.error);
+  }
+  const list = (res.data ?? []) as Order[];
+  const names = await getDisplayNames([...list.map((o) => o.buyer_id), ...list.map((o) => o.seller_id ?? 0)]);
+  return list.map((o) => ({
+    id: o.id,
+    createdAt: o.created_at,
+    buyerName: names[o.buyer_id] ?? `Buyer #${o.buyer_id}`,
+    sellerName: o.seller_id ? names[o.seller_id] ?? null : null,
+    total: Number(o.total_amount),
+    paymentProvider: o.payment_provider,
+    paymentStatus: o.payment_status,
+    status: o.order_status,
+    refundDue: Boolean(o.refund_due),
+    returnReason: o.return_reason ?? null,
+    cancelReason: o.cancel_reason ?? null,
+  }));
+}

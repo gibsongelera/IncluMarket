@@ -16,7 +16,7 @@ import type { Role } from "@/lib/types";
 const HOME_BY_ROLE: Record<Role, string> = {
   buyer: "/home",
   seller: "/seller/dashboard",
-  admin: "/admin/users",
+  admin: "/admin",
 };
 
 function useCountUp(target: number) {

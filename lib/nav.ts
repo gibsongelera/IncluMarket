@@ -20,6 +20,8 @@ export interface NavItem {
   header?: boolean;
   /** Sidebar group heading (Seller Centre / Admin, lg+). */
   section?: string;
+  /** Current only on this exact path (a section home such as /admin). */
+  exact?: boolean;
 }
 
 export const NAV: Record<NavRole, NavItem[]> = {
@@ -53,11 +55,13 @@ export const NAV: Record<NavRole, NavItem[]> = {
     { href: "/account/verification", label: "PWD verification", icon: "shield", mobile: "more", section: "Account" },
   ],
   admin: [
+    { href: "/admin", label: "Overview", icon: "grid", mobile: "primary", header: true, section: "Overview", exact: true },
     { href: "/admin/users", label: "Users", icon: "users", mobile: "primary", header: true, section: "People" },
     { href: "/admin/verifications", label: "Verifications", icon: "shield", mobile: "more", header: true, section: "People" },
     { href: "/admin/products", label: "Products", icon: "box", mobile: "primary", header: true, section: "Catalog" },
+    { href: "/admin/orders", label: "Orders", icon: "truck", mobile: "more", header: true, section: "Catalog" },
     { href: "/admin/tickets", label: "Tickets", icon: "flag", mobile: "primary", header: true, section: "Support" },
-    { href: "/admin/reports", label: "Reports", icon: "chart", mobile: "primary", header: true, section: "Insight" },
+    { href: "/admin/reports", label: "Reports", icon: "chart", mobile: "more", header: true, section: "Insight" },
     { href: "/admin/payouts", label: "Payouts", icon: "download", mobile: "more", header: true, section: "Insight" },
     { href: "/admin/compliance", label: "Compliance", icon: "shield", mobile: "more", header: true, section: "Insight" },
     { href: "/admin/discounts", label: "Discounts", icon: "sparkles", mobile: "more", header: true, section: "Settings" },
@@ -84,11 +88,12 @@ export const HOME_HREF: Record<NavRole, string> = {
   guest: "/home",
   buyer: "/home",
   seller: "/seller/dashboard",
-  admin: "/admin/users",
+  admin: "/admin",
 };
 
 /** Is this item the page being shown? Exact match, or a listed prefix. */
-export function isCurrent(pathname: string, item: Pick<NavItem, "href" | "match">): boolean {
+export function isCurrent(pathname: string, item: Pick<NavItem, "href" | "match" | "exact">): boolean {
+  if (item.exact) return pathname === item.href;
   if (pathname === item.href || pathname.startsWith(item.href + "/")) return true;
   return (item.match ?? []).some((prefix) => pathname === prefix || pathname.startsWith(prefix + "/") || pathname.startsWith(prefix + "?"));
 }

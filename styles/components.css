@@ -261,6 +261,14 @@
 
 .finance-earnings { margin-top: var(--space-5); }
 
+/* --- Admin overview (C-37) ----------------------------------------------- */
+.overview-grid { list-style: none; margin: var(--space-3) 0 var(--space-5); padding: 0; display: grid; gap: var(--space-3); grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); }
+.overview-tile { display: grid; gap: var(--space-1); padding: var(--space-4); border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--canvas-white); color: var(--text-charcoal); text-decoration: none; min-height: 100%; }
+.overview-tile:hover { border-color: var(--brand-blue); }
+.overview-tile--attention { border-left: 4px solid var(--brand-brown); }
+.overview-tile__count { font-size: var(--step-2); font-variant-numeric: tabular-nums; color: var(--brand-blue); }
+.overview-tile__label { font-weight: 700; }
+
 /* --- Seller Centre to-dos and setup (C-31) -------------------------------- */
 .shop-settings { max-width: 44rem; }
 .shop-image { display: grid; gap: var(--space-2); }

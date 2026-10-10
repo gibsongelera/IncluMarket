@@ -11,7 +11,7 @@ const CONTRAST_COOKIE = "im_contrast";
 const HOME_BY_ROLE: Record<Role, string> = {
   buyer: "/home",
   seller: "/seller/dashboard",
-  admin: "/admin/users",
+  admin: "/admin",
 };
 
 export function homeForRole(role: Role): string {
