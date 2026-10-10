@@ -561,3 +561,43 @@ export async function replyToReview(reviewId: number, text: string): Promise<Act
   revalidatePath(`/buyer/product/${review.product_id}`);
   return { ok: true };
 }
+
+/**
+ * Seller Centre → Shop settings (C-36): the public shop's name, story and
+ * city. Before migration 0019 only the story can be saved.
+ */
+export async function updateShopSettings(input: {
+  shopName: string;
+  story: string;
+  city: string;
+}): Promise<ActionResult & { field?: string }> {
+  const seller = await requireSeller();
+  if (!seller || seller.role !== "seller") return { ok: false, error: "Seller access required." };
+  const shopName = String(input?.shopName ?? "").replace(/\s+/g, " ").trim();
+  if (shopName && (shopName.length < 2 || shopName.length > 80)) {
+    return { ok: false, field: "shopName", error: "A shop name is 2 to 80 characters, or leave it empty to use your name." };
+  }
+  const story = boundedText(input?.story ?? "", 1000);
+  const city = String(input?.city ?? "").replace(/\s+/g, " ").trim().slice(0, 80);
+
+  const db = createAdminClient();
+  const now = new Date().toISOString();
+  let { error } = await db
+    .from("im_profiles")
+    .update({ shop_name: shopName || null, seller_story: story || null, pickup_city: city || null, updated_at: now })
+    .eq("id", seller.user_id);
+  if (error && isMissingObject(error)) {
+    ({ error } = await db.from("im_profiles").update({ seller_story: story || null, updated_at: now }).eq("id", seller.user_id));
+  }
+  if (error) return { ok: false, error: "Could not save your shop settings. Please try again." };
+  await db.from("im_audit_logs").insert({
+    actor_id: seller.user_id,
+    actor_role: "seller",
+    action: "updated_shop",
+    target: `profile:${seller.user_id}`,
+  });
+  revalidatePath("/seller/shop");
+  revalidatePath(`/shop/${seller.user_id}`);
+  revalidatePath("/seller/dashboard");
+  return { ok: true };
+}

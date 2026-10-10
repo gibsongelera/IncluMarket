@@ -808,3 +808,26 @@ export async function getMyProfileBasics(profileId: number): Promise<{ name: str
     await db().from("im_profiles").select("name, phone").eq("id", profileId).maybeSingle()
   );
 }
+
+/** What a new seller has set up (onboarding checklist). */
+export async function getSellerSetup(sellerId: number): Promise<{ story: boolean; shopName: boolean }> {
+  const full = await db().from("im_profiles").select("seller_story, shop_name").eq("id", sellerId).maybeSingle();
+  if (!full.error) {
+    const r = full.data as { seller_story: string | null; shop_name: string | null } | null;
+    return { story: Boolean(r?.seller_story?.trim()), shopName: Boolean(r?.shop_name?.trim()) };
+  }
+  const basic = await db().from("im_profiles").select("seller_story").eq("id", sellerId).maybeSingle();
+  const r = basic.data as { seller_story: string | null } | null;
+  return { story: Boolean(r?.seller_story?.trim()), shopName: true };
+}
+
+/** Seller Centre → Shop settings. */
+export async function getShopSettings(sellerId: number): Promise<{ shopName: string; story: string; city: string; available: boolean }> {
+  const full = await db().from("im_profiles").select("seller_story, shop_name, pickup_city").eq("id", sellerId).maybeSingle();
+  if (!full.error) {
+    const r = full.data as { seller_story: string | null; shop_name: string | null; pickup_city: string | null } | null;
+    return { shopName: r?.shop_name ?? "", story: r?.seller_story ?? "", city: r?.pickup_city ?? "", available: true };
+  }
+  const basic = await db().from("im_profiles").select("seller_story").eq("id", sellerId).maybeSingle();
+  return { shopName: "", story: (basic.data as { seller_story: string | null } | null)?.seller_story ?? "", city: "", available: false };
+}

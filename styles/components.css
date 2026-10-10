@@ -244,6 +244,19 @@
 .notif-settings__table th[scope="row"] { font-weight: 700; text-align: left; }
 .notif-settings__table td { white-space: nowrap; }
 
+/* --- Seller Centre to-dos and setup (C-31) -------------------------------- */
+.shop-settings { max-width: 44rem; }
+.seller-todos { display: grid; gap: var(--space-4); margin-bottom: var(--space-5); }
+.todo-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-2); grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); }
+.todo-list__item { display: flex; align-items: center; gap: var(--space-3); min-height: 2.75rem; padding: var(--space-2) var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-gray); color: var(--text-charcoal); text-decoration: none; }
+.todo-list__item:hover { border-color: var(--brand-blue); }
+.todo-list__count { font-size: var(--step-2); color: var(--brand-blue); font-variant-numeric: tabular-nums; }
+.setup-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-2); }
+.setup-list li { display: flex; align-items: center; gap: var(--space-3); min-height: 2.75rem; }
+.setup-list__mark { display: inline-grid; place-items: center; width: 1.75rem; height: 1.75rem; border-radius: 999px; border: 2px solid var(--border); font-weight: 800; flex: none; }
+.setup-list li.is-done .setup-list__mark { background: var(--success); border-color: var(--success); color: #FFFFFF; }
+.setup-list li.is-done { color: var(--text-muted); }
+
 /* --- Account area --------------------------------------------------------- */
 .account-tabs { margin-top: var(--space-4); }
 .account-tabs .tab { text-decoration: none; display: inline-flex; align-items: center; min-height: 2.75rem; }

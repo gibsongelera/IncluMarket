@@ -13,6 +13,10 @@ import { TableWrap } from "@/components/TableWrap";
 import { VerificationStatus } from "@/components/VerificationStatus";
 import { getMyVerification } from "@/lib/pwd/data";
 import { sweepPwdVerifications } from "@/lib/pwd/sweep";
+import { SellerTodos } from "@/components/SellerTodos";
+import { getSellerSetup } from "@/lib/data";
+import { getReviewsLite } from "@/lib/reviews";
+import { getMyUnreadMessageCount } from "@/lib/actions/messages";
 
 export const dynamic = "force-dynamic";
 
@@ -111,6 +115,31 @@ export default async function SellerDashboardPage() {
     .sort((a, b) => b.created_at.localeCompare(a.created_at))
     .slice(0, 8);
 
+  // What needs doing now, each linking to the filtered list (C-31).
+  const [setup, reviews, unreadMessages] = await Promise.all([
+    getSellerSetup(session.user_id),
+    getReviewsLite(productIds).catch(() => []),
+    getMyUnreadMessageCount().catch(() => 0),
+  ]);
+  const myOrderList = Object.values(ordersById);
+  const countStatus = (status: string) => myOrderList.filter((o) => o.order_status === status).length;
+  const todos = [
+    { label: "new orders to confirm", count: countStatus("pending"), href: "/seller/orders?status=pending" },
+    { label: "orders to ship", count: countStatus("processing"), href: "/seller/orders?status=processing" },
+    { label: "return requests to answer", count: countStatus("return_requested"), href: "/seller/orders?status=return_requested" },
+    { label: "options low on stock", count: lowStock, href: "/seller/products" },
+    { label: "listings needing changes", count: products.filter((p) => p.status === "flagged").length, href: "/seller/products" },
+    { label: "reviews waiting for your reply", count: reviews.filter((r) => !r.sellerReply).length, href: "/seller/reviews" },
+    { label: "unread messages", count: unreadMessages, href: "/seller/messages" },
+  ];
+  const setupSteps = [
+    { label: "Verify your PWD ID", done: verification?.state === "verified", href: "/account/verification" },
+    { label: "Tell buyers your story", done: setup.story, href: "/seller/shop" },
+    { label: "Name your shop", done: setup.shopName, href: "/seller/shop" },
+    { label: "Add your first product", done: products.length > 0, href: "/seller/products" },
+    { label: "Get a product approved", done: products.some((p) => p.status === "approved"), href: "/seller/products" },
+  ];
+
   return (
     <main id="main" tabIndex={-1} className="main--seller">
       <h1>Merchant dashboard</h1>
@@ -119,6 +148,8 @@ export default async function SellerDashboardPage() {
         (verification.renewalDue && !verification.pending)) ? (
         <VerificationStatus my={verification} role="seller" compact />
       ) : null}
+
+      <SellerTodos todos={todos} setup={setupSteps} />
 
       <section className="kpis" aria-label="Key metrics">
         <article className="kpi">
