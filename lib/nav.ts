@@ -49,6 +49,7 @@ export const NAV: Record<NavRole, NavItem[]> = {
     { href: "/seller/reviews", label: "Reviews", icon: "sparkles", mobile: "more", header: true, section: "Sales" },
     { href: "/seller/finance", label: "Finance", icon: "chart", mobile: "more", section: "Sales" },
     { href: "/seller/messages", label: "Messages", icon: "message-circle", mobile: "primary", header: true, section: "Customers" },
+    { href: "/seller/support", label: "Help", icon: "chat", mobile: "more", section: "Customers" },
     { href: "/account/verification", label: "PWD verification", icon: "shield", mobile: "more", section: "Account" },
   ],
   admin: [

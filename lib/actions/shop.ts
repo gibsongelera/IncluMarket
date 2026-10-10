@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getSession } from "@/lib/session";
-import { createNotification } from "@/lib/notify";
+import { createNotification, notifyAdmins } from "@/lib/notify";
 import { queueEmail } from "@/lib/email/send";
 import {
   createCheckoutSession,
@@ -526,11 +526,11 @@ export async function createTicket(
       subject: cleanSubject,
       description_narrative: cleanDesc,
       ticket_status: "open",
-      priority_level: priority || "medium",
+      priority_level: ["low", "medium", "high"].includes(String(priority)) ? priority : "medium",
     })
     .select("*")
     .single();
-  if (error || !ticket) return { ok: false, error: error?.message || "Could not create ticket." };
+  if (error || !ticket) return { ok: false, error: "Could not send your request. Please try again." };
 
   await db.from("im_ticket_responses").insert({
     ticket_id: ticket.id,
@@ -544,6 +544,14 @@ export async function createTicket(
     action: "created_ticket",
     target: `ticket:${ticket.id}`,
   });
+  // Admins hear about new requests (N-18).
+  await notifyAdmins({
+    type: "system",
+    title: `New support request #${ticket.id}`,
+    body: `${session.role === "seller" ? "Seller" : "Buyer"} ${session.name}: ${cleanSubject}`,
+    link: `/admin/tickets?focus=${ticket.id}`,
+  });
   revalidatePath("/buyer/support");
+  revalidatePath("/seller/support");
   return { ok: true };
 }

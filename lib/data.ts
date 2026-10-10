@@ -822,14 +822,29 @@ export async function getSellerSetup(sellerId: number): Promise<{ story: boolean
 }
 
 /** Seller Centre → Shop settings. */
-export async function getShopSettings(sellerId: number): Promise<{ shopName: string; story: string; city: string; available: boolean }> {
-  const full = await db().from("im_profiles").select("seller_story, shop_name, pickup_city").eq("id", sellerId).maybeSingle();
+export async function getShopSettings(
+  sellerId: number
+): Promise<{ shopName: string; story: string; city: string; logo: string | null; banner: string | null; available: boolean }> {
+  const full = await db()
+    .from("im_profiles")
+    .select("seller_story, shop_name, pickup_city, shop_logo_url, shop_banner_url")
+    .eq("id", sellerId)
+    .maybeSingle();
   if (!full.error) {
-    const r = full.data as { seller_story: string | null; shop_name: string | null; pickup_city: string | null } | null;
-    return { shopName: r?.shop_name ?? "", story: r?.seller_story ?? "", city: r?.pickup_city ?? "", available: true };
+    const r = full.data as {
+      seller_story: string | null; shop_name: string | null; pickup_city: string | null; shop_logo_url: string | null; shop_banner_url: string | null;
+    } | null;
+    return {
+      shopName: r?.shop_name ?? "",
+      story: r?.seller_story ?? "",
+      city: r?.pickup_city ?? "",
+      logo: r?.shop_logo_url ?? null,
+      banner: r?.shop_banner_url ?? null,
+      available: true,
+    };
   }
   const basic = await db().from("im_profiles").select("seller_story").eq("id", sellerId).maybeSingle();
-  return { shopName: "", story: (basic.data as { seller_story: string | null } | null)?.seller_story ?? "", city: "", available: false };
+  return { shopName: "", story: (basic.data as { seller_story: string | null } | null)?.seller_story ?? "", city: "", logo: null, banner: null, available: false };
 }
 
 export interface SellerFlashSaleLite {

@@ -263,6 +263,11 @@
 
 /* --- Seller Centre to-dos and setup (C-31) -------------------------------- */
 .shop-settings { max-width: 44rem; }
+.shop-image { display: grid; gap: var(--space-2); }
+.shop-image p { margin: 0; }
+.shop-image__preview { max-width: 100%; border-radius: var(--radius-sm); border: 1px solid var(--border); object-fit: cover; }
+.shop-image--logo .shop-image__preview { width: 6rem; height: 6rem; border-radius: 999px; }
+.shop-image--banner .shop-image__preview { aspect-ratio: 16 / 4; width: 100%; }
 .seller-todos { display: grid; gap: var(--space-4); margin-bottom: var(--space-5); }
 .todo-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-2); grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); }
 .todo-list__item { display: flex; align-items: center; gap: var(--space-3); min-height: 2.75rem; padding: var(--space-2) var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-gray); color: var(--text-charcoal); text-decoration: none; }

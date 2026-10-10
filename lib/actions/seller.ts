@@ -14,6 +14,7 @@ import type { OrderState } from "@/lib/orders/state";
 import {
   boundedText,
   validateImageDataUrls,
+  isProductMediaUrl,
   validateImageToken,
 } from "@/lib/validation/data-url";
 
@@ -809,4 +810,29 @@ export async function duplicateProduct(productId: number): Promise<ActionResult>
   });
   revalidatePath("/seller/products");
   return { ok: true, productId: copy.id };
+}
+
+/**
+ * Shop logo or banner (C-36): a photo already uploaded with
+ * uploadProductPhoto (Storage, product-media bucket), or null to remove it.
+ */
+export async function setShopImage(kind: "logo" | "banner", url: string | null): Promise<ActionResult> {
+  const seller = await requireSeller();
+  if (!seller || seller.role !== "seller") return { ok: false, error: "Seller access required." };
+  if (kind !== "logo" && kind !== "banner") return { ok: false, error: "Unknown image." };
+  if (url !== null && !isProductMediaUrl(String(url))) {
+    return { ok: false, error: "Shop images need the latest database update (photo storage)." };
+  }
+  const column = kind === "logo" ? "shop_logo_url" : "shop_banner_url";
+  const { error } = await createAdminClient()
+    .from("im_profiles")
+    .update({ [column]: url, updated_at: new Date().toISOString() })
+    .eq("id", seller.user_id);
+  if (error) {
+    if (isMissingObject(error)) return { ok: false, error: "Shop images need database migration 0019." };
+    return { ok: false, error: "Could not save the image. Please try again." };
+  }
+  revalidatePath("/seller/shop");
+  revalidatePath(`/shop/${seller.user_id}`);
+  return { ok: true };
 }
