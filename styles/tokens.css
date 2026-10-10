@@ -128,8 +128,9 @@
   --focus-ring: 3px solid var(--brand-blue);
   --focus-ring-offset: 2px;
 
-  --font-body: "Nunito Sans", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --font-display: "Rubik", "Nunito Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  /* --font-nunito / --font-rubik come from next/font (app/fonts.ts) on <html>. */
+  --font-body: var(--font-nunito, "Nunito Sans"), system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-display: var(--font-rubik, "Rubik"), var(--font-nunito, "Nunito Sans"), system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
   /* Motion (design-motion-principles audit, Emil-weighted): short, eased

@@ -110,7 +110,16 @@ function resolve(value, tokens, depth = 0) {
   return null;
 }
 
-const allDefined = new Set([...baseTokens.keys(), ...themeTokenNames]);
+// next/font sets its CSS variables on <html> from app/fonts.ts (variable: "--x").
+const fontVarNames = new Set();
+const fontsTs = path.join(ROOT, "app", "fonts.ts");
+if (fs.existsSync(fontsTs)) {
+  for (const m of fs.readFileSync(fontsTs, "utf8").matchAll(/variable:\s*"(--[a-z0-9-]+)"/gi)) {
+    fontVarNames.add(m[1]);
+  }
+}
+
+const allDefined = new Set([...baseTokens.keys(), ...themeTokenNames, ...fontVarNames]);
 
 // ---------------------------------------------------------------------------
 // Scan stylesheets

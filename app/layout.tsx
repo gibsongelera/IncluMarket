@@ -18,6 +18,7 @@ import { ChatWidget } from "@/components/ChatWidget";
 import { AccessibilityWidget } from "@/components/AccessibilityWidget";
 import { VisualAlertHost } from "@/components/VisualAlert";
 import { HeaderMetrics } from "@/components/HeaderMetrics";
+import { bodyFont, displayFont } from "./fonts";
 
 export const metadata: Metadata = {
   title: {
@@ -49,7 +50,10 @@ export default async function RootLayout({
   const css = themeVarsToCss(vars);
 
   return (
-    <html lang="en" data-contrast={contrast === "high" ? "high" : undefined}>
+    <html
+      lang="en"
+      className={`${bodyFont.variable} ${displayFont.variable}`}
+      data-contrast={contrast === "high" ? "high" : undefined}>
       <head>
         <meta name="theme-color" content={vars["--color-nav"] || "#0038A8"} />
         <style id="im-theme" dangerouslySetInnerHTML={{ __html: css }} />

@@ -36,12 +36,10 @@ const csp = [
   "frame-ancestors 'none'",
   "form-action 'self'",
   "script-src 'self' 'unsafe-inline'",
-  // fonts.googleapis.com serves the @import in styles/base.css; the font files
-  // themselves come from fonts.gstatic.com. Caught by the report-only policy
-  // on first run, which is exactly why it ships report-only first.
-  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  // Fonts are self-hosted by next/font (app/fonts.ts): no third-party hosts.
+  "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob:",
-  "font-src 'self' data: https://fonts.gstatic.com",
+  "font-src 'self' data:",
   `connect-src 'self' ${supabaseOrigin}`.trim(),
   "media-src 'self' data:",
   "worker-src 'self' blob:",
