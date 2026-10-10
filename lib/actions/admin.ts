@@ -99,19 +99,59 @@ export async function setProductStatus(
   return { ok: true };
 }
 
+/**
+ * Feature a listing on the homepage, with an order and an optional window
+ * (C-19, migration 0021). Only approved listings can be featured; the
+ * homepage additionally shows only those in stock and inside their window, so
+ * an expired feature drops off by itself.
+ */
 export async function setProductFeatured(
   productId: number,
-  featured: boolean
+  featured: boolean,
+  window: { position?: number | null; from?: string | null; until?: string | null } = {}
 ): Promise<ActionResult> {
   const admin = await requireAdmin();
   if (!admin) return { ok: false, error: "Admin access required." };
   const db = createAdminClient();
-  const { error } = await db
+
+  const { data: product } = await db.from("im_products").select("status").eq("id", productId).maybeSingle();
+  if (!product) return { ok: false, error: "Product not found." };
+  if (featured && product.status !== "approved") return { ok: false, error: "Approve the listing before featuring it." };
+
+  const toIso = (v: string | null | undefined) => {
+    if (!v) return null;
+    const t = Date.parse(v);
+    return Number.isFinite(t) ? new Date(t).toISOString() : undefined;
+  };
+  const from = toIso(window.from);
+  const until = toIso(window.until);
+  if (from === undefined || until === undefined) return { ok: false, error: "Check the start and end dates." };
+  if (from && until && until <= from) return { ok: false, error: "The feature must end after it starts." };
+  const position =
+    window.position == null || String(window.position) === ""
+      ? null
+      : Math.max(0, Math.min(999, Math.floor(Number(window.position))));
+  if (position !== null && !Number.isFinite(position)) return { ok: false, error: "Order must be a number." };
+
+  const now = new Date().toISOString();
+  let { error } = await db
     .from("im_products")
-    .update({ is_featured: featured, updated_at: new Date().toISOString() })
+    .update(
+      featured
+        ? { is_featured: true, featured_position: position, featured_from: from, featured_until: until, updated_at: now }
+        : { is_featured: false, featured_position: null, featured_from: null, featured_until: null, updated_at: now }
+    )
     .eq("id", productId);
-  if (error) return { ok: false, error: error.message };
-  await audit(admin.user_id, featured ? "featured_product" : "unfeatured_product", `product:${productId}`);
+  if (error && isMissingObject(error)) {
+    // Before migration 0021: the flag only.
+    ({ error } = await db.from("im_products").update({ is_featured: featured, updated_at: now }).eq("id", productId));
+  }
+  if (error) return { ok: false, error: "Could not update the feature. Please try again." };
+  await audit(
+    admin.user_id,
+    featured ? "featured_product" : "unfeatured_product",
+    `product:${productId}${featured && (from || until) ? ` window:${from ?? "now"}..${until ?? "open"}` : ""}`
+  );
   revalidatePath("/admin/products");
   revalidatePath("/home");
   revalidatePath("/buyer/product", "layout");

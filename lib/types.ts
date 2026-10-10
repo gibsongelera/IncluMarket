@@ -55,6 +55,10 @@ export interface Product {
   rating_count?: number;
   sold_count?: number;
   stock_total?: number;
+  /** Migration 0021. */
+  featured_position?: number | null;
+  featured_from?: string | null;
+  featured_until?: string | null;
 }
 
 export interface WishlistItem {

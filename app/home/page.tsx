@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getSession, homeForRole } from "@/lib/session";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
+import { BannerStrip } from "@/components/BannerStrip";
 import { CategoryChips } from "@/components/CategoryChips";
 import { FlashSaleStrip } from "@/components/FlashSaleStrip";
 import { LoadMore } from "@/components/LoadMore";
@@ -10,6 +11,7 @@ import { SortTabs } from "@/components/SortTabs";
 import { StorefrontGrid } from "@/components/StorefrontGrid";
 import { getCategories, getFeaturedSellers, getWishlistProductIds } from "@/lib/data";
 import {
+  getActiveBanners,
   getCategoryCounts,
   getFeaturedStorefront,
   getOnSaleStorefront,
@@ -40,7 +42,7 @@ export default async function HomePage({
   const query = { category: parsed.category, seller: parsed.seller, sort: parsed.sort, page: parsed.page };
   const browsing = !query.category && !query.seller;
 
-  const [categories, counts, results, onSale, featured, sellers, wishlistIds] = await Promise.all([
+  const [categories, counts, results, onSale, featured, sellers, wishlistIds, banners] = await Promise.all([
     getCategories(),
     getCategoryCounts(),
     searchStorefront(query),
@@ -48,6 +50,7 @@ export default async function HomePage({
     browsing ? getFeaturedStorefront(10) : Promise.resolve([]),
     browsing || query.seller ? getFeaturedSellers() : Promise.resolve([]),
     session ? getWishlistProductIds(session.user_id) : Promise.resolve([] as number[]),
+    browsing ? getActiveBanners() : Promise.resolve([]),
   ]);
 
   const showWishlist = Boolean(session);
@@ -65,6 +68,7 @@ export default async function HomePage({
       <SiteHeader variant="buyer" active="home" session={session} />
       <main id="main" tabIndex={-1} className="container main--home">
         <h1 className="sr-only">Shop InclusiveMarket</h1>
+        <BannerStrip banners={banners} />
 
         <CategoryChips
           categories={categories}

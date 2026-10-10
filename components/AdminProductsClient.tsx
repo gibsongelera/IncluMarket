@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { money, maskEmail, productImageSrc } from "@/lib/format";
+import { formatDate, money, maskEmail, productImageSrc } from "@/lib/format";
 import { toast } from "@/lib/toast";
 import { Pill } from "./Pill";
 import { Icon } from "./Icon";
@@ -12,6 +12,7 @@ import type { Category, Product, ProductStatus } from "@/lib/types";
 import { TableWrap } from "./TableWrap";
 import { Tabs, TabPanel } from "./Tabs";
 import { DeepLinkFocus } from "./DeepLinkFocus";
+import { FeatureDialog, featureState } from "./FeatureDialog";
 
 type SellerLite = { id: number; name: string; email: string };
 const TABS: { status: string; label: string }[] = [
@@ -63,15 +64,7 @@ export function AdminProductsClient({
     setFlagging(p);
   }
 
-  async function toggleFeatured(id: number, next: boolean) {
-    const res = await setProductFeatured(id, next);
-    if (!res.ok) {
-      toast(res.error || "Could not update.", "error");
-      return;
-    }
-    toast(next ? "Product featured on the homepage." : "Product removed from featured.", "success");
-    router.refresh();
-  }
+  const [featuring, setFeaturing] = useState<Product | null>(null);
 
   return (
     <>
@@ -139,15 +132,26 @@ export function AdminProductsClient({
                     <Pill status={status} />
                   </td>
                   <td>
-                    <button
-                      type="button"
-                      className="icon-btn"
-                      aria-pressed={p.is_featured}
-                      aria-label={p.is_featured ? `Remove ${p.title} from featured` : `Feature ${p.title} on the homepage`}
-                      onClick={() => toggleFeatured(p.id, !p.is_featured)}
-                    >
-                      <Icon name="sparkles" size={16} />
-                    </button>
+                    {p.is_featured ? (
+                      <div className="small">
+                        <strong>Featured</strong>
+                        {p.featured_position != null ? <> · #{p.featured_position}</> : null}
+                        {p.featured_until ? <div className="muted">until {formatDate(p.featured_until)}</div> : null}
+                        {featureState(p) !== "live" ? <div className="field-error">{featureState(p)}</div> : null}
+                      </div>
+                    ) : null}
+                    {status === "approved" || p.is_featured ? (
+                      <button
+                        type="button"
+                        className="btn btn--ghost btn--sm"
+                        onClick={() => setFeaturing(p)}
+                        aria-label={`${p.is_featured ? "Edit feature for" : "Feature"} ${p.title}`}
+                      >
+                        <Icon name="sparkles" size={14} /> {p.is_featured ? "Edit" : "Feature…"}
+                      </button>
+                    ) : (
+                      <span className="muted small">Approve first</span>
+                    )}
                   </td>
                   <td>
                     {status === "pending" ? (
@@ -209,6 +213,19 @@ export function AdminProductsClient({
       >
         <p>The listing is hidden from buyers until it is approved again. The seller is notified in the app and by email.</p>
       </ConfirmDialog>
+      <FeatureDialog
+        product={featuring}
+        onClose={() => setFeaturing(null)}
+        onSave={async (featured, win) => {
+          if (!featuring) return "Nothing selected.";
+          const res = await setProductFeatured(featuring.id, featured, win);
+          if (!res.ok) return res.error || "Could not update.";
+          toast(featured ? "Feature saved." : "No longer featured.", "success");
+          setFeaturing(null);
+          router.refresh();
+          return null;
+        }}
+      />
     </>
   );
 }

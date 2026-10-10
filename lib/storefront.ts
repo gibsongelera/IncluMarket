@@ -145,6 +145,66 @@ const hasStorefrontView = cache(async (): Promise<boolean> => {
   throw new DataUnavailableError("the shop");
 });
 
+/**
+ * Listings featured right now, in rail order (C-19). Read from the products
+ * table because the window (migration 0021) is checked at request time: a
+ * feature that has ended is not featured, here or on any card's badge.
+ */
+const activeFeatured = cache(async (): Promise<number[]> => {
+  const db = createAdminClient();
+  type F = { id: number; featured_position?: number | null; featured_from?: string | null; featured_until?: string | null; updated_at: string };
+  let rows: F[] = [];
+  const full = await db
+    .from("im_products")
+    .select("id, featured_position, featured_from, featured_until, updated_at")
+    .eq("is_featured", true)
+    .eq("status", "approved")
+    .limit(200);
+  if (!full.error) rows = (full.data ?? []) as F[];
+  else if (isMissingObject(full.error)) {
+    const basic = await db.from("im_products").select("id, updated_at").eq("is_featured", true).eq("status", "approved").limit(200);
+    rows = (basic.data ?? []) as F[];
+  } else return [];
+  const now = Date.now();
+  return rows
+    .filter((r) => (!r.featured_from || Date.parse(r.featured_from) <= now) && (!r.featured_until || Date.parse(r.featured_until) > now))
+    .sort(
+      (a, b) =>
+        (a.featured_position ?? 1e6) - (b.featured_position ?? 1e6) || Date.parse(b.updated_at) - Date.parse(a.updated_at)
+    )
+    .map((r) => Number(r.id));
+});
+
+/** The Featured badge follows the same window as the rail. */
+async function markFeatured(items: StorefrontItem[]): Promise<StorefrontItem[]> {
+  const live = new Set(await activeFeatured());
+  return items.map((i) => (i.isFeatured === live.has(i.id) ? i : { ...i, isFeatured: live.has(i.id) }));
+}
+
+export interface BannerLite {
+  id: number;
+  title: string;
+  alt: string;
+  image: string;
+  href: string | null;
+}
+
+/** Homepage banners inside their window, in order (im_banners, 0019). */
+export async function getActiveBanners(): Promise<BannerLite[]> {
+  const { data, error } = await createAdminClient()
+    .from("im_banners")
+    .select("id, title, alt_text, image_url, link_url, starts_at, ends_at, position")
+    .eq("is_active", true)
+    .order("position")
+    .limit(10);
+  if (error) return [];
+  const now = Date.now();
+  return ((data ?? []) as { id: number; title: string; alt_text: string; image_url: string; link_url: string | null; starts_at: string; ends_at: string | null }[])
+    .filter((b) => Date.parse(b.starts_at) <= now && (!b.ends_at || Date.parse(b.ends_at) > now))
+    // Internal links only (the table enforces it too).
+    .map((b) => ({ id: b.id, title: b.title, alt: b.alt_text, image: b.image_url, href: b.link_url && b.link_url.startsWith("/") ? b.link_url : null }));
+}
+
 export interface StorefrontPage {
   items: StorefrontItem[];
   total: number;
@@ -189,12 +249,12 @@ export async function searchStorefront(query: StorefrontQuery): Promise<Storefro
       items.push(...rows.map(fromView));
       if (rows.length < Math.min(CHUNK, limit - offset)) break;
     }
-    return { items, total, shown: items.length, page, hasMore: items.length < total };
+    return { items: await markFeatured(items), total, shown: items.length, page, hasMore: items.length < total };
   }
 
   const all = filterAndSort(await fallbackCatalog(), query);
   const items = all.slice(0, limit);
-  return { items, total: all.length, shown: items.length, page, hasMore: items.length < all.length };
+  return { items: await markFeatured(items), total: all.length, shown: items.length, page, hasMore: items.length < all.length };
 }
 
 /** Specific listings, in the order given (rails, wishlist, recommendations). */
@@ -209,26 +269,15 @@ export async function getStorefrontItems(ids: number[]): Promise<StorefrontItem[
   } else {
     items = filterAndSort(await fallbackCatalog(), {}).filter((i) => wanted.includes(i.id));
   }
-  const byId = new Map(items.map((i) => [i.id, i]));
+  const byId = new Map((await markFeatured(items)).map((i) => [i.id, i]));
   return wanted.map((id) => byId.get(id)).filter((i): i is StorefrontItem => Boolean(i));
 }
 
-/** Featured listings that are live and in stock. */
+/** Featured listings inside their window, in stock, in rail order (C-19). */
 export async function getFeaturedStorefront(limit = 10): Promise<StorefrontItem[]> {
-  if (await hasStorefrontView()) {
-    const { data, error } = await createAdminClient()
-      .from("im_storefront_products")
-      .select(VIEW_COLUMNS)
-      .eq("is_featured", true)
-      .gt("stock_total", 0)
-      .order("created_at", { ascending: false })
-      .limit(limit);
-    if (error) throw new DataUnavailableError("featured products");
-    return ((data ?? []) as ViewRow[]).map(fromView);
-  }
-  return filterAndSort(await fallbackCatalog(), {})
-    .filter((i) => i.isFeatured && i.stockTotal > 0)
-    .slice(0, limit);
+  const ids = await activeFeatured();
+  if (!ids.length) return [];
+  return (await getStorefrontItems(ids)).filter((i) => i.stockTotal > 0).slice(0, limit);
 }
 
 /** Listings in a running flash sale, ending soonest first. */
@@ -242,12 +291,14 @@ export async function getOnSaleStorefront(limit = 10): Promise<StorefrontItem[]>
       .order("sale_ends_at", { ascending: true })
       .limit(limit);
     if (error) throw new DataUnavailableError("flash sales");
-    return ((data ?? []) as ViewRow[]).map(fromView);
+    return markFeatured(((data ?? []) as ViewRow[]).map(fromView));
   }
-  return filterAndSort(await fallbackCatalog(), {})
-    .filter((i) => i.salePercent && i.stockTotal > 0)
-    .sort((a, b) => Date.parse(a.saleEndsAt ?? "") - Date.parse(b.saleEndsAt ?? ""))
-    .slice(0, limit);
+  return markFeatured(
+    filterAndSort(await fallbackCatalog(), {})
+      .filter((i) => i.salePercent && i.stockTotal > 0)
+      .sort((a, b) => Date.parse(a.saleEndsAt ?? "") - Date.parse(b.saleEndsAt ?? ""))
+      .slice(0, limit)
+  );
 }
 
 /** Live listings per category, for the category chips. */
