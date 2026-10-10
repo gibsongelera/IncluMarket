@@ -8,6 +8,7 @@ import { boundedText } from "@/lib/validation/data-url";
 import { queueEmail } from "@/lib/email/send";
 import { createNotification } from "@/lib/notify";
 import { isMissingObject } from "@/lib/db-errors";
+import { requestPasswordResetAction } from "@/lib/actions/auth";
 import { verifiedAmongIfAvailable } from "@/lib/pwd/data";
 import type { ProductStatus, ReportType, TicketStatus } from "@/lib/types";
 
@@ -602,4 +603,21 @@ export async function exportReport(type: ReportType): Promise<ExportResult> {
     const message = err instanceof Error ? err.message : "Could not generate the report.";
     return { ok: false, error: message };
   }
+}
+
+
+/**
+ * Send someone the password reset email (C-38) — the same code-based flow a
+ * person starts from the sign-in page. No admin ever sees or sets a password.
+ */
+export async function sendPasswordReset(userId: number): Promise<ActionResult> {
+  const admin = await requireAdmin();
+  if (!admin) return { ok: false, error: "Admin access required." };
+  const { data: user } = await createAdminClient().from("im_profiles").select("email, account_status").eq("id", Number(userId)).maybeSingle();
+  if (!user?.email) return { ok: false, error: "User not found." };
+  if (user.account_status !== "active") return { ok: false, error: "Restore the account before sending a reset email." };
+  const res = await requestPasswordResetAction(user.email);
+  if (!res.ok) return { ok: false, error: res.error || "Could not send the email." };
+  await audit(admin.user_id, "sent_password_reset", `profile:${userId}`);
+  return { ok: true };
 }

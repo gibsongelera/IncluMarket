@@ -927,3 +927,46 @@ export async function getAdminOrders(view: AdminOrderView): Promise<AdminOrderLi
     cancelReason: o.cancel_reason ?? null,
   }));
 }
+
+
+export interface UserFootprint {
+  products: number;
+  orders: number;
+  reviews: number;
+  tickets: number;
+  consents: number;
+}
+
+/**
+ * Admin → Users: how much each account has done, from one id column per
+ * table. The page used to read every product (with its photos), order,
+ * review, ticket and consent row to count them.
+ */
+export async function getUserFootprints(): Promise<Map<number, UserFootprint>> {
+  const pick = async (table: string, col: string) => {
+    const res = await db().from(table).select(col);
+    if (res.error) return [] as number[];
+    return ((res.data ?? []) as unknown as Record<string, number | null>[]).map((r) => r[col]).filter((n): n is number => n != null);
+  };
+  const [products, orders, reviews, tickets, consents] = await Promise.all([
+    pick("im_products", "seller_id"),
+    pick("im_orders", "buyer_id"),
+    pick("im_product_reviews", "buyer_id"),
+    pick("im_support_tickets", "user_id"),
+    pick("im_consent_logs", "user_id"),
+  ]);
+  const out = new Map<number, UserFootprint>();
+  const bump = (ids: number[], key: keyof UserFootprint) => {
+    for (const id of ids) {
+      const f = out.get(id) ?? { products: 0, orders: 0, reviews: 0, tickets: 0, consents: 0 };
+      f[key]++;
+      out.set(id, f);
+    }
+  };
+  bump(products, "products");
+  bump(orders, "orders");
+  bump(reviews, "reviews");
+  bump(tickets, "tickets");
+  bump(consents, "consents");
+  return out;
+}

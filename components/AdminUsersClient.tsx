@@ -8,6 +8,7 @@ import {
   anonymizeUser,
   createUser,
   deleteUser,
+  sendPasswordReset,
   setAccountStatus,
   setSellerFeatured,
   updateUser,
@@ -22,6 +23,8 @@ import { DeepLinkFocus } from "./DeepLinkFocus";
 
 type UserRow = Profile & {
   footprint: { products: number; orders: number; reviews: number; tickets: number; consents: number };
+  /** Active PWD verification; null before verification exists. */
+  verified: boolean | null;
 };
 
 type Pending =
@@ -49,7 +52,7 @@ export function AdminUsersClient({
   const searchParams = useSearchParams();
   const initialQ = searchParams.get("q") ?? "";
 
-  const [role, setRole] = useState("");
+  const [role, setRole] = useState(searchParams.get("role") ?? "");
   const [status, setStatus] = useState("");
   const [q, setQ] = useState(initialQ);
 
@@ -585,7 +588,34 @@ export function AdminUsersClient({
                     <dt>Consent logs</dt>
                     <dd>{detail.footprint.consents}</dd>
                   </div>
+                  {detail.role !== "admin" && detail.verified !== null ? (
+                    <div>
+                      <dt>PWD verification</dt>
+                      <dd>
+                        {detail.verified ? "Verified" : "Not verified"} ·{" "}
+                        <a href={detail.role === "seller" ? "/admin/verifications?view=sellers" : "/admin/verifications"}>
+                          Verifications
+                        </a>
+                      </dd>
+                    </div>
+                  ) : null}
                 </dl>
+                <p>
+                  <button
+                    type="button"
+                    className="btn btn--outline btn--sm"
+                    disabled={busy || detail.account_status !== "active"}
+                    onClick={async () => {
+                      setBusy(true);
+                      const res = await sendPasswordReset(detail.id);
+                      setBusy(false);
+                      if (!res.ok) return toast(res.error || "Could not send it.", "error");
+                      toast(`Password reset email sent to ${maskEmail(detail.email)}.`, "success");
+                    }}
+                  >
+                    Send password reset email
+                  </button>
+                </p>
                 <h3 className="detail-heading">Activity footprint</h3>
                 <ul className="detail-metrics">
                   <li>

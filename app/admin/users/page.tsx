@@ -1,36 +1,25 @@
 import { requireRole } from "@/lib/session";
 import { AdminUsersClient } from "@/components/AdminUsersClient";
-import {
-  getConsentLogs,
-  getOrders,
-  getProfiles,
-  getReviews,
-  getTickets,
-  getAllProducts,
-} from "@/lib/data";
+import { getProfiles, getUserFootprints } from "@/lib/data";
+import { verifiedAmongIfAvailable } from "@/lib/pwd/data";
 
 export const dynamic = "force-dynamic";
+export const metadata = { title: "Users" };
 
 export default async function AdminUsersPage() {
   const session = await requireRole(["admin"]);
-  const [profiles, products, orders, reviews, tickets, consents] = await Promise.all([
-    getProfiles(),
-    getAllProducts(),
-    getOrders(),
-    getReviews(),
-    getTickets(),
-    getConsentLogs(),
+  const profiles = await getProfiles();
+  const [footprints, verified] = await Promise.all([
+    getUserFootprints(),
+    verifiedAmongIfAvailable(profiles.map((p) => p.id)),
   ]);
-
-  const footprint = (id: number) => ({
-    products: products.filter((p) => p.seller_id === id).length,
-    orders: orders.filter((o) => o.buyer_id === id).length,
-    reviews: reviews.filter((r) => r.buyer_id === id).length,
-    tickets: tickets.filter((t) => t.user_id === id).length,
-    consents: consents.filter((c) => c.user_id === id).length,
-  });
-
-  const users = profiles.map((u) => ({ ...u, footprint: footprint(u.id) }));
+  const empty = { products: 0, orders: 0, reviews: 0, tickets: 0, consents: 0 };
+  const users = profiles.map((u) => ({
+    ...u,
+    footprint: footprints.get(u.id) ?? empty,
+    // null: verification is not switched on yet (before migration 0017).
+    verified: verified === null ? null : verified.has(u.id),
+  }));
 
   return (
     <main id="main" tabIndex={-1} className="main--admin">
