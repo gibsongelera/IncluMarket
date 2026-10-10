@@ -7,6 +7,7 @@ import type { Product, ProductVariant } from "@/lib/types";
 import { money, productImageSrc } from "@/lib/format";
 import { applyPercentOff } from "@/lib/pricing/core";
 import { addToCartAction } from "@/lib/actions/cart";
+import { toggleWishlistAction } from "@/lib/actions/wishlist";
 import { startConversation } from "@/lib/actions/messages";
 import { toast } from "@/lib/toast";
 import { StarRating } from "./StarRating";
@@ -22,6 +23,7 @@ export function ProductDetailClient({
   rating = 0,
   ratingCount = 0,
   salePercent = null,
+  wishlisted = false,
 }: {
   product: Product;
   variants: ProductVariant[];
@@ -34,9 +36,24 @@ export function ProductDetailClient({
   ratingCount?: number;
   /** Active flash-sale percent, from the same table the server prices with. */
   salePercent?: number | null;
+  /** Signed-in buyer has this listing in their wishlist. */
+  wishlisted?: boolean;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
+  const [saved, setSaved] = useState(wishlisted);
+  const [saving, setSaving] = useState(false);
+
+  async function toggleSaved() {
+    if (requireLogin()) return;
+    setSaving(true);
+    const res = await toggleWishlistAction(product.id);
+    setSaving(false);
+    if (!res.ok) return toast(res.error || "Could not update your wishlist.", "error");
+    setSaved(Boolean(res.inWishlist));
+    toast(res.inWishlist ? "Saved to your wishlist." : "Removed from your wishlist.", "success");
+    router.refresh();
+  }
 
   function requireLogin(): boolean {
     if (userId) return false;
@@ -168,7 +185,19 @@ export function ProductDetailClient({
 
       <div className="pd__body">
         <span className="product-card__cat">{categoryFolder}</span>
-        <h1 className="pd__title">{product.title}</h1>
+        <div className="pd__title-row">
+          <h1 className="pd__title">{product.title}</h1>
+          <button
+            type="button"
+            className="icon-btn pd__wishlist"
+            aria-pressed={saved}
+            aria-label={saved ? "Remove from wishlist" : "Save to wishlist"}
+            onClick={toggleSaved}
+            disabled={saving}
+          >
+            <Icon name={saved ? "heart-filled" : "heart"} size={22} />
+          </button>
+        </div>
         <p className="muted pd__seller">
           Sold by <strong>{sellerName}</strong>
           {sellerVerified ? (

@@ -2,43 +2,21 @@ import { requireRole } from "@/lib/session";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { WishlistClient } from "@/components/WishlistClient";
-import {
-  getWishlistProducts,
-  getCategories,
-  getReviewsForProducts,
-  getVariantsForProducts,
-  ratingByProduct,
-  stockByProduct,
-} from "@/lib/data";
-import { verifiedAmong } from "@/lib/pwd/data";
+import { getWishlistView } from "@/lib/storefront";
 
 export const dynamic = "force-dynamic";
+export const metadata = { title: "Your wishlist" };
 
 export default async function WishlistPage() {
   const session = await requireRole(["buyer"]);
-  const [products, categories] = await Promise.all([
-    getWishlistProducts(session.user_id),
-    getCategories(),
-  ]);
-  const ids = products.map((p) => p.id);
-  const [variants, reviews] = await Promise.all([getVariantsForProducts(ids), getReviewsForProducts(ids)]);
-  const stock = stockByProduct(variants);
-  const { avg, count } = ratingByProduct(reviews);
-  const verifiedSellerIds = [...(await verifiedAmong(products.map((p) => p.seller_id)))];
+  const view = await getWishlistView(session.user_id);
 
   return (
     <>
       <SiteHeader variant="buyer" active="wishlist" session={session} />
       <main id="main" tabIndex={-1} className="container main--wishlist">
         <h1>Your wishlist</h1>
-        <WishlistClient
-          products={products}
-          categories={categories}
-          stock={stock}
-          ratingAvg={avg}
-          ratingCount={count}
-          verifiedSellerIds={verifiedSellerIds}
-        />
+        <WishlistClient items={view.items} unavailable={view.unavailable} variants={view.variants} />
       </main>
       <SiteFooter />
     </>

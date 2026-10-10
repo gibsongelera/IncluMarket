@@ -422,6 +422,20 @@ a.seller-card:focus-visible { outline: var(--focus-ring); outline-offset: var(--
 .sort-tab--current span,
 .sort-tab input:checked + span { background: var(--brand-blue); border-color: var(--brand-blue); color: #FFFFFF; }
 
+/* --- Wishlist ------------------------------------------------------------ */
+.wishlist-grid { list-style: none; margin: 0; padding: 0; }
+.wishlist-item { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }
+.wishlist-item > .product-card { flex: 1; }
+.wishlist-item__actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.wishlist-item__actions .btn { flex: 1 1 auto; min-height: 2.75rem; }
+.wishlist-item__note { margin: 0; flex: 1 1 100%; font-weight: 600; color: var(--text-muted); }
+.wishlist-gone { margin-top: var(--space-6); }
+.wishlist-gone ul { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-2); }
+.wishlist-gone li { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-2) var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--canvas-white); }
+.pd__title-row { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-3); }
+.pd__title-row .pd__title { margin: 0; }
+.pd__wishlist { flex: none; min-width: 2.75rem; min-height: 2.75rem; }
+
 /* --- Search (/search) ---------------------------------------------------- */
 .main--search { padding-top: 1.25rem; padding-bottom: 2rem; }
 .search-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--space-2); margin-bottom: var(--space-3); }

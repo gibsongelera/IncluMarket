@@ -2,7 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isMissingObject } from "@/lib/db-errors";
-import { applyPercentOff } from "@/lib/pricing/core";
+import { applyPercentOff, variantLabel } from "@/lib/pricing/core";
 import {
   DataUnavailableError,
   getActiveFlashSales,
@@ -316,4 +316,54 @@ export async function suggestFromStorefront(q: string): Promise<Suggestions> {
     .map((c) => ({ id: c.id, label: c.folder || c.label }));
 
   return { products, categories, sellers };
+}
+
+// --- Wishlist ------------------------------------------------------------------------
+
+export interface WishlistVariantLite {
+  id: number;
+  productId: number;
+  label: string;
+  stock: number;
+}
+
+export interface WishlistView {
+  /** Listings still for sale, newest save first. */
+  items: StorefrontItem[];
+  /** Saved listings that were withdrawn, flagged or whose seller cannot sell. */
+  unavailable: { productId: number; title: string }[];
+  variants: WishlistVariantLite[];
+}
+
+export async function getWishlistView(userId: number): Promise<WishlistView> {
+  const db = createAdminClient();
+  const { data: saved, error } = await db
+    .from("im_wishlists")
+    .select("product_id")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false });
+  if (error) throw new DataUnavailableError("your wishlist");
+  const ids = ((saved ?? []) as { product_id: number }[]).map((r) => r.product_id);
+  if (!ids.length) return { items: [], unavailable: [], variants: [] };
+
+  const items = await getStorefrontItems(ids);
+  const live = new Set(items.map((i) => i.id));
+  const goneIds = ids.filter((id) => !live.has(id));
+  const [gone, variants] = await Promise.all([
+    goneIds.length
+      ? db.from("im_products").select("id, title").in("id", goneIds)
+      : Promise.resolve({ data: [] as { id: number; title: string }[] }),
+    getVariantsForProducts(items.map((i) => i.id)),
+  ]);
+  const titles = new Map(((gone.data ?? []) as { id: number; title: string }[]).map((p) => [p.id, p.title]));
+  return {
+    items,
+    unavailable: goneIds.map((id) => ({ productId: id, title: titles.get(id) ?? "A product" })),
+    variants: variants.map((v) => ({
+      id: v.id,
+      productId: v.product_id,
+      label: variantLabel(v.color_name, v.size),
+      stock: v.stock_qty,
+    })),
+  };
 }

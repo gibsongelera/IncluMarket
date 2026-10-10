@@ -462,29 +462,13 @@ export async function getWishlistProductIds(userId: number): Promise<number[]> {
   return data.map((r) => r.product_id);
 }
 
-export async function getWishlistProducts(userId: number): Promise<Product[]> {
-  const wish = rows<{ product_id: number }>(
-    "wishlist",
-    await db()
-      .from("im_wishlists")
-      .select("product_id")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false })
-  );
-  const ids = wish.map((r) => r.product_id);
-  if (!ids.length) return [];
-
-  // Only listings that are still public: a product flagged or archived after
-  // it was saved must not keep showing (and selling) from a wishlist.
-  const products = await publicOnly(
-    rows<Product>(
-      "wishlist products",
-      await db().from("im_products").select("*").in("id", ids).eq("status", "approved")
-    )
-  );
-  const byId = new Map(products.map((p) => [p.id, p]));
-  const ordered = ids.map((id) => byId.get(id)).filter((p): p is Product => Boolean(p));
-  return hydrateImages(ordered);
+/** Saved items, for the header badge. */
+export async function getWishlistCount(userId: number): Promise<number> {
+  const { count, error } = await db()
+    .from("im_wishlists")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId);
+  return error ? 0 : count ?? 0;
 }
 
 // ---- scoped readers ----------------------------------------------------------

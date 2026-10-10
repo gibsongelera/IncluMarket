@@ -15,6 +15,7 @@ import {
   getPublicProductById,
   getReviewsByProduct,
   getVariantsByProduct,
+  getWishlistProductIds,
   ratingByProduct,
 } from "@/lib/data";
 import type { Product } from "@/lib/types";
@@ -78,9 +79,10 @@ export default async function ProductPage({
     getCategories(),
     getActiveSaleForProduct(product.id),
   ]);
-  const [names, sellerVerified] = await Promise.all([
+  const [names, sellerVerified, wishlistIds] = await Promise.all([
     getDisplayNames([product.seller_id, ...reviews.map((r) => r.buyer_id)]),
     isVerifiedPwd(product.seller_id),
+    session?.role === "buyer" ? getWishlistProductIds(session.user_id) : Promise.resolve([] as number[]),
   ]);
   const cat = categories.find((c) => c.id === product.category);
   const catFolder = cat ? cat.folder || cat.label : product.category || "Uncategorized";
@@ -106,6 +108,7 @@ export default async function ProductPage({
           variants={variants}
           sellerName={names[product.seller_id] || "PWD Seller"}
           sellerVerified={sellerVerified}
+          wishlisted={wishlistIds.includes(product.id)}
           categoryFolder={catFolder}
           userId={session?.role === "buyer" ? session.user_id : undefined}
           rating={avg[product.id] || 0}

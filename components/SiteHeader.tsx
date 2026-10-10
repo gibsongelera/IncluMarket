@@ -12,6 +12,7 @@ import { LogoutButton } from "./HeaderActions";
 import { MobileNav } from "./MobileNav";
 import { HeaderNavLinks } from "./HeaderNavLinks";
 import { HOME_HREF } from "@/lib/nav";
+import { getWishlistCount } from "@/lib/data";
 
 export async function SiteHeader({
   variant,
@@ -49,7 +50,10 @@ export async function SiteHeader({
     );
   }
 
-  const cartCount = variant === "buyer" ? await getCartCount() : 0;
+  const [cartCount, wishlistCount] =
+    variant === "buyer"
+      ? await Promise.all([getCartCount(), getWishlistCount(session.user_id)])
+      : [0, 0];
   const [unread, notifications, unreadMessages] = await Promise.all([
     getMyUnreadCount(),
     getMyNotifications(),
@@ -75,7 +79,7 @@ export async function SiteHeader({
           {variant === "buyer" ? <SearchBox /> : <ScopedSearchBox variant={variant} />}
 
           <nav className="header-nav" aria-label="Primary">
-            <HeaderNavLinks variant={variant} unreadMessages={unreadMessages} />
+            <HeaderNavLinks variant={variant} unreadMessages={unreadMessages} wishlistCount={wishlistCount} />
             {variant === "buyer" ? (
               <Link className="nav-link nav-link--cart" href="/buyer/cart" aria-label="Cart">
                 Cart <CartBadge count={cartCount} />
@@ -111,6 +115,7 @@ export async function SiteHeader({
         variant={variant}
         cartCount={cartCount}
         unreadMessages={unreadMessages}
+        wishlistCount={wishlistCount}
       />
     </>
   );

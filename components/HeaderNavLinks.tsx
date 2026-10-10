@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CartBadge } from "./CartBadge";
+import { CountBadge } from "./CountBadge";
 import { isCurrent, NAV, type NavRole } from "@/lib/nav";
 
 /**
@@ -14,9 +14,11 @@ import { isCurrent, NAV, type NavRole } from "@/lib/nav";
 export function HeaderNavLinks({
   variant,
   unreadMessages = 0,
+  wishlistCount = 0,
 }: {
   variant: Exclude<NavRole, "guest">;
   unreadMessages?: number;
+  wishlistCount?: number;
 }) {
   const pathname = usePathname() || "";
   return (
@@ -33,7 +35,12 @@ export function HeaderNavLinks({
               aria-current={current ? "page" : undefined}
             >
               {item.label}
-              {item.href.endsWith("/messages") && unreadMessages > 0 ? <CartBadge count={unreadMessages} /> : null}
+              {item.href.endsWith("/messages") && unreadMessages > 0 ? (
+                <CountBadge count={unreadMessages} label="unread" />
+              ) : null}
+              {item.href === "/buyer/wishlist" && wishlistCount > 0 ? (
+                <CountBadge count={wishlistCount} label="saved" />
+              ) : null}
             </Link>
           );
         })}

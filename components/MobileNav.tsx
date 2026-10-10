@@ -37,10 +37,12 @@ export function MobileNav({
   variant,
   cartCount = 0,
   unreadMessages = 0,
+  wishlistCount = 0,
 }: {
   variant: NavRole;
   cartCount?: number;
   unreadMessages?: number;
+  wishlistCount?: number;
 }) {
   const pathname = usePathname() || "";
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -93,9 +95,13 @@ export function MobileNav({
           const badge =
             item.href === "/buyer/cart"
               ? cartCount
-              : item.href.endsWith("/messages")
-                ? unreadMessages
-                : 0;
+              : item.href === "/buyer/wishlist"
+                ? wishlistCount
+                : item.href.endsWith("/messages")
+                  ? unreadMessages
+                  : 0;
+          const badgeWords =
+            item.href === "/buyer/cart" ? "in cart" : item.href === "/buyer/wishlist" ? "saved" : "unread";
 
           return (
             <Link
@@ -113,7 +119,7 @@ export function MobileNav({
                 ) : null}
               </span>
               <span>{item.label}</span>
-              {badge > 0 ? <span className="sr-only">, {badge} unread</span> : null}
+              {badge > 0 ? <span className="sr-only">, {badge} {badgeWords}</span> : null}
             </Link>
           );
         })}
