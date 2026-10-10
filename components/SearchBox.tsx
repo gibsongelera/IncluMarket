@@ -107,7 +107,7 @@ export function SearchBox({
         image: p.image,
       })),
       ...found.categories.map((c) => ({ kind: "category" as const, label: c.label, href: `/search?cat=${encodeURIComponent(c.id)}` })),
-      ...found.sellers.map((s) => ({ kind: "seller" as const, label: s.name, href: `/home?seller=${s.id}` })),
+      ...found.sellers.map((s) => ({ kind: "seller" as const, label: s.name, href: `/shop/${s.id}` })),
     ];
     list.push({ kind: "all", label: `Search for “${text}”`, href: `/search?q=${encodeURIComponent(text)}` });
     return list;

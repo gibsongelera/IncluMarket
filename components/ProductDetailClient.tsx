@@ -199,7 +199,10 @@ export function ProductDetailClient({
           </button>
         </div>
         <p className="muted pd__seller">
-          Sold by <strong>{sellerName}</strong>
+          Sold by{" "}
+          <Link href={`/shop/${product.seller_id}`}>
+            <strong>{sellerName}</strong>
+          </Link>
           {sellerVerified ? (
             <span className="badge badge--verified">
               <Icon name="check" size={12} /> Verified PWD seller

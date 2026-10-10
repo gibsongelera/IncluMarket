@@ -172,3 +172,18 @@ export async function verifiedAmong(profileIds: number[]): Promise<Set<number>> 
   if (error) return new Set();
   return new Set(((data ?? []) as { profile_id: number }[]).map((r) => r.profile_id));
 }
+
+/**
+ * Like verifiedAmong(), but null when verification does not exist yet
+ * (before migration 0017) — so a caller can tell "nobody is verified" from
+ * "verification is not switched on".
+ */
+export async function verifiedAmongIfAvailable(profileIds: number[]): Promise<Set<number> | null> {
+  const ids = [...new Set(profileIds)].filter((n) => Number.isFinite(n));
+  const { data, error } = await createAdminClient()
+    .from("im_verified_pwd")
+    .select("profile_id")
+    .in("profile_id", ids.length ? ids : [0]);
+  if (error) return isMissingObject(error) ? null : new Set();
+  return new Set(((data ?? []) as { profile_id: number }[]).map((r) => r.profile_id));
+}

@@ -8,6 +8,7 @@ import { boundedText } from "@/lib/validation/data-url";
 import { queueEmail } from "@/lib/email/send";
 import { createNotification } from "@/lib/notify";
 import { isMissingObject } from "@/lib/db-errors";
+import { verifiedAmongIfAvailable } from "@/lib/pwd/data";
 import type { ProductStatus, ReportType, TicketStatus } from "@/lib/types";
 
 export interface ActionResult {
@@ -168,6 +169,12 @@ export async function setSellerFeatured(
   const db = createAdminClient();
   const { data: target } = await db.from("im_profiles").select("role").eq("id", userId).maybeSingle();
   if (!target || target.role !== "seller") return { ok: false, error: "Only sellers can be featured." };
+  if (featured) {
+    const verified = await verifiedAmongIfAvailable([userId]);
+    if (verified && !verified.has(userId)) {
+      return { ok: false, error: "Only verified PWD sellers can be featured. Verify them first (People → Verifications)." };
+    }
+  }
 
   const patch: Record<string, unknown> = { is_featured_seller: featured, updated_at: new Date().toISOString() };
   if (story !== undefined) patch.seller_story = story.trim() || null;

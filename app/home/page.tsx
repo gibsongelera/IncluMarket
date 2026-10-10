@@ -11,7 +11,8 @@ import { RecommendationRail } from "@/components/RecommendationRail";
 import { getHomeRecommendations } from "@/lib/recommend";
 import { SortTabs } from "@/components/SortTabs";
 import { StorefrontGrid } from "@/components/StorefrontGrid";
-import { getCategories, getFeaturedSellers, getWishlistProductIds } from "@/lib/data";
+import { getCategories, getWishlistProductIds } from "@/lib/data";
+import { getFeaturedShops } from "@/lib/shops";
 import {
   getActiveBanners,
   getCategoryCounts,
@@ -38,11 +39,13 @@ export default async function HomePage({
   if (session && session.role !== "buyer") redirect(homeForRole(session.role));
 
   const raw = await searchParams;
-  // Home browses: category, seller and sort only. A text search goes to /search.
+  // Home browses: category and sort. A text search goes to /search.
   const parsed = parseStorefrontParams(raw);
   if (parsed.q) redirect(`/search?${storefrontParams(parsed).toString()}`);
-  const query = { category: parsed.category, seller: parsed.seller, sort: parsed.sort, page: parsed.page };
-  const browsing = !query.category && !query.seller;
+  // Seller pages moved to /shop/[id] (C-23); old links still land there.
+  if (parsed.seller) redirect(`/shop/${parsed.seller}`);
+  const query = { category: parsed.category, sort: parsed.sort, page: parsed.page };
+  const browsing = !query.category;
 
   const [categories, counts, results, onSale, featured, sellers, wishlistIds, banners, rec] = await Promise.all([
     getCategories(),
@@ -50,7 +53,7 @@ export default async function HomePage({
     searchStorefront(query),
     browsing ? getOnSaleStorefront(10) : Promise.resolve([]),
     browsing ? getFeaturedStorefront(10) : Promise.resolve([]),
-    browsing || query.seller ? getFeaturedSellers() : Promise.resolve([]),
+    browsing ? getFeaturedShops() : Promise.resolve([]),
     session ? getWishlistProductIds(session.user_id) : Promise.resolve([] as number[]),
     browsing ? getActiveBanners() : Promise.resolve([]),
     browsing ? getHomeRecommendations(session?.role === "buyer" ? session.user_id : null) : Promise.resolve(null),
@@ -62,7 +65,6 @@ export default async function HomePage({
     const qs = storefrontParams(query, overrides).toString();
     return qs ? `/home?${qs}` : "/home";
   };
-  const sellerName = query.seller ? sellers.find((s) => s.id === query.seller)?.name ?? "this seller" : null;
   const cat = query.category ? categories.find((c) => c.id === query.category) : null;
   const catName = cat ? cat.folder || cat.label : null;
 
@@ -78,7 +80,7 @@ export default async function HomePage({
           counts={counts.byCategory}
           total={counts.total}
           current={query.category}
-          hrefFor={(id) => href({ category: id ?? undefined, page: 1, seller: undefined })}
+          hrefFor={(id) => href({ category: id ?? undefined, page: 1 })}
         />
 
         {browsing ? <FlashSaleStrip items={onSale} wishlistIds={wishlistIds} showWishlist={showWishlist} /> : null}
@@ -89,13 +91,14 @@ export default async function HomePage({
             <ul className="seller-rail" role="list">
               {sellers.map((s) => (
                 <li key={s.id}>
-                  <Link className="seller-card" href={`/home?seller=${s.id}`}>
+                  <Link className="seller-card" href={`/shop/${s.id}`}>
                     <span className="seller-card__avatar" aria-hidden="true">
                       {s.name.charAt(0).toUpperCase()}
                     </span>
                     <span className="seller-card__name">{s.name}</span>
-                    {s.seller_story ? <span className="seller-card__story">{s.seller_story}</span> : null}
-                    <span className="badge badge--featured">Shop this seller</span>
+                    {s.verified ? <span className="badge badge--verified">Verified PWD seller</span> : null}
+                    {s.story ? <span className="seller-card__story">{s.story}</span> : null}
+                    <span className="badge badge--featured">Visit shop</span>
                   </Link>
                 </li>
               ))}
@@ -114,16 +117,9 @@ export default async function HomePage({
 
         <section className="feed" aria-labelledby="feed-title">
           <div className="feed-head">
-            <h2 id="feed-title">{sellerName ? `Products from ${sellerName}` : catName ?? "Discover"}</h2>
+            <h2 id="feed-title">{catName ?? "Discover"}</h2>
             <SortTabs action="/home" current={query.sort ?? "latest"} params={params} withRelevance={false} />
           </div>
-          {sellerName ? (
-            <p className="filter-bar__count">
-              <Link className="btn btn--ghost btn--sm" href={href({ seller: undefined, page: 1 })} scroll={false}>
-                Show all sellers
-              </Link>
-            </p>
-          ) : null}
 
           {results.items.length ? (
             <>

@@ -12,9 +12,9 @@
  *     loading.tsx in its folder or an ancestor below app/
  *
  * Deliberate exceptions (NO loading boundary):
- *   - the product page: a loading boundary makes Next stream the response,
+ *   - the product and shop pages: a loading boundary makes Next stream the response,
  *     which fixes the status at 200 before notFound() can run, so a missing
- *     product would stop being a real 404 (N-15)
+ *     product or shop would stop being a real 404 (N-15)
  *   - static content pages and /login, which render without slow reads
  */
 import { existsSync, readdirSync, statSync } from "node:fs";
@@ -31,7 +31,7 @@ for (const shell of ["seller", "admin"]) {
   if (!existsSync(join(APP, shell, "error.tsx"))) findings.push(`app/${shell}/error.tsx is missing`);
 }
 
-const MUST_STAY_STATUS_EXACT = ["app/buyer/product/[id]/page.tsx"];
+const MUST_STAY_STATUS_EXACT = ["app/buyer/product/[id]/page.tsx", "app/shop/[sellerId]/page.tsx"];
 const NEEDS_LOADING = /^app\/(home|buyer|seller|admin|search|shop|account|notifications)(\/|$)/;
 
 function pages(dir, out = []) {
@@ -57,7 +57,7 @@ for (const page of pages(APP)) {
   const rel = relative(ROOT, page).split(sep).join("/");
   const covered = loadingFor(page);
   if (MUST_STAY_STATUS_EXACT.includes(rel)) {
-    if (covered) findings.push(`${rel} is under ${covered}/loading.tsx — a missing product would answer 200, not 404`);
+    if (covered) findings.push(`${rel} is under ${covered}/loading.tsx — a missing page would answer 200, not 404`);
     continue;
   }
   if (NEEDS_LOADING.test(rel) && !covered) findings.push(`${rel} has no loading screen`);
