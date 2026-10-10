@@ -624,3 +624,14 @@ export function ratingByProduct(reviews: ProductReview[]): {
   }
   return { avg, count };
 }
+
+/** Account → Personalised recommendations (0019). Off when unavailable. */
+export async function getPersonalizationSetting(profileId: number): Promise<{ available: boolean; enabled: boolean }> {
+  const { data, error } = await db()
+    .from("im_profiles")
+    .select("personalization_opt_out")
+    .eq("id", profileId)
+    .maybeSingle();
+  if (error) return { available: false, enabled: false };
+  return { available: true, enabled: !(data as { personalization_opt_out?: boolean } | null)?.personalization_opt_out };
+}

@@ -2,6 +2,8 @@ import Link from "next/link";
 import { requireRole } from "@/lib/session";
 import { getMyVerification } from "@/lib/pwd/data";
 import { VerificationStatus } from "@/components/VerificationStatus";
+import { PersonalisationToggle } from "@/components/PersonalisationToggle";
+import { getPersonalizationSetting } from "@/lib/data";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Your account" };
@@ -11,6 +13,7 @@ const ROLE_LABEL = { buyer: "Buyer", seller: "Seller", admin: "Administrator" } 
 export default async function AccountPage() {
   const session = await requireRole([]);
   const my = session.role === "admin" ? null : await getMyVerification(session.user_id);
+  const prefs = session.role === "buyer" ? await getPersonalizationSetting(session.user_id) : null;
 
   return (
     <>
@@ -41,6 +44,9 @@ export default async function AccountPage() {
             </p>
           </section>
         )}
+        {prefs ? (
+          <PersonalisationToggle initial={prefs.enabled} available={prefs.available} />
+        ) : null}
       </div>
     </>
   );

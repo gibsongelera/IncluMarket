@@ -7,6 +7,8 @@ import { BannerStrip } from "@/components/BannerStrip";
 import { CategoryChips } from "@/components/CategoryChips";
 import { FlashSaleStrip } from "@/components/FlashSaleStrip";
 import { LoadMore } from "@/components/LoadMore";
+import { RecommendationRail } from "@/components/RecommendationRail";
+import { getHomeRecommendations } from "@/lib/recommend";
 import { SortTabs } from "@/components/SortTabs";
 import { StorefrontGrid } from "@/components/StorefrontGrid";
 import { getCategories, getFeaturedSellers, getWishlistProductIds } from "@/lib/data";
@@ -42,7 +44,7 @@ export default async function HomePage({
   const query = { category: parsed.category, seller: parsed.seller, sort: parsed.sort, page: parsed.page };
   const browsing = !query.category && !query.seller;
 
-  const [categories, counts, results, onSale, featured, sellers, wishlistIds, banners] = await Promise.all([
+  const [categories, counts, results, onSale, featured, sellers, wishlistIds, banners, rec] = await Promise.all([
     getCategories(),
     getCategoryCounts(),
     searchStorefront(query),
@@ -51,6 +53,7 @@ export default async function HomePage({
     browsing || query.seller ? getFeaturedSellers() : Promise.resolve([]),
     session ? getWishlistProductIds(session.user_id) : Promise.resolve([] as number[]),
     browsing ? getActiveBanners() : Promise.resolve([]),
+    browsing ? getHomeRecommendations(session?.role === "buyer" ? session.user_id : null) : Promise.resolve(null),
   ]);
 
   const showWishlist = Boolean(session);
@@ -106,6 +109,8 @@ export default async function HomePage({
             <StorefrontGrid items={featured} wishlistIds={wishlistIds} showWishlist={showWishlist} labelledBy="featured-title" />
           </section>
         ) : null}
+
+        {rec ? <RecommendationRail rec={rec} wishlistIds={wishlistIds} showWishlist={showWishlist} /> : null}
 
         <section className="feed" aria-labelledby="feed-title">
           <div className="feed-head">

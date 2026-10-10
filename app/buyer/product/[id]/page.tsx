@@ -19,6 +19,10 @@ import type { SessionUser } from "@/lib/types";
 import { isVerifiedPwd } from "@/lib/pwd/data";
 import { getReviewsLite, summarize } from "@/lib/reviews";
 import { ReviewsSection } from "@/components/ReviewsSection";
+import { StorefrontGrid } from "@/components/StorefrontGrid";
+import { getAlsoBought, recordProductView } from "@/lib/recommend";
+import { searchStorefront } from "@/lib/storefront";
+import { after } from "next/server";
 
 export const dynamic = "force-dynamic";
 
@@ -80,6 +84,22 @@ export default async function ProductPage({
   const catFolder = cat ? cat.folder || cat.label : product.category || "Uncategorized";
   const summary = summarize(reviews);
 
+  // "Customers also bought" from shared orders; the same category otherwise.
+  let alsoBought = preview ? [] : await getAlsoBought(product.id);
+  let alsoTitle = "Customers also bought";
+  if (!preview && alsoBought.length < 3 && product.category) {
+    alsoBought = (await searchStorefront({ category: product.category, sort: "top_sales", pageSize: 7 })).items
+      .filter((i) => i.id !== product.id)
+      .slice(0, 6);
+    alsoTitle = `More in ${catFolder}`;
+  }
+  // Recommendations signal (signed-in buyers, unless they opted out), after
+  // the response so it never slows the page.
+  if (session?.role === "buyer" && !preview) {
+    const buyerId = session.user_id;
+    after(() => recordProductView(buyerId, product.id));
+  }
+
   return (
     <>
       <SiteHeader variant="buyer" active="home" session={session} />
@@ -109,6 +129,18 @@ export default async function ProductPage({
         />
 
         <ReviewsSection reviews={reviews} summary={summary} />
+
+        {alsoBought.length ? (
+          <section className="rail" aria-labelledby="also-title">
+            <h2 id="also-title">{alsoTitle}</h2>
+            <StorefrontGrid
+              items={alsoBought}
+              wishlistIds={wishlistIds}
+              showWishlist={session?.role === "buyer"}
+              labelledBy="also-title"
+            />
+          </section>
+        ) : null}
       </main>
       <SiteFooter />
     </>

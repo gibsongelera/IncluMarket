@@ -422,6 +422,12 @@ a.seller-card:focus-visible { outline: var(--focus-ring); outline-offset: var(--
 .sort-tab--current span,
 .sort-tab input:checked + span { background: var(--brand-blue); border-color: var(--brand-blue); color: #FFFFFF; }
 
+/* "Why am I seeing this?" under a personalised rail. */
+.why { margin: 0 0 var(--space-3); }
+.why summary { cursor: pointer; font-weight: 700; color: var(--brand-blue); min-height: 2.75rem; display: flex; align-items: center; }
+.why__more { font-weight: 600; text-decoration: underline; }
+.why p { margin: var(--space-1) 0 0; max-width: var(--measure); color: var(--text-charcoal); }
+
 /* --- Homepage banners ---------------------------------------------------- */
 .banners { margin-bottom: var(--space-4); }
 .banners__list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-3); grid-auto-flow: column; grid-auto-columns: minmax(16rem, 1fr); overflow-x: auto; scroll-snap-type: x proximity; }
