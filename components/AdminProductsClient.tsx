@@ -15,6 +15,17 @@ import { DeepLinkFocus } from "./DeepLinkFocus";
 import { FeatureDialog, featureState } from "./FeatureDialog";
 
 type SellerLite = { id: number; name: string; email: string };
+/** Common reasons, so sellers get consistent, actionable feedback (C-39). */
+const FLAG_REASONS = [
+  "The photos are unclear or missing",
+  "The description is incomplete or does not match the item",
+  "The price looks wrong",
+  "It is in the wrong category",
+  "This item cannot be sold on InclusiveMarket",
+  "It does not look made by the seller",
+  "Another reason",
+];
+
 const TABS: { status: string; label: string }[] = [
   { status: "pending", label: "Pending" },
   { status: "approved", label: "Approved" },
@@ -43,6 +54,7 @@ export function AdminProductsClient({
   const list = (filter === "all" ? products : products.filter((p) => (p.status || "pending") === filter)).slice();
   const [flagging, setFlagging] = useState<Product | null>(null);
   const [flagError, setFlagError] = useState<string | null>(null);
+  const [flagReason, setFlagReason] = useState(FLAG_REASONS[0]);
   const [busy, setBusy] = useState(false);
 
   async function decide(id: number, status: ProductStatus, msg: string, kind: "success" | "warning", reason?: string) {
@@ -61,6 +73,7 @@ export function AdminProductsClient({
 
   function openFlag(p: Product) {
     setFlagError(null);
+    setFlagReason(FLAG_REASONS[0]);
     setFlagging(p);
   }
 
@@ -200,18 +213,29 @@ export function AdminProductsClient({
         busy={busy}
         error={flagError}
         reason={{
-          label: "What should the seller change? (they see this)",
-          required: true,
+          label: "What exactly should change? (optional, the seller sees this)",
+          required: flagReason === "Another reason",
           minLength: 5,
-          maxLength: 500,
-          hint: "For example: photo is blurry; price looks wrong; description does not match the item; not a PWD-made product.",
+          maxLength: 400,
+          hint: "For example: the second photo is blurry — retake it in daylight.",
         }}
         onCancel={() => setFlagging(null)}
-        onConfirm={(reason) => {
+        onConfirm={(note) => {
+          const reason = note ? `${flagReason}: ${note}` : flagReason;
           if (flagging) void decide(flagging.id, "flagged", "Sent back to the seller with your note.", "warning", reason);
         }}
       >
         <p>The listing is hidden from buyers until it is approved again. The seller is notified in the app and by email.</p>
+        <div className="field">
+          <label htmlFor="flag-reason">Reason</label>
+          <select id="flag-reason" value={flagReason} onChange={(e) => setFlagReason(e.target.value)}>
+            {FLAG_REASONS.map((r) => (
+              <option key={r} value={r}>
+                {r}
+              </option>
+            ))}
+          </select>
+        </div>
       </ConfirmDialog>
       <FeatureDialog
         product={featuring}
