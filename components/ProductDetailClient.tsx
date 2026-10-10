@@ -10,11 +10,13 @@ import { addToCartAction } from "@/lib/actions/cart";
 import { startConversation } from "@/lib/actions/messages";
 import { toast } from "@/lib/toast";
 import { StarRating } from "./StarRating";
+import { Icon } from "./Icon";
 
 export function ProductDetailClient({
   product,
   variants,
   sellerName,
+  sellerVerified = false,
   categoryFolder,
   userId,
   rating = 0,
@@ -24,6 +26,8 @@ export function ProductDetailClient({
   product: Product;
   variants: ProductVariant[];
   sellerName: string;
+  /** Active PWD verification (im_verified_pwd). */
+  sellerVerified?: boolean;
   categoryFolder: string;
   userId?: number;
   rating?: number;
@@ -165,8 +169,13 @@ export function ProductDetailClient({
       <div className="pd__body">
         <span className="product-card__cat">{categoryFolder}</span>
         <h1 className="pd__title">{product.title}</h1>
-        <p className="muted">
+        <p className="muted pd__seller">
           Sold by <strong>{sellerName}</strong>
+          {sellerVerified ? (
+            <span className="badge badge--verified">
+              <Icon name="check" size={12} /> Verified PWD seller
+            </span>
+          ) : null}
         </p>
         <p className="pd__rating">
           <StarRating score={rating} /> <small>({ratingCount} review{ratingCount === 1 ? "" : "s"})</small>

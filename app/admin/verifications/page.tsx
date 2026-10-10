@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { requireRole } from "@/lib/session";
+import { sweepPwdVerifications } from "@/lib/pwd/sweep";
 import { getAdminVerificationData, type AdminVerificationView } from "@/lib/pwd/admin-data";
 import { AdminVerificationsClient } from "@/components/AdminVerificationsClient";
 
@@ -19,6 +20,8 @@ export default async function AdminVerificationsPage({
   searchParams: Promise<{ view?: string }>;
 }) {
   await requireRole(["admin"]);
+  // Expiry, renewal reminders and photo retention (throttled; lib/pwd/sweep.ts).
+  await sweepPwdVerifications();
   const { view: raw } = await searchParams;
   const view = (VIEWS.find((v) => v.id === raw)?.id ?? "queue") as AdminVerificationView;
   const data = await getAdminVerificationData(view);

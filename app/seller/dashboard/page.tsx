@@ -10,6 +10,9 @@ import {
   getVariantsForProducts,
 } from "@/lib/data";
 import { TableWrap } from "@/components/TableWrap";
+import { VerificationStatus } from "@/components/VerificationStatus";
+import { getMyVerification } from "@/lib/pwd/data";
+import { sweepPwdVerifications } from "@/lib/pwd/sweep";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +20,11 @@ const ACTIVE = ["processing", "shipped", "delivered"];
 
 export default async function SellerDashboardPage() {
   const session = await requireRole(["seller"]);
+  await sweepPwdVerifications();
+  // Unverified sellers must see, first thing, whether their listings are
+  // live and until when (B-15, Q4).
+  // A failed read here must not take the whole dashboard down with it.
+  const verification = await getMyVerification(session.user_id).catch(() => null);
   // Scoped reads: this seller's products, the order lines for them, those
   // orders, and the names of those buyers. It used to read every order, every
   // line, every variant and every user in the system on each visit.
@@ -106,6 +114,11 @@ export default async function SellerDashboardPage() {
   return (
     <main id="main" tabIndex={-1} className="main--seller">
       <h1>Merchant dashboard</h1>
+      {verification &&
+      ((verification.state !== "verified" && verification.state !== "unavailable") ||
+        (verification.renewalDue && !verification.pending)) ? (
+        <VerificationStatus my={verification} role="seller" compact />
+      ) : null}
 
       <section className="kpis" aria-label="Key metrics">
         <article className="kpi">

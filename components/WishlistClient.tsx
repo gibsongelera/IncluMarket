@@ -10,12 +10,14 @@ export function WishlistClient({
   stock,
   ratingAvg,
   ratingCount,
+  verifiedSellerIds = [],
 }: {
   products: Product[];
   categories: Category[];
   stock: Record<number, number>;
   ratingAvg: Record<number, number>;
   ratingCount: Record<number, number>;
+  verifiedSellerIds?: number[];
 }) {
   const catLabel = useMemo(() => {
     const map: Record<string, string> = {};
@@ -42,6 +44,7 @@ export function WishlistClient({
           ratingCount={ratingCount[p.id] || 0}
           categoryLabel={catLabel[p.category || ""] || p.category || "Uncategorized"}
           wishlisted
+          verified={verifiedSellerIds.includes(p.seller_id)}
         />
       ))}
     </div>

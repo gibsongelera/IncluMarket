@@ -86,6 +86,7 @@
 .badge--sale    { background: var(--brand-brown); color: #FFFFFF; border-color: var(--brand-brown-800); }
 /* Verified PWD seller: brown accent on its tint, with an icon and words. */
 .badge--verified { background: var(--brand-brown-100); color: var(--brand-brown-800); border-color: var(--brand-brown); }
+.pd__seller { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
 
 /* Money. Tabular numerals so prices in a column line up digit for digit. A
    sale price is the accent colour; the price it replaces is struck through

@@ -19,6 +19,7 @@ import {
 } from "@/lib/data";
 import type { Product } from "@/lib/types";
 import type { SessionUser } from "@/lib/types";
+import { isVerifiedPwd } from "@/lib/pwd/data";
 
 export const dynamic = "force-dynamic";
 
@@ -77,7 +78,10 @@ export default async function ProductPage({
     getCategories(),
     getActiveSaleForProduct(product.id),
   ]);
-  const names = await getDisplayNames([product.seller_id, ...reviews.map((r) => r.buyer_id)]);
+  const [names, sellerVerified] = await Promise.all([
+    getDisplayNames([product.seller_id, ...reviews.map((r) => r.buyer_id)]),
+    isVerifiedPwd(product.seller_id),
+  ]);
   const cat = categories.find((c) => c.id === product.category);
   const catFolder = cat ? cat.folder || cat.label : product.category || "Uncategorized";
   const { avg, count } = ratingByProduct(reviews);
@@ -101,6 +105,7 @@ export default async function ProductPage({
           product={product}
           variants={variants}
           sellerName={names[product.seller_id] || "PWD Seller"}
+          sellerVerified={sellerVerified}
           categoryFolder={catFolder}
           userId={session?.role === "buyer" ? session.user_id : undefined}
           rating={avg[product.id] || 0}

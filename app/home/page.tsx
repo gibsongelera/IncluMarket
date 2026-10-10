@@ -17,6 +17,7 @@ import {
   ratingByProduct,
   stockByProduct,
 } from "@/lib/data";
+import { verifiedAmong } from "@/lib/pwd/data";
 
 export const dynamic = "force-dynamic";
 
@@ -52,6 +53,8 @@ export default async function HomePage({
   const stock = stockByProduct(variants);
   const { avg, count } = ratingByProduct(reviews);
   const popularity = popularityByProduct(orderItems);
+  // One source of "verified" (im_verified_pwd) for the badge on every card.
+  const verifiedSellerIds = [...(await verifiedAmong([...products, ...featured].map((p) => p.seller_id)))];
 
   return (
     <>
@@ -76,6 +79,7 @@ export default async function HomePage({
             seller_story: s.seller_story,
           }))}
           isGuest={!session}
+          verifiedSellerIds={verifiedSellerIds}
         />
       </main>
       <SiteFooter />

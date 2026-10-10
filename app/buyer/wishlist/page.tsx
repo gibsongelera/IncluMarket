@@ -10,6 +10,7 @@ import {
   ratingByProduct,
   stockByProduct,
 } from "@/lib/data";
+import { verifiedAmong } from "@/lib/pwd/data";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +24,7 @@ export default async function WishlistPage() {
   const [variants, reviews] = await Promise.all([getVariantsForProducts(ids), getReviewsForProducts(ids)]);
   const stock = stockByProduct(variants);
   const { avg, count } = ratingByProduct(reviews);
+  const verifiedSellerIds = [...(await verifiedAmong(products.map((p) => p.seller_id)))];
 
   return (
     <>
@@ -35,6 +37,7 @@ export default async function WishlistPage() {
           stock={stock}
           ratingAvg={avg}
           ratingCount={count}
+          verifiedSellerIds={verifiedSellerIds}
         />
       </main>
       <SiteFooter />

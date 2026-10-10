@@ -71,6 +71,7 @@ export function BuyerHomeClient({
   flashSales,
   featuredSellers,
   isGuest,
+  verifiedSellerIds = [],
 }: {
   products: Product[];
   categories: Category[];
@@ -86,6 +87,8 @@ export function BuyerHomeClient({
   flashSales: Record<number, FlashSale>;
   featuredSellers: SellerLite[];
   isGuest: boolean;
+  /** Sellers with an active PWD verification (badge on their cards). */
+  verifiedSellerIds?: number[];
 }) {
   const wishlistSet = useMemo(() => new Set(wishlistIds), [wishlistIds]);
   const [sort, setSort] = useState<SortKey>("newest");
@@ -216,6 +219,8 @@ export function BuyerHomeClient({
       .slice(0, 6);
   }, [products, featured, ratingAvg]);
 
+  const verifiedSet = useMemo(() => new Set(verifiedSellerIds), [verifiedSellerIds]);
+
   function renderCard(p: Product) {
     return (
       <ProductCard
@@ -227,6 +232,7 @@ export function BuyerHomeClient({
         soldCount={popularity[p.id] || 0}
         wishlisted={wishlistSet.has(p.id)}
         showWishlist={!isGuest}
+        verified={verifiedSet.has(p.seller_id)}
         flashSale={flashSales[p.id] ? { discountPercent: Number(flashSales[p.id].discount_percent) } : null}
       />
     );
