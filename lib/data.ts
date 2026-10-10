@@ -1,6 +1,7 @@
 import "server-only";
 import { createAdminClient } from "./supabase/admin";
 import { sellersWhoCanSell } from "./catalog";
+import type { AddressLite } from "./address";
 import type {
   AuditLog,
   Category,
@@ -679,4 +680,30 @@ export async function getNotificationsPage(
   const res = await q;
   if (res.error) fail("notifications", res.error);
   return { items: (res.data ?? []) as Notification[], total: res.count ?? 0 };
+}
+
+/** The person's saved delivery addresses, default first; null before 0019. */
+export async function getAddresses(profileId: number): Promise<AddressLite[] | null> {
+  const { data, error } = await db()
+    .from("im_addresses")
+    .select("id, label, recipient, phone, line1, barangay, city, province, postal_code, is_default")
+    .eq("profile_id", profileId)
+    .order("is_default", { ascending: false })
+    .order("created_at");
+  if (error) return null;
+  return ((data ?? []) as {
+    id: number; label: string | null; recipient: string; phone: string; line1: string; barangay: string | null;
+    city: string; province: string | null; postal_code: string | null; is_default: boolean;
+  }[]).map((a) => ({
+    id: a.id,
+    label: a.label,
+    recipient: a.recipient,
+    phone: a.phone,
+    line1: a.line1,
+    barangay: a.barangay,
+    city: a.city,
+    province: a.province,
+    postalCode: a.postal_code,
+    isDefault: a.is_default,
+  }));
 }

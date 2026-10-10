@@ -687,8 +687,8 @@ h3 {
   .hero { grid-template-columns: 1fr; }
   .row { grid-template-columns: minmax(0, 1fr); }
   .variant-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
-  .cart-item { grid-template-columns: 60px 1fr; gap: .5rem; }
-  .cart-item > *:nth-child(n+3) { grid-column: 1 / -1; }
+  .cart-item { grid-template-columns: auto 60px 1fr; gap: .5rem; }
+  .cart-item > *:nth-child(n+4) { grid-column: 1 / -1; }
 }
 
 @media (max-width: 480px) {
@@ -1003,13 +1003,14 @@ h3 {
 /* --- Cart: Shopee-style rows plus a commit bar -------------------------- */
 @media (max-width: 767px) {
   .cart-item {
-    grid-template-columns: 64px 1fr;
+    /* checkbox · photo · title; price, quantity and remove line up under the title */
+    grid-template-columns: auto 64px 1fr;
     gap: var(--space-2);
     align-items: start;
     padding: var(--space-3) 0;
   }
-  .cart-item > *:nth-child(n + 3) {
-    grid-column: 2 / -1;
+  .cart-item > *:nth-child(n + 4) {
+    grid-column: 3 / -1;
   }
   .cart-item__thumb {
     width: 64px;

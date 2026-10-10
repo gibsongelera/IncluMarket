@@ -188,3 +188,52 @@ export async function removeFromCartAction(cartItemId: number): Promise<CartActi
 // lines it ordered (placeOrder for cash on delivery, the payment webhook for
 // online payment); a whole-cart delete exported here would only be one more
 // public endpoint with no UI.
+
+/**
+ * Buy now (C-29): put exactly this quantity of this option in the cart and
+ * return the line, so checkout can order that line alone. Other cart lines
+ * are untouched. Same checks as Add to cart.
+ */
+export async function buyNowAction(
+  productId: number,
+  variantId: number | null,
+  quantity: number
+): Promise<CartActionResult & { cartItemId?: number }> {
+  const session = await getSession();
+  if (!session || session.role !== "buyer") return { ok: false, error: "Sign in as a buyer to buy." };
+  const pid = toInt(productId);
+  if (!pid) return { ok: false, error: "This item is not available right now." };
+  const vid = variantId == null ? null : toInt(variantId);
+  const wanted = Math.max(1, Math.min(MAX_LINE_QUANTITY, Math.floor(Number(quantity) || 1)));
+
+  const db = createAdminClient();
+  const resolved = await resolveVariant(db, pid, vid);
+  if (!resolved.ok) return { ok: false, error: resolved.error };
+  const qty = Math.min(wanted, resolved.stock, MAX_LINE_QUANTITY);
+  if (qty < 1) return { ok: false, error: "This option is sold out." };
+  const notice = qty < wanted ? `Only ${resolved.stock} available — buying ${qty}.` : undefined;
+
+  let q = db.from("im_cart_items").select("id").eq("user_id", session.user_id).eq("product_id", pid);
+  q = vid == null ? q.is("variant_id", null) : q.eq("variant_id", vid);
+  const { data: existing } = await q.maybeSingle();
+
+  let cartItemId: number | undefined;
+  if (existing) {
+    const { error } = await db
+      .from("im_cart_items")
+      .update({ quantity: qty, updated_at: new Date().toISOString() })
+      .eq("id", existing.id);
+    if (error) return { ok: false, error: "Could not start checkout. Please try again." };
+    cartItemId = existing.id;
+  } else {
+    const { data, error } = await db
+      .from("im_cart_items")
+      .insert({ user_id: session.user_id, product_id: pid, variant_id: vid, quantity: qty })
+      .select("id")
+      .single();
+    if (error || !data) return { ok: false, error: "Could not start checkout. Please try again." };
+    cartItemId = data.id;
+  }
+  revalidateCart();
+  return { ok: true, notice, cartItemId, count: await getCartCount() };
+}

@@ -6,7 +6,7 @@ import Link from "next/link";
 import type { Product, ProductVariant } from "@/lib/types";
 import { money, productImageSrc } from "@/lib/format";
 import { applyPercentOff } from "@/lib/pricing/core";
-import { addToCartAction } from "@/lib/actions/cart";
+import { addToCartAction, buyNowAction } from "@/lib/actions/cart";
 import { toggleWishlistAction } from "@/lib/actions/wishlist";
 import { startConversation } from "@/lib/actions/messages";
 import { toast } from "@/lib/toast";
@@ -150,17 +150,19 @@ export function ProductDetailClient({
     router.push(`/buyer/messages?c=${res.conversationId}`);
   }
 
+  // Buy now checks out this line alone, at exactly this quantity (C-29).
   async function buyNow() {
     if (requireLogin()) return;
     if (!activeVariant || activeVariant.stock_qty <= 0 || busy) return;
     setBusy(true);
-    const res = await addToCartAction(product.id, activeVariant.id, qty);
+    const res = await buyNowAction(product.id, activeVariant.id, qty);
     setBusy(false);
-    if (!res.ok) {
-      toast(res.error || "Could not add to cart.", "error");
+    if (!res.ok || !res.cartItemId) {
+      toast(res.error || "Could not start checkout.", "error");
       return;
     }
-    router.push("/buyer/checkout");
+    if (res.notice) toast(res.notice, "info");
+    router.push(`/buyer/checkout?items=${res.cartItemId}`);
   }
 
   const v = activeVariant;

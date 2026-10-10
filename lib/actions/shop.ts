@@ -180,7 +180,8 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
       shippingCentavos: toCentavos(cart.shippingTotal),
       billing: { name: shippingName, email: session.email, phone },
       successUrl: `${origin}/buyer/orders?paid=${orderIds[0]}`,
-      cancelUrl: `${origin}/buyer/checkout?cancelled=${orderIds[0]}`,
+      // Back to the same lines (a selection or a Buy now), with the address draft.
+      cancelUrl: `${origin}/buyer/checkout?cancelled=${orderIds[0]}${selected?.length ? `&items=${selected.join(",")}` : ""}`,
     });
 
     if (!checkout.ok) {
@@ -348,7 +349,7 @@ async function placeLegacyOrder(
       shippingCentavos: toCentavos(cart.shippingTotal),
       billing: { name: shipping.name, email: session.email, phone: shipping.phone },
       successUrl: `${origin}/buyer/orders?paid=${order.id}`,
-      cancelUrl: `${origin}/buyer/checkout?cancelled=${order.id}`,
+      cancelUrl: `${origin}/buyer/checkout?cancelled=${order.id}${cartItemIds.length ? `&items=${cartItemIds.join(",")}` : ""}`,
     });
     if (!checkout.ok) {
       for (const r of reserved) {

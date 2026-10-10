@@ -207,6 +207,21 @@
 .review__reply-label { font-weight: 700; margin-bottom: var(--space-1) !important; }
 .review__reply-form { display: grid; gap: var(--space-2); margin-top: var(--space-2); }
 
+/* --- Cart selection and checkout addresses (C-29) ------------------------ */
+.cart-selectall { margin-bottom: var(--space-3); font-weight: 700; }
+.cart-check { display: inline-grid; place-items: center; min-width: 2.75rem; min-height: 2.75rem; cursor: pointer; }
+.cart-check input { width: 1.25rem; height: 1.25rem; accent-color: var(--brand-blue); }
+.address-choices { display: grid; gap: var(--space-2); margin-bottom: var(--space-3); }
+.address-choice { display: flex; gap: var(--space-3); align-items: flex-start; padding: var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--canvas-white); cursor: pointer; }
+.address-choice.is-selected { border-color: var(--brand-blue); box-shadow: inset 0 0 0 1px var(--brand-blue); }
+.address-choice input { margin-top: .2rem; width: 1.25rem; height: 1.25rem; flex: none; accent-color: var(--brand-blue); }
+.address-choice > span { display: grid; gap: var(--space-1); min-width: 0; justify-items: start; }
+.address-choice__line { overflow-wrap: anywhere; }
+.address-form { display: grid; gap: var(--space-3); }
+.address-list { list-style: none; margin: 0 0 var(--space-4); padding: 0; display: grid; gap: var(--space-3); }
+.address-card p { margin: 0 0 var(--space-1); overflow-wrap: anywhere; }
+.address-card__name { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+
 /* --- Order detail (/buyer/orders/[id]) ---------------------------------- */
 .order-detail { display: grid; gap: var(--space-4); margin-top: var(--space-4); }
 .order-detail__subhead { font-size: var(--step-0); margin: var(--space-4) 0 var(--space-2); }

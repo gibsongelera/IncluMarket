@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Icon } from "./Icon";
@@ -13,10 +13,27 @@ function lineImage(line: PricedLine): string {
   return line.image || svgPlaceholder(null);
 }
 
+/** A group checkbox that shows "some selected" (indeterminate). */
+function GroupCheck({ checked, mixed, disabled, label, onChange }: { checked: boolean; mixed: boolean; disabled: boolean; label: string; onChange: (on: boolean) => void }) {
+  const ref = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (ref.current) ref.current.indeterminate = mixed;
+  }, [mixed]);
+  return (
+    <label className="cart-check">
+      <input ref={ref} type="checkbox" checked={checked} disabled={disabled} onChange={(e) => onChange(e.target.checked)} />
+      <span className="sr-only">{label}</span>
+    </label>
+  );
+}
+
 /**
  * The cart, grouped by seller. Every figure comes from the server-side
  * pricing engine (lib/pricing/engine.ts); this component only renders it and
- * asks the server to change quantities.
+ * asks the server to change quantities. Lines can be selected — by item, by
+ * shop, or all — and checkout orders exactly the selected ones (C-29); a line
+ * with a problem cannot be selected until it is fixed, but no longer blocks
+ * checking out the rest.
  */
 export function CartClient({
   cart,
@@ -27,6 +44,35 @@ export function CartClient({
 }) {
   const router = useRouter();
   const [busyKey, setBusyKey] = useState<string | null>(null);
+  const selectable = useMemo(
+    () => cart.lines.filter((l) => !l.problem && l.cartItemId != null).map((l) => l.cartItemId as number),
+    [cart.lines]
+  );
+  const [selected, setSelected] = useState<Set<number>>(() => new Set(selectable));
+  // After a quantity change or removal, drop ids that are gone or now blocked.
+  useEffect(() => {
+    setSelected((prev) => new Set([...prev].filter((id) => selectable.includes(id))));
+  }, [selectable]);
+
+  function toggle(ids: number[], on: boolean) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      for (const id of ids) {
+        if (on && selectable.includes(id)) next.add(id);
+        else next.delete(id);
+      }
+      return next;
+    });
+  }
+
+  const chosen = cart.lines.filter((l) => l.cartItemId != null && selected.has(l.cartItemId));
+  const chosenGroups = cart.groups.filter((g) => g.lines.some((l) => l.cartItemId != null && selected.has(l.cartItemId)));
+  const chosenItems = chosen.reduce((n, l) => n + l.quantity, 0);
+  const chosenTotal =
+    chosen.reduce((n, l) => n + l.lineTotal, 0) + chosenGroups.reduce((n, g) => n + g.shippingFee, 0);
+  const allSelected = selectable.length > 0 && selectable.every((id) => selected.has(id));
+  const checkoutHref =
+    allSelected && selectable.length === cart.lines.length ? "/buyer/checkout" : `/buyer/checkout?items=${[...selected].join(",")}`;
 
   async function changeQty(line: PricedLine, quantity: number) {
     if (line.cartItemId == null || busyKey) return;
@@ -67,11 +113,31 @@ export function CartClient({
 
   return (
     <div id="cart-body">
+      <div className="cart-selectall">
+        <label className="radio">
+          <input
+            type="checkbox"
+            checked={allSelected}
+            disabled={!selectable.length}
+            onChange={(e) => toggle(selectable, e.target.checked)}
+          />
+          Select all ({selectable.length})
+        </label>
+      </div>
       {cart.groups.map((g) => {
         const shop = sellerNames[g.sellerId] || "PWD Seller";
+        const ids = g.lines.filter((l) => !l.problem && l.cartItemId != null).map((l) => l.cartItemId as number);
+        const on = ids.filter((id) => selected.has(id)).length;
         return (
           <section className="cart-group" key={g.sellerId} aria-label={`Items from ${shop}`}>
             <header className="cart-group__head">
+              <GroupCheck
+                checked={ids.length > 0 && on === ids.length}
+                mixed={on > 0 && on < ids.length}
+                disabled={!ids.length}
+                label={`Select everything from ${shop}`}
+                onChange={(v) => toggle(ids, v)}
+              />
               <span aria-hidden="true">
                 <Icon name="box" size={18} />
               </span>
@@ -86,6 +152,17 @@ export function CartClient({
                 const busy = busyKey === line.key;
                 return (
                   <div className="cart-item" key={line.key}>
+                    <label className="cart-check">
+                      <input
+                        type="checkbox"
+                        checked={line.cartItemId != null && selected.has(line.cartItemId)}
+                        disabled={Boolean(line.problem) || line.cartItemId == null}
+                        onChange={(e) => line.cartItemId != null && toggle([line.cartItemId], e.target.checked)}
+                      />
+                      <span className="sr-only">
+                        {line.problem ? `${line.title} cannot be selected until it is fixed` : `Select ${line.title}`}
+                      </span>
+                    </label>
                     <div className="cart-item__thumb">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={lineImage(line)} alt="" />
@@ -174,21 +251,20 @@ export function CartClient({
       })}
 
       <div className="cart-summary--sticky">
-        <span className="muted">
-          {cart.itemCount} item{cart.itemCount === 1 ? "" : "s"}
-          {cart.saleSavings > 0 ? <> · You save {money(cart.saleSavings)}</> : null}
+        <span className="muted" role="status" aria-live="polite" aria-atomic="true">
+          {chosenItems} item{chosenItems === 1 ? "" : "s"} selected
+          {chosenGroups.length ? ` from ${chosenGroups.length} shop${chosenGroups.length === 1 ? "" : "s"}` : ""}
         </span>
-        <span className="total">Total: {money(cart.grandTotal)}</span>
-        {cart.purchasable ? (
-          <Link href="/buyer/checkout" className="btn btn--primary">
-            Check out
+        <span className="total">Total: {money(chosenTotal)}</span>
+        {chosen.length ? (
+          <Link href={checkoutHref} className="btn btn--primary">
+            Check out ({chosenItems})
           </Link>
         ) : (
-          // No dead, disabled button: say what stands in the way instead. The
-          // problem line itself is marked in the list above.
+          // No dead, disabled button: say what stands in the way instead.
           <span className="cart-summary__blocked" role="status">
-            <strong>Check out is paused</strong>
-            <span className="hint">{cart.firstProblem}</span>
+            <strong>{selectable.length ? "Select what to buy" : "Check out is paused"}</strong>
+            <span className="hint">{selectable.length ? "Tick the items you want to check out." : cart.firstProblem}</span>
           </span>
         )}
       </div>

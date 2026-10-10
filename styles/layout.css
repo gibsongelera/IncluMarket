@@ -777,7 +777,8 @@ a.banners__link:focus-visible { outline: var(--focus-ring); outline-offset: var(
 .cart-body { display: grid; gap: .75rem; }
 .cart-item {
   display: grid;
-  grid-template-columns: 72px 1fr auto auto auto;
+  /* checkbox · photo · title · price · quantity · remove */
+  grid-template-columns: auto 72px 1fr auto auto auto;
   gap: 1rem;
   align-items: center;
   background: var(--canvas-white);
