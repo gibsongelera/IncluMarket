@@ -34,6 +34,8 @@ export function OrdersClient({
   variants,
   reviewedProductIds,
   history,
+  single = false,
+  initialTab = "all",
 }: {
   orders: Order[];
   orderItems: OrderItem[];
@@ -41,9 +43,19 @@ export function OrdersClient({
   variants: VariantLite[];
   reviewedProductIds: number[];
   history: Record<number, OrderStatusHistoryEntry[]>;
+  /** The order detail page: one card, no tabs. */
+  single?: boolean;
+  /** ?tab= from the URL, so a tab can be shared or bookmarked. */
+  initialTab?: string;
 }) {
   const router = useRouter();
-  const [filter, setFilter] = useState<string>("all");
+  const [filter, setFilterState] = useState<string>(
+    TABS.some((t) => t.value === initialTab) ? initialTab : "all"
+  );
+  function setFilter(next: string) {
+    setFilterState(next);
+    router.replace(next === "all" ? "/buyer/orders" : `/buyer/orders?tab=${next}`, { scroll: false });
+  }
   const [reviewed, setReviewed] = useState<number[]>(reviewedProductIds);
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [modalProduct, setModalProduct] = useState<number | null>(null);
@@ -65,13 +77,13 @@ export function OrdersClient({
     if (Number.isInteger(cancelled) && cancelled > 0) {
       void abandonPayment(cancelled).then(() => {
         toast("Payment cancelled. Nothing was charged.", "info");
-        router.replace("/buyer/orders");
+        router.replace(window.location.pathname);
       });
     } else if (params.get("paid")) {
       toast("Thank you! We'll confirm as soon as PayMongo tells us the payment went through.", "success");
-      router.replace("/buyer/orders");
+      router.replace(window.location.pathname);
     } else if (params.get("placed")) {
-      router.replace("/buyer/orders");
+      router.replace(window.location.pathname);
     }
   }, [router]);
 
@@ -163,158 +175,174 @@ export function OrdersClient({
     router.refresh();
   }
 
-  return (
+  const list = (
     <>
-      <Tabs
-        idPrefix="order"
-        label="Order status"
-        value={filter}
-        onChange={setFilter}
-        items={TABS.map((t) => ({
-          value: t.value,
-          label: counts[t.value] ? `${t.label} (${counts[t.value]})` : t.label,
-        }))}
-      />
-
-      <TabPanel idPrefix="order" value={filter}>
-        {filtered.length === 0 ? (
-          <div className="empty">
-            <p>{orders.length === 0 ? "You have no orders yet." : "No orders here."}</p>
-            {orders.length === 0 ? (
-              <Link href="/home" className="btn btn--primary">
-                Start shopping
-              </Link>
-            ) : null}
-          </div>
-        ) : (
-          <div id="orders-list">
-            {filtered.map((o) => {
-              const items = orderItems.filter((x) => x.order_id === o.id);
-              const canCancel = canTransition(o, "cancelled", "buyer");
-              const canReceive = canTransition(o, "delivered", "buyer");
-              const canReturn = canTransition(o, "return_requested", "buyer");
-              return (
-                <article className="order-card" key={o.id} aria-labelledby={`order-${o.id}-title`}>
-                  <header className="order-card__head">
-                    <div>
-                      <strong id={`order-${o.id}-title`}>Order #{o.id}</strong> &middot;{" "}
-                      <span className="muted small">{formatDateTime(o.created_at)}</span>
-                    </div>
-                    <div>
-                      <span className={`pill pill--${o.order_status}`}>{buyerStatusText(o)}</span>
-                    </div>
-                  </header>
-                  {o.tracking_number && (o.order_status === "shipped" || o.order_status === "delivered") ? (
-                    <p className="order-card__tracking">
-                      {o.courier ? `${o.courier} · ` : ""}Tracking number <code>{o.tracking_number}</code>
-                    </p>
-                  ) : null}
-                  {o.order_status === "cancelled" && o.cancel_reason ? (
-                    <p className="muted small">Reason: {o.cancel_reason}</p>
-                  ) : null}
-                  <div className="order-card__body">
-                    {items.map((it) => {
-                      const p = productById(it.product_id);
-                      const v = variantById(it.variant_id);
-                      const already = it.product_id != null && reviewed.includes(it.product_id);
-                      return (
-                        <div className="order-card__line" key={it.id}>
-                          <div className="order-card__thumb">
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img src={imgSrc(p)} alt="" />
-                          </div>
-                          <div>
-                            <strong>{p ? p.title : "Item"}</strong>
-                            {v ? (
-                              <div className="muted small">{[v.color_name, v.size].filter(Boolean).join(" · ")}</div>
-                            ) : null}
-                            <div className="muted small">
-                              Qty {it.quantity} &middot; {money(it.unit_price)}
-                            </div>
-                          </div>
-                          <div className="price">{money(it.quantity * it.unit_price)}</div>
-                          <div>
-                            {o.order_status === "delivered" && it.product_id != null ? (
-                              already ? (
-                                <span className="badge badge--success">Reviewed</span>
-                              ) : (
-                                <button
-                                  type="button"
-                                  className="btn btn--ghost btn--sm"
-                                  onClick={() => openReview(it.product_id as number)}
-                                >
-                                  Write review
-                                </button>
-                              )
-                            ) : null}
+      {filtered.length === 0 ? (
+        <div className="empty">
+          <p>{orders.length === 0 ? "You have no orders yet." : "No orders here."}</p>
+          {orders.length === 0 ? (
+            <Link href="/home" className="btn btn--primary">
+              Start shopping
+            </Link>
+          ) : null}
+        </div>
+      ) : (
+        <div id="orders-list">
+          {filtered.map((o) => {
+            const items = orderItems.filter((x) => x.order_id === o.id);
+            const canCancel = canTransition(o, "cancelled", "buyer");
+            const canReceive = canTransition(o, "delivered", "buyer");
+            const canReturn = canTransition(o, "return_requested", "buyer");
+            return (
+              <article className="order-card" key={o.id} aria-labelledby={`order-${o.id}-title`}>
+                <header className="order-card__head">
+                  <div>
+                    <strong id={`order-${o.id}-title`}>Order #{o.id}</strong> &middot;{" "}
+                    <span className="muted small">{formatDateTime(o.created_at)}</span>
+                  </div>
+                  <div>
+                    <span className={`pill pill--${o.order_status}`}>{buyerStatusText(o)}</span>
+                    {single ? null : (
+                      <Link className="order-card__details" href={`/buyer/orders/${o.id}`}>
+                        Details<span className="sr-only"> of order #{o.id}</span>
+                      </Link>
+                    )}
+                  </div>
+                </header>
+                {o.tracking_number && (o.order_status === "shipped" || o.order_status === "delivered") ? (
+                  <p className="order-card__tracking">
+                    {o.courier ? `${o.courier} · ` : ""}Tracking number <code>{o.tracking_number}</code>
+                  </p>
+                ) : null}
+                {o.order_status === "cancelled" && o.cancel_reason ? (
+                  <p className="muted small">Reason: {o.cancel_reason}</p>
+                ) : null}
+                <div className="order-card__body">
+                  {items.map((it) => {
+                    const p = productById(it.product_id);
+                    const v = variantById(it.variant_id);
+                    const already = it.product_id != null && reviewed.includes(it.product_id);
+                    return (
+                      <div className="order-card__line" key={it.id}>
+                        <div className="order-card__thumb">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={imgSrc(p)} alt="" />
+                        </div>
+                        <div>
+                          <strong>{p ? p.title : "Item"}</strong>
+                          {v ? (
+                            <div className="muted small">{[v.color_name, v.size].filter(Boolean).join(" · ")}</div>
+                          ) : null}
+                          <div className="muted small">
+                            Qty {it.quantity} &middot; {money(it.unit_price)}
                           </div>
                         </div>
-                      );
-                    })}
-                  </div>
-                  <OrderTimeline order={o} history={history[o.id] || []} />
-                  <div className="order-card__foot">
-                    <strong>Total: {money(o.total_amount)}</strong>
-                    {awaitingPayment(o) ? (
-                      <>
-                        <span className="muted small">
-                          {o.payment_status === "failed"
-                            ? "Payment did not go through. Items are released until you pay."
-                            : "Waiting for your online payment."}
-                        </span>
-                        <button
-                          type="button"
-                          className="btn btn--primary btn--sm"
-                          disabled={payingId === o.id}
-                          onClick={() => payNow(o.id)}
-                        >
-                          {payingId === o.id ? "Opening payment…" : "Pay now"}
-                        </button>
-                      </>
-                    ) : null}
-                    {canReceive ? (
+                        <div className="price">{money(it.quantity * it.unit_price)}</div>
+                        <div>
+                          {o.order_status === "delivered" && it.product_id != null ? (
+                            already ? (
+                              <span className="badge badge--success">Reviewed</span>
+                            ) : (
+                              <button
+                                type="button"
+                                className="btn btn--ghost btn--sm"
+                                onClick={() => openReview(it.product_id as number)}
+                              >
+                                Write review
+                              </button>
+                            )
+                          ) : null}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <OrderTimeline order={o} history={history[o.id] || []} />
+                <div className="order-card__foot">
+                  <strong>Total: {money(o.total_amount)}</strong>
+                  {awaitingPayment(o) ? (
+                    <>
+                      <span className="muted small">
+                        {o.payment_status === "failed"
+                          ? "Payment did not go through. Items are released until you pay."
+                          : "Waiting for your online payment."}
+                      </span>
                       <button
                         type="button"
                         className="btn btn--primary btn--sm"
-                        onClick={() => {
-                          setAskError(null);
-                          setAsk({ kind: "received", order: o });
-                        }}
+                        disabled={payingId === o.id}
+                        onClick={() => payNow(o.id)}
                       >
-                        Order received
+                        {payingId === o.id ? "Opening payment…" : "Pay now"}
                       </button>
-                    ) : null}
-                    {canReturn ? (
-                      <button
-                        type="button"
-                        className="btn btn--ghost btn--sm"
-                        onClick={() => {
-                          setAskError(null);
-                          setAsk({ kind: "return", order: o });
-                        }}
-                      >
-                        Request a return
-                      </button>
-                    ) : null}
-                    {canCancel ? (
-                      <button
-                        type="button"
-                        className="btn btn--ghost btn--sm"
-                        onClick={() => {
-                          setAskError(null);
-                          setAsk({ kind: "cancel", order: o });
-                        }}
-                      >
-                        Cancel order
-                      </button>
-                    ) : null}
-                  </div>
-                </article>
-              );
-            })}
-          </div>
-        )}
-      </TabPanel>
+                    </>
+                  ) : null}
+                  {canReceive ? (
+                    <button
+                      type="button"
+                      className="btn btn--primary btn--sm"
+                      onClick={() => {
+                        setAskError(null);
+                        setAsk({ kind: "received", order: o });
+                      }}
+                    >
+                      Order received
+                    </button>
+                  ) : null}
+                  {canReturn ? (
+                    <button
+                      type="button"
+                      className="btn btn--ghost btn--sm"
+                      onClick={() => {
+                        setAskError(null);
+                        setAsk({ kind: "return", order: o });
+                      }}
+                    >
+                      Request a return
+                    </button>
+                  ) : null}
+                  {canCancel ? (
+                    <button
+                      type="button"
+                      className="btn btn--ghost btn--sm"
+                      onClick={() => {
+                        setAskError(null);
+                        setAsk({ kind: "cancel", order: o });
+                      }}
+                    >
+                      Cancel order
+                    </button>
+                  ) : null}
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      )}
+</>
+  );
+
+  return (
+    <>
+      {single ? (
+        list
+      ) : (
+        <>
+          <Tabs
+            idPrefix="order"
+            label="Order status"
+            value={filter}
+            onChange={setFilter}
+            items={TABS.map((t) => ({
+              value: t.value,
+              label: counts[t.value] ? `${t.label} (${counts[t.value]})` : t.label,
+            }))}
+          />
+          <TabPanel idPrefix="order" value={filter}>
+            {list}
+          </TabPanel>
+        </>
+      )}
 
       <ConfirmDialog
         open={ask?.kind === "cancel"}

@@ -1385,3 +1385,11 @@ h3 {
     align-items: start;
   }
 }
+
+@media (min-width: 1024px) {
+  /* Order detail: seller, delivery and payment side by side. */
+  .order-detail {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: start;
+  }
+}

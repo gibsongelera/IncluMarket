@@ -297,6 +297,15 @@ export async function getOrders(): Promise<Order[]> {
   );
 }
 
+/** One of this buyer's orders, or null (never another buyer's). */
+export async function getBuyerOrder(buyerId: number, orderId: number): Promise<Order | null> {
+  if (!Number.isInteger(orderId) || orderId <= 0) return null;
+  return one<Order>(
+    "order",
+    await db().from("im_orders").select("*").eq("id", orderId).eq("buyer_id", buyerId).maybeSingle()
+  );
+}
+
 export async function getOrdersByBuyer(buyerId: number): Promise<Order[]> {
   return rows<Order>(
     "orders",

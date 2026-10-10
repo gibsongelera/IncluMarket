@@ -14,7 +14,9 @@ import { expireStalePayments } from "@/lib/payments/stock";
 
 export const dynamic = "force-dynamic";
 
-export default async function OrdersPage() {
+export const metadata = { title: "My orders" };
+
+export default async function OrdersPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
   const session = await requireRole(["buyer"]);
   // Release stock held by online payments nobody finished (throttled; see
   // lib/payments/stock.ts). Runs before the read so this page shows the result.
@@ -44,6 +46,7 @@ export default async function OrdersPage() {
           variants={variants.map((v) => ({ id: v.id, color_name: v.color_name, size: v.size }))}
           reviewedProductIds={reviewedProductIds}
           history={history}
+          initialTab={(await searchParams).tab ?? "all"}
         />
       </main>
       <SiteFooter />

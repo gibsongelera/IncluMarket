@@ -156,6 +156,11 @@ export interface Order {
   cancel_reason?: string | null;
   return_reason?: string | null;
   refund_due?: boolean;
+  /** Migration 0015: one order per seller inside a checkout. */
+  seller_id?: number | null;
+  checkout_id?: number | null;
+  subtotal?: number | null;
+  shipping_fee?: number | null;
   created_at: string;
 }
 
@@ -175,6 +180,12 @@ export interface OrderItem {
   variant_id: number | null;
   quantity: number;
   unit_price: number;
+  /** Migration 0015 pricing record (null on older lines). */
+  base_unit_price?: number | null;
+  sale_discount_pct?: number | null;
+  pwd_rate?: number | null;
+  pwd_discount_amount?: number | null;
+  legal_basis?: string | null;
 }
 
 export interface ProductReview {
