@@ -43,6 +43,7 @@ export const NAV: Record<NavRole, NavItem[]> = {
   seller: [
     { href: "/seller/dashboard", label: "Dashboard", icon: "chart", mobile: "primary", header: true, section: "Overview" },
     { href: "/seller/products", label: "Products", icon: "box", mobile: "primary", header: true, section: "Shop" },
+    { href: "/seller/flash-sales", label: "Flash sales", icon: "sparkles", mobile: "more", section: "Shop" },
     { href: "/seller/shop", label: "Shop settings", icon: "edit", mobile: "more", section: "Shop" },
     { href: "/seller/orders", label: "Orders", icon: "truck", mobile: "primary", header: true, section: "Sales" },
     { href: "/seller/reviews", label: "Reviews", icon: "sparkles", mobile: "more", header: true, section: "Sales" },

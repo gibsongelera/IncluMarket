@@ -27,6 +27,7 @@ export function SellerProductsClient({
   const [flashDiscount, setFlashDiscount] = useState(20);
   const [flashHours, setFlashHours] = useState(24);
   const [flashBusy, setFlashBusy] = useState(false);
+  const [flashStart, setFlashStart] = useState("");
 
   async function duplicate(p: Product) {
     const res = await duplicateProduct(p.id);
@@ -42,6 +43,7 @@ export function SellerProductsClient({
     setFlashProductId(id);
     setFlashDiscount(20);
     setFlashHours(24);
+    setFlashStart("");
     flashDialogRef.current?.showModal();
   }
 
@@ -49,13 +51,18 @@ export function SellerProductsClient({
     e.preventDefault();
     if (flashProductId == null) return;
     setFlashBusy(true);
-    const res = await createFlashSale(flashProductId, flashDiscount, flashHours);
+    const res = await createFlashSale(
+      flashProductId,
+      flashDiscount,
+      flashHours,
+      flashStart ? new Date(flashStart).toISOString() : null
+    );
     setFlashBusy(false);
     if (!res.ok) {
       toast(res.error || "Could not start flash sale.", "error");
       return;
     }
-    toast("Flash sale started.", "success");
+    toast(flashStart ? "Flash sale scheduled. See it under Flash sales." : "Flash sale started.", "success");
     flashDialogRef.current?.close();
     router.refresh();
   }
@@ -191,7 +198,8 @@ export function SellerProductsClient({
         <form method="dialog" className="modal-form" id="flash-form">
           <h2 id="flash-title">Start a flash sale</h2>
           <p className="hint">
-            Buyers who wishlisted this product get notified immediately.
+            1 hour to 7 days. Buyers who saved this product are told when it starts now; a product can have one sale
+            at a time.
           </p>
           <div className="row">
             <div className="field">
@@ -217,6 +225,12 @@ export function SellerProductsClient({
               />
             </div>
           </div>
+          <div className="field">
+            <label htmlFor="flash-start">
+              Starts <span className="muted">(optional — empty means now)</span>
+            </label>
+            <input id="flash-start" type="datetime-local" value={flashStart} onChange={(e) => setFlashStart(e.target.value)} />
+          </div>
           <div className="form-actions">
             <button
               value="cancel"
@@ -234,7 +248,7 @@ export function SellerProductsClient({
               disabled={flashBusy}
               onClick={submitFlash}
             >
-              Start flash sale
+              {flashStart ? "Schedule flash sale" : "Start flash sale"}
             </button>
           </div>
         </form>

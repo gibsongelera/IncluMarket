@@ -831,3 +831,38 @@ export async function getShopSettings(sellerId: number): Promise<{ shopName: str
   const basic = await db().from("im_profiles").select("seller_story").eq("id", sellerId).maybeSingle();
   return { shopName: "", story: (basic.data as { seller_story: string | null } | null)?.seller_story ?? "", city: "", available: false };
 }
+
+export interface SellerFlashSaleLite {
+  id: number;
+  productId: number;
+  productTitle: string;
+  percent: number;
+  startsAt: string;
+  endsAt: string;
+}
+
+/** A seller's flash sales: running, scheduled, and those ended in the last 30 days. */
+export async function getSellerFlashSales(sellerId: number): Promise<SellerFlashSaleLite[]> {
+  const products = await getSellerProductIndex(sellerId);
+  if (!products.length) return [];
+  const since = new Date(Date.now() - 30 * 86_400_000).toISOString();
+  const data = rows<{ id: number; product_id: number; discount_percent: number | string; starts_at: string; ends_at: string }>(
+    "flash sales",
+    await db()
+      .from("im_flash_sales")
+      .select("id, product_id, discount_percent, starts_at, ends_at")
+      .in("product_id", products.map((p) => p.id))
+      .gte("ends_at", since)
+      .order("starts_at", { ascending: false })
+      .limit(100)
+  );
+  const title = new Map(products.map((p) => [p.id, p.title]));
+  return data.map((f) => ({
+    id: f.id,
+    productId: f.product_id,
+    productTitle: title.get(f.product_id) ?? "Product",
+    percent: Number(f.discount_percent),
+    startsAt: f.starts_at,
+    endsAt: f.ends_at,
+  }));
+}

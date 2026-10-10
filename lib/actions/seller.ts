@@ -463,36 +463,75 @@ export async function updateOrderStatus(
   return { ok: true };
 }
 
+/**
+ * Start (or schedule) a flash sale on one of the seller's approved listings
+ * (C-34, N-20): 1–90% off, 1 hour to 7 days, never overlapping another sale
+ * on the same product. Migration 0024 enforces the same rules in the
+ * database; these checks give the seller a plain answer first.
+ */
 export async function createFlashSale(
   productId: number,
   discountPercent: number,
-  durationHours: number
+  durationHours: number,
+  startsAtIso?: string | null
 ): Promise<ActionResult> {
   const seller = await requireSeller();
   if (!seller) return { ok: false, error: "Seller access required." };
-  if (!(discountPercent > 0 && discountPercent <= 90))
-    return { ok: false, error: "Discount must be between 1% and 90%." };
+  const pct = Number(discountPercent);
+  if (!(pct >= 1 && pct <= 90)) return { ok: false, error: "The discount is between 1% and 90%." };
+  const hours = Math.floor(Number(durationHours));
+  if (!(hours >= 1 && hours <= 168)) return { ok: false, error: "A flash sale runs from 1 hour to 7 days (168 hours)." };
   const db = createAdminClient();
 
   const { data: product } = await db
     .from("im_products")
-    .select("seller_id, title")
+    .select("seller_id, title, status")
     .eq("id", productId)
     .maybeSingle();
   if (!product) return { ok: false, error: "Product not found." };
   if (seller.role !== "admin" && product.seller_id !== seller.user_id)
     return { ok: false, error: "You can only run flash sales on your own products." };
+  if (product.status !== "approved") return { ok: false, error: "Only a listing that is live in the shop can have a flash sale." };
 
-  const startsAt = new Date();
-  const endsAt = new Date(startsAt.getTime() + Math.max(1, durationHours) * 60 * 60 * 1000);
+  const now = Date.now();
+  const requested = startsAtIso ? Date.parse(startsAtIso) : now;
+  if (!Number.isFinite(requested)) return { ok: false, error: "Check the start time." };
+  if (requested > now + 30 * 86_400_000) return { ok: false, error: "Schedule a sale at most 30 days ahead." };
+  const startsAt = new Date(Math.max(now, requested));
+  const endsAt = new Date(startsAt.getTime() + hours * 3_600_000);
+
+  const { data: clash } = await db
+    .from("im_flash_sales")
+    .select("id")
+    .eq("product_id", productId)
+    .lt("starts_at", endsAt.toISOString())
+    .gt("ends_at", startsAt.toISOString())
+    .limit(1);
+  if (clash?.length) return { ok: false, error: "This product already has a flash sale at that time. End it first, or pick another time." };
+
   const { error } = await db.from("im_flash_sales").insert({
     product_id: productId,
-    discount_percent: discountPercent,
+    discount_percent: pct,
     starts_at: startsAt.toISOString(),
     ends_at: endsAt.toISOString(),
     created_by: seller.user_id,
   });
-  if (error) return { ok: false, error: error.message };
+  if (error) {
+    if (/already has a flash sale/i.test(error.message)) return { ok: false, error: "This product already has a flash sale at that time." };
+    if (/at most 7 days|approved listing/i.test(error.message)) return { ok: false, error: error.message + "." };
+    return { ok: false, error: "Could not start the flash sale. Please try again." };
+  }
+  const scheduled = startsAt.getTime() > now + 60_000;
+  if (scheduled) {
+    await db.from("im_audit_logs").insert({
+      actor_id: seller.user_id,
+      actor_role: seller.role,
+      action: "scheduled_flash_sale",
+      target: `product:${productId} at:${startsAt.toISOString()}`,
+    });
+    revalidatePath("/seller/flash-sales");
+    return { ok: true, productId };
+  }
 
   await db.from("im_audit_logs").insert({
     actor_id: seller.user_id,
@@ -516,15 +555,15 @@ export async function createFlashSale(
       userId: person.id,
       type: "flash_sale",
       title: `Flash sale: ${product.title}`,
-      body: `${discountPercent}% off for the next ${durationHours} hour${durationHours === 1 ? "" : "s"}.`,
+      body: `${pct}% off for the next ${hours} hour${hours === 1 ? "" : "s"}.`,
       link: `/buyer/product/${productId}`,
     });
     if (person.email) {
       await emailIfWanted(person.id, "flash_sale", "flash_sale", { email: person.email, name: person.name }, {
         productId,
         productTitle: product.title,
-        percent: discountPercent,
-        hours: durationHours,
+        percent: pct,
+        hours,
       });
     }
   }
@@ -532,7 +571,38 @@ export async function createFlashSale(
   revalidatePath("/home");
   revalidatePath("/buyer/product", "layout");
   revalidatePath("/seller/products");
+  revalidatePath("/seller/flash-sales");
   return { ok: true, productId };
+}
+
+/** End a running sale now, or cancel a scheduled one (C-34). */
+export async function endFlashSale(saleId: number): Promise<ActionResult> {
+  const seller = await requireSeller();
+  if (!seller) return { ok: false, error: "Seller access required." };
+  const db = createAdminClient();
+  const { data: sale } = await db.from("im_flash_sales").select("id, product_id, starts_at, ends_at").eq("id", Number(saleId)).maybeSingle();
+  if (!sale) return { ok: false, error: "That sale no longer exists." };
+  const { data: product } = await db.from("im_products").select("seller_id").eq("id", sale.product_id).maybeSingle();
+  if (!product || (seller.role !== "admin" && product.seller_id !== seller.user_id)) {
+    return { ok: false, error: "You can only end sales on your own products." };
+  }
+  const now = new Date();
+  if (Date.parse(sale.ends_at) <= now.getTime()) return { ok: false, error: "That sale has already ended." };
+  const { error } =
+    Date.parse(sale.starts_at) > now.getTime()
+      ? await db.from("im_flash_sales").delete().eq("id", sale.id)
+      : await db.from("im_flash_sales").update({ ends_at: now.toISOString() }).eq("id", sale.id);
+  if (error) return { ok: false, error: "Could not end the sale. Please try again." };
+  await db.from("im_audit_logs").insert({
+    actor_id: seller.user_id,
+    actor_role: seller.role,
+    action: "ended_flash_sale",
+    target: `flash_sale:${sale.id} product:${sale.product_id}`,
+  });
+  revalidatePath("/home");
+  revalidatePath("/buyer/product", "layout");
+  revalidatePath("/seller/flash-sales");
+  return { ok: true };
 }
 
 /**
