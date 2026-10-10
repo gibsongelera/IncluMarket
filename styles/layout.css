@@ -449,6 +449,11 @@ a.banners__link:focus-visible { outline: var(--focus-ring); outline-offset: var(
 .shop-head__story { padding: 0 var(--space-4) var(--space-4); }
 .shop-head__story p { margin: 0; max-width: var(--measure); }
 
+.shop-card { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-4); margin: var(--space-5) 0; }
+.shop-card__body { flex: 1 1 16rem; min-width: 0; }
+.shop-card__name { margin: 0; font-size: var(--step-1); }
+.shop-card__story { margin: var(--space-2) 0 0; max-width: var(--measure); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+
 /* --- Wishlist ------------------------------------------------------------ */
 .wishlist-grid { list-style: none; margin: 0; padding: 0; }
 .wishlist-item { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }
@@ -726,8 +731,10 @@ a.banners__link:focus-visible { outline: var(--focus-ring); outline-offset: var(
 .stock-note--low  { color: var(--warning); font-weight: 700; }
 .stock-note--out  { color: var(--text-charcoal); font-weight: 800; }
 
-.qty-row { display: flex; align-items: center; gap: .5rem; }
-.qty-row input { width: 80px; text-align: center; }
+.qty-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); }
+.qty-row > label { font-weight: 600; }
+/* rem, not px: two digits must still fit at the 24px accessibility font. */
+.qty-row input { width: 5rem; text-align: center; }
 
 .pd__actions { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: 1rem; }
 

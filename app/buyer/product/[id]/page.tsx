@@ -21,7 +21,10 @@ import { getReviewsLite, summarize } from "@/lib/reviews";
 import { ReviewsSection } from "@/components/ReviewsSection";
 import { StorefrontGrid } from "@/components/StorefrontGrid";
 import { getAlsoBought, recordProductView } from "@/lib/recommend";
-import { searchStorefront } from "@/lib/storefront";
+import { getStorefrontItems, searchStorefront } from "@/lib/storefront";
+import { getPublicShop } from "@/lib/shops";
+import { Icon } from "@/components/Icon";
+import { StarRating } from "@/components/StarRating";
 import { after } from "next/server";
 
 export const dynamic = "force-dynamic";
@@ -83,6 +86,9 @@ export default async function ProductPage({
   const cat = categories.find((c) => c.id === product.category);
   const catFolder = cat ? cat.folder || cat.label : product.category || "Uncategorized";
   const summary = summarize(reviews);
+  const [live, shop] = preview
+    ? [null, null]
+    : await Promise.all([getStorefrontItems([product.id]).then((r) => r[0] ?? null), getPublicShop(product.seller_id)]);
 
   // "Customers also bought" from shared orders; the same category otherwise.
   let alsoBought = preview ? [] : await getAlsoBought(product.id);
@@ -121,12 +127,46 @@ export default async function ProductPage({
           sellerName={names[product.seller_id] || "PWD Seller"}
           sellerVerified={sellerVerified}
           wishlisted={wishlistIds.includes(product.id)}
+          soldCount={live?.soldCount ?? 0}
           categoryFolder={catFolder}
           userId={session?.role === "buyer" ? session.user_id : undefined}
           rating={summary.average}
           ratingCount={summary.count}
           salePercent={sale ? Number(sale.discount_percent) : null}
         />
+
+        {shop ? (
+          <section className="card shop-card" aria-labelledby="shop-card-title">
+            <span className="shop-head__logo" aria-hidden="true">
+              {shop.name.charAt(0).toUpperCase()}
+            </span>
+            <div className="shop-card__body">
+              <h2 id="shop-card-title" className="shop-card__name">
+                {shop.name}
+              </h2>
+              <p className="shop-head__meta">
+                {shop.verified ? (
+                  <span className="badge badge--verified">
+                    <Icon name="check" size={12} /> Verified PWD seller
+                  </span>
+                ) : null}
+                {shop.rating.count ? (
+                  <span>
+                    <StarRating score={shop.rating.average} /> {shop.rating.average.toFixed(1)}
+                    <span className="sr-only"> out of 5</span>
+                  </span>
+                ) : null}
+                <span>
+                  {shop.productCount} product{shop.productCount === 1 ? "" : "s"}
+                </span>
+              </p>
+              {shop.story ? <p className="shop-card__story">{shop.story}</p> : null}
+            </div>
+            <Link className="btn btn--outline btn--sm" href={`/shop/${shop.id}`}>
+              Visit shop<span className="sr-only">: {shop.name}</span>
+            </Link>
+          </section>
+        ) : null}
 
         <ReviewsSection reviews={reviews} summary={summary} />
 
