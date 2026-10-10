@@ -1,6 +1,6 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createNotification, notifyAdmins } from "@/lib/notify";
+import { createNotification, emailIfWanted, notifyAdmins } from "@/lib/notify";
 import { queueEmail } from "@/lib/email/send";
 import { failPendingPayment, reserveOrderStock } from "./stock";
 import { transitionOrder } from "@/lib/orders/transition";
@@ -256,7 +256,9 @@ async function notifyBuyerAndSellers(
 
   for (const seller of sellers ?? []) {
     if (!seller.email) continue;
-    await queueEmail(
+    await emailIfWanted(
+      seller.id,
+      "new_order",
       "seller_new_order",
       { email: seller.email, name: seller.name },
       { orderId, itemCount: countBySeller.get(seller.id) ?? 0 }

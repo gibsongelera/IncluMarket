@@ -23,7 +23,8 @@ export type EmailKind =
   | "signup_confirm"
   | "password_reset"
   | "account_status"
-  | "pwd_verification";
+  | "pwd_verification"
+  | "flash_sale";
 
 export type TemplateData = Record<string, unknown>;
 
@@ -265,6 +266,27 @@ export function renderTemplate(kind: EmailKind, d: TemplateData): RenderedEmail 
         text: suspended
           ? `Your account is suspended.\n\nReason: ${d.reason}\n\nIf you think this is a mistake, contact us: ${url}/contact\n`
           : `Your account is active again. Sign in: ${url}/login\n`,
+      };
+    }
+
+    case "flash_sale": {
+      // A product in the buyer's wishlist went on sale. Optional: the buyer
+      // can turn these off in Account → Notifications.
+      const page = `${url}/buyer/product/${esc(d.productId)}`;
+      const settings = `${url}/account/notifications`;
+      return {
+        subject: `${d.percent}% off "${d.productTitle}" — InclusiveMarket`,
+        html: shell(
+          "Something you saved is on sale",
+          p(`<strong>${esc(d.productTitle)}</strong> is ${esc(d.percent)}% off for the next ${esc(d.hours)} hour${Number(d.hours) === 1 ? "" : "s"}.`) +
+            p(`You get this because the item is in your wishlist. <a href="${esc(settings)}" style="color:${BRAND_DEEP}">Change your email settings</a>.`),
+          "See the deal",
+          page
+        ),
+        text:
+          `${d.productTitle} is ${d.percent}% off for the next ${d.hours} hour(s).\n\n` +
+          `See the deal: ${page}\n\n` +
+          `You get this because the item is in your wishlist. Change your email settings: ${settings}\n`,
       };
     }
 

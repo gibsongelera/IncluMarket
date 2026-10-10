@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { formatDateTime } from "@/lib/format";
 import {
@@ -27,11 +28,35 @@ export function NotificationBell({
   const panelRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
+  // Poll the unread count every 30 s while the tab is visible; stop while it
+  // is hidden (no requests from a background tab) and catch up on return.
   useEffect(() => {
-    const interval = setInterval(async () => {
-      setUnread(await getMyUnreadCount());
-    }, 30000);
-    return () => clearInterval(interval);
+    let interval: number | null = null;
+    const tick = async () => {
+      try {
+        setUnread(await getMyUnreadCount());
+      } catch {}
+    };
+    const start = () => {
+      if (interval === null) interval = window.setInterval(tick, 30000);
+    };
+    const stop = () => {
+      if (interval !== null) window.clearInterval(interval);
+      interval = null;
+    };
+    const onVisibility = () => {
+      if (document.hidden) stop();
+      else {
+        void tick();
+        start();
+      }
+    };
+    if (!document.hidden) start();
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      stop();
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
   }, []);
 
   useEffect(() => {
@@ -87,8 +112,9 @@ export function NotificationBell({
         type="button"
         ref={triggerRef}
         className="icon-btn icon-btn--badged"
-        aria-haspopup="true"
+        aria-haspopup="dialog"
         aria-expanded={open}
+        aria-controls="notification-panel"
         aria-label={unread > 0 ? `Notifications, ${unread} unread` : "Notifications"}
         onClick={toggleOpen}
       >
@@ -96,7 +122,14 @@ export function NotificationBell({
         {unread > 0 ? <span className="icon-btn__count">{unread > 9 ? "9+" : unread}</span> : null}
       </button>
       {open ? (
-        <div className="notification-panel" role="menu" aria-label="Notifications" ref={panelRef} tabIndex={-1}>
+        <div
+          className="notification-panel"
+          id="notification-panel"
+          role="dialog"
+          aria-label="Notifications"
+          ref={panelRef}
+          tabIndex={-1}
+        >
           <div className="notification-panel__head">
             <strong>Notifications</strong>
             <button
@@ -119,7 +152,10 @@ export function NotificationBell({
                     className={`notification-item${n.is_read ? "" : " is-unread"}`}
                     onClick={() => onItemClick(n)}
                   >
-                    <span className="notification-item__title">{n.title}</span>
+                    <span className="notification-item__title">
+                      {n.is_read ? null : <span className="sr-only">Unread: </span>}
+                      {n.title}
+                    </span>
                     {n.body ? <span className="notification-item__body">{n.body}</span> : null}
                     <span className="muted small">{formatDateTime(n.created_at)}</span>
                   </button>
@@ -127,6 +163,14 @@ export function NotificationBell({
               ))}
             </ul>
           )}
+          <div className="notification-panel__foot">
+            <Link href="/notifications" onClick={() => setOpen(false)}>
+              See all notifications
+            </Link>
+            <Link href="/account/notifications" onClick={() => setOpen(false)}>
+              Settings
+            </Link>
+          </div>
         </div>
       ) : null}
     </div>

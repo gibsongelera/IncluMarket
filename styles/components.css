@@ -213,6 +213,20 @@
 .details-list--money dd { text-align: right; font-variant-numeric: tabular-nums; }
 .order-card__details { margin-left: var(--space-3); font-weight: 700; white-space: nowrap; }
 
+/* --- Notifications (/notifications, Account → Notifications) ------------- */
+.notif-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-2); }
+.notif-item { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: var(--space-3); padding: var(--space-3) var(--space-4); border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--canvas-white); }
+.notif-item--unread { border-left: 4px solid var(--brand-blue); }
+.notif-item__body { flex: 1 1 18rem; min-width: 0; }
+.notif-item__body p { margin: 0; }
+.notif-item__title { font-weight: 700; }
+.notif-item--unread .notif-item__title { font-weight: 800; }
+.notif-item__actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.pager { display: flex; justify-content: center; gap: var(--space-3); margin-top: var(--space-4); }
+.notification-panel__foot { display: flex; justify-content: space-between; gap: var(--space-3); padding: var(--space-2) var(--space-3); border-top: 1px solid var(--border); font-weight: 700; }
+.notif-settings__table th[scope="row"] { font-weight: 700; text-align: left; }
+.notif-settings__table td { white-space: nowrap; }
+
 /* --- Account area --------------------------------------------------------- */
 .account-tabs { margin-top: var(--space-4); }
 .account-tabs .tab { text-decoration: none; display: inline-flex; align-items: center; min-height: 2.75rem; }

@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getSession } from "@/lib/session";
-import { createNotification, notifyAdmins } from "@/lib/notify";
+import { createNotification, emailIfWanted, notifyAdmins } from "@/lib/notify";
 import { transitionOrder } from "@/lib/orders/transition";
 import { isMissingObject } from "@/lib/db-errors";
 import { orderSellerIds } from "@/lib/orders/sellers";
@@ -417,18 +417,32 @@ export async function createFlashSale(
     target: `product:${productId}`,
   });
 
+  // Tell everyone who saved it — in the app and by email, each only if
+  // they have not turned flash-sale notices off (C-24).
   const { data: wishlists } = await db
     .from("im_wishlists")
     .select("user_id")
     .eq("product_id", productId);
-  for (const w of wishlists ?? []) {
+  const savers = (wishlists ?? []).map((w) => w.user_id);
+  const { data: people } = savers.length
+    ? await db.from("im_profiles").select("id, name, email").in("id", savers)
+    : { data: [] as { id: number; name: string; email: string }[] };
+  for (const person of people ?? []) {
     await createNotification({
-      userId: w.user_id,
+      userId: person.id,
       type: "flash_sale",
       title: `Flash sale: ${product.title}`,
       body: `${discountPercent}% off for the next ${durationHours} hour${durationHours === 1 ? "" : "s"}.`,
       link: `/buyer/product/${productId}`,
     });
+    if (person.email) {
+      await emailIfWanted(person.id, "flash_sale", "flash_sale", { email: person.email, name: person.name }, {
+        productId,
+        productTitle: product.title,
+        percent: discountPercent,
+        hours: durationHours,
+      });
+    }
   }
 
   revalidatePath("/home");

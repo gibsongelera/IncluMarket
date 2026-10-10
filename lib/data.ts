@@ -8,6 +8,7 @@ import type {
   Conversation,
   FlashSale,
   Message,
+  Notification,
   Order,
   OrderItem,
   OrderStatusHistoryEntry,
@@ -643,4 +644,39 @@ export async function getPersonalizationSetting(profileId: number): Promise<{ av
     .maybeSingle();
   if (error) return { available: false, enabled: false };
   return { available: true, enabled: !(data as { personalization_opt_out?: boolean } | null)?.personalization_opt_out };
+}
+
+/** Notification settings per type (0019); null before the table exists. */
+export async function getNotificationPrefs(
+  profileId: number
+): Promise<Record<string, { in_app: boolean; email: boolean }> | null> {
+  const { data, error } = await db()
+    .from("im_notification_prefs")
+    .select("type, in_app, email")
+    .eq("profile_id", profileId);
+  if (error) return null;
+  return Object.fromEntries(
+    ((data ?? []) as { type: string; in_app: boolean; email: boolean }[]).map((r) => [r.type, { in_app: r.in_app, email: r.email }])
+  );
+}
+
+export const NOTIFICATIONS_PAGE_SIZE = 20;
+
+/** One page of a person's notifications, newest first, optionally filtered. */
+export async function getNotificationsPage(
+  userId: number,
+  opts: { page: number; unreadOnly?: boolean; types?: string[] }
+): Promise<{ items: Notification[]; total: number }> {
+  const page = Math.max(1, Math.min(100, Math.floor(opts.page) || 1));
+  let q = db()
+    .from("im_notifications")
+    .select("*", { count: "exact" })
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+    .range((page - 1) * NOTIFICATIONS_PAGE_SIZE, page * NOTIFICATIONS_PAGE_SIZE - 1);
+  if (opts.unreadOnly) q = q.eq("is_read", false);
+  if (opts.types?.length) q = q.in("type", opts.types);
+  const res = await q;
+  if (res.error) fail("notifications", res.error);
+  return { items: (res.data ?? []) as Notification[], total: res.count ?? 0 };
 }
