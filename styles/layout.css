@@ -80,10 +80,48 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-lg);
-  max-height: 320px;
+  max-height: min(28rem, 70vh);
   overflow-y: auto;
 }
+.search__group {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: .5rem .6rem .25rem;
+  font-size: .75rem;
+  font-weight: 800;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.search__clear {
+  border: 0;
+  background: none;
+  font: inherit;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--brand-blue);
+  cursor: pointer;
+  text-decoration: underline;
+}
+.search__thumb {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: var(--radius-sm);
+  background: var(--surface-gray-2);
+  color: var(--brand-blue);
+  font-weight: 800;
+  overflow: hidden;
+}
+.search__thumb img { width: 100%; height: 100%; object-fit: cover; }
+.search__label { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.search__price { flex: none; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--price-color); }
+.search__suggestion--all { font-weight: 700; color: var(--brand-blue); }
 .search__suggestion {
+  min-height: 2.75rem;
   display: flex;
   align-items: center;
   gap: .5rem;
@@ -345,6 +383,69 @@
   overflow: hidden;
 }
 .feed-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 1rem; flex-wrap: wrap; gap: .5rem; }
+
+/* --- Storefront home (/home): one column; filters live on /search -------- */
+.main--home { padding-top: 1.25rem; padding-bottom: 2rem; }
+ul.seller-rail, ul.category-chips { list-style: none; margin: 0; padding: 0; }
+.seller-rail > li, .category-chips > li { display: flex; min-width: 0; }
+.seller-rail > li > .seller-card,
+.category-chips > li > .category-chip { flex: 1; min-width: 0; }
+a.seller-card { color: inherit; text-decoration: none; }
+a.seller-card:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-ring-offset); }
+.rail__head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--space-2); margin-bottom: .6rem; }
+.rail__head > h2 { margin: 0; }
+.countdown { font-weight: 800; color: var(--price-color); font-variant-numeric: tabular-nums; }
+.feed__more { margin-top: var(--space-5); color: var(--text-muted); }
+
+/* Sort: a radio group that looks like tabs. The native radios stay in the
+   accessibility tree and keyboard order (arrow keys move between them); the
+   label is the visible target. */
+.sort-tabs { margin: 0; }
+.sort-tabs__group { display: flex; flex-wrap: wrap; gap: var(--space-1); margin: 0; padding: 0; border: 0; align-items: center; }
+.sort-tabs__legend { float: left; margin-right: var(--space-2); font-weight: 700; color: var(--text-muted); font-size: .9rem; }
+.sort-tab { position: relative; display: inline-flex; }
+.sort-tab input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.sort-tab span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--canvas-white);
+  font-weight: 600;
+  font-size: .9rem;
+  color: var(--text-charcoal);
+}
+.sort-tab:hover span { border-color: var(--brand-blue); color: var(--brand-blue); }
+.sort-tab input:focus-visible + span { outline: var(--focus-ring); outline-offset: var(--focus-ring-offset); }
+.sort-tab--current span,
+.sort-tab input:checked + span { background: var(--brand-blue); border-color: var(--brand-blue); color: #FFFFFF; }
+
+/* --- Search (/search) ---------------------------------------------------- */
+.main--search { padding-top: 1.25rem; padding-bottom: 2rem; }
+.search-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--space-2); margin-bottom: var(--space-3); }
+.search-head h1 { margin: 0; overflow-wrap: anywhere; }
+.search-head p { margin: 0; }
+.search-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-4); align-items: start; }
+.search-results { min-width: 0; }
+.search-filters { display: grid; gap: var(--space-4); }
+.search-filters fieldset { margin: 0; padding: 0; border: 0; display: grid; gap: var(--space-1); }
+.search-filters legend { margin-bottom: var(--space-2); padding: 0; }
+.price-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); }
+.price-row__item { display: grid; gap: var(--space-1); }
+.search-layout .filters__toggle { display: inline-flex; align-items: center; }
+.search-layout--collapsed .filters__body { display: none; }
+.search-layout .filters__body { animation: fade-in var(--dur-1) var(--ease-out); }
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+.filters__head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
+.filters__head h2 { margin: 0; }
+.empty--search h2 { font-size: var(--step-1); margin-top: 0; }
+.empty--search ul { margin: 0; padding-left: 1.25rem; }
+
+.load-more { display: grid; justify-items: center; gap: var(--space-3); margin-top: var(--space-5); }
+.load-more__count { margin: 0; color: var(--text-muted); }
+.load-more .btn { min-width: 12rem; min-height: 2.75rem; }
 /* Product card (§7 anatomy): 1:1 photo, title clamped to two lines,
    tabular price, rating and sold count, seller line, one badge slot, the
    wishlist heart. Three type sizes only. Every card in a row is the same

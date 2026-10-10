@@ -876,7 +876,7 @@ h3 {
      480px+   3 columns (large phone, tablet portrait)
      1024px+  4 columns beside the filter panel
               5 columns when the panel is collapsed or there is none
-              (.product-grid--wide)
+              (.product-grid--wide; /search with its filters collapsed)
    minmax(0, 1fr) lets a long title wrap instead of widening its track.
    scripts/check-grid.mjs fails the build on any other definition. */
 .product-grid {
@@ -895,7 +895,8 @@ h3 {
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: var(--space-4);
   }
-  .product-grid--wide {
+  .product-grid--wide,
+  .search-layout--collapsed .product-grid {
     grid-template-columns: repeat(5, minmax(0, 1fr));
   }
 }
@@ -1360,5 +1361,19 @@ h3 {
   .steps {
     grid-auto-flow: column;
     grid-auto-columns: minmax(0, 1fr);
+  }
+}
+
+/* /search: the filter panel sits beside the results from md up; collapsed,
+   it becomes a bar above them and the grid takes the full width. */
+@media (min-width: 768px) {
+  .search-layout {
+    grid-template-columns: 16rem minmax(0, 1fr);
+  }
+  .search-layout--collapsed {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .search-layout--collapsed .filters {
+    position: static;
   }
 }
