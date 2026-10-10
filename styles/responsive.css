@@ -1354,3 +1354,11 @@ h3 {
     align-items: start;
   }
 }
+
+@media (min-width: 768px) {
+  /* Progress reads across once there is room for four labels. */
+  .steps {
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
+  }
+}

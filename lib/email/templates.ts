@@ -22,7 +22,8 @@ export type EmailKind =
   | "newsletter_welcome"
   | "signup_confirm"
   | "password_reset"
-  | "account_status";
+  | "account_status"
+  | "pwd_verification";
 
 export type TemplateData = Record<string, unknown>;
 
@@ -264,6 +265,77 @@ export function renderTemplate(kind: EmailKind, d: TemplateData): RenderedEmail 
         text: suspended
           ? `Your account is suspended.\n\nReason: ${d.reason}\n\nIf you think this is a mistake, contact us: ${url}/contact\n`
           : `Your account is active again. Sign in: ${url}/login\n`,
+      };
+    }
+
+    case "pwd_verification": {
+      // status: submitted | approved | rejected | revoked | reminder | expired
+      const s = String(d.status || "");
+      const page = `${url}/account/verification`;
+      const hello = p(`Hello${d.name ? ` ${esc(d.name)}` : ""}.`);
+      const copy: Record<string, { subject: string; head: string; lines: string[]; cta: string }> = {
+        submitted: {
+          subject: "We received your PWD ID — InclusiveMarket",
+          head: "We received your PWD ID",
+          lines: [
+            `Our team at AVRC Region IX will review it within about ${esc(d.reviewDays || 2)} business days.`,
+            "We will email you when we have decided. You do not need to do anything else for now.",
+          ],
+          cta: "View my verification",
+        },
+        approved: {
+          subject: "You are verified — InclusiveMarket",
+          head: "Your PWD ID is verified",
+          lines: [
+            d.expiresOn ? `Your verification is valid until <strong>${esc(d.expiresOn)}</strong>.` : "Your verification is now active.",
+            d.role === "seller"
+              ? "Your listings can now appear in the shop with a Verified PWD seller badge."
+              : "You can now get PWD discounts on items where one applies.",
+            "We delete the photos of your ID after review, as we told you when you sent them.",
+          ],
+          cta: "View my verification",
+        },
+        rejected: {
+          subject: "We could not verify your PWD ID — InclusiveMarket",
+          head: "We could not verify your PWD ID",
+          lines: [
+            `Reason: <strong>${esc(d.reason)}</strong>`,
+            ...(d.note ? [esc(d.note)] : []),
+            "You can send your ID again from your account. Clear, well-lit photos help us decide quickly.",
+          ],
+          cta: "Send my ID again",
+        },
+        revoked: {
+          subject: "Your PWD verification was withdrawn — InclusiveMarket",
+          head: "Your PWD verification was withdrawn",
+          lines: [
+            `Reason: <strong>${esc(d.reason)}</strong>`,
+            "If you think this is a mistake, reply through the Contact page. You can also send your ID again.",
+          ],
+          cta: "View my verification",
+        },
+        reminder: {
+          subject: "Your PWD ID expires soon — InclusiveMarket",
+          head: "Your PWD ID expires soon",
+          lines: [
+            `Your verified PWD ID expires on <strong>${esc(d.expiresOn)}</strong> (in ${esc(d.days)} days).`,
+            "Renew it at your city or municipal PDAO, then send us the new ID so you stay verified.",
+          ],
+          cta: "Send my renewed ID",
+        },
+        expired: {
+          subject: "Your PWD verification has expired — InclusiveMarket",
+          head: "Your PWD verification has expired",
+          lines: ["Your PWD ID has passed its expiry date. Send us your renewed ID to be verified again."],
+          cta: "Send my renewed ID",
+        },
+      };
+      const c = copy[s] ?? copy.submitted;
+      const strip = (h: string) => h.replace(/<[^>]+>/g, "");
+      return {
+        subject: c.subject,
+        html: shell(c.head, hello + c.lines.map((l) => p(l)).join(""), c.cta, page),
+        text: `${c.head}\n\n` + c.lines.map(strip).join("\n") + `\n\n${c.cta}: ${page}\n`,
       };
     }
 

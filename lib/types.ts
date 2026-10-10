@@ -73,7 +73,13 @@ export type NotificationType =
   | "order_status"
   | "message"
   | "chat_escalation"
-  | "system";
+  | "system"
+  // Migration 0019:
+  | "pwd_verification"
+  | "moderation"
+  | "review_reply"
+  | "payout"
+  | "account";
 
 export interface Notification {
   id: number;
