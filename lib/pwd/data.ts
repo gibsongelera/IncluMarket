@@ -187,3 +187,15 @@ export async function verifiedAmongIfAvailable(profileIds: number[]): Promise<Se
   if (error) return isMissingObject(error) ? null : new Set();
   return new Set(((data ?? []) as { profile_id: number }[]).map((r) => r.profile_id));
 }
+
+/** Last four digits of the IDs behind given verifications (seller delivery check). */
+export async function verificationLast4(ids: number[]): Promise<Map<number, string | null>> {
+  const unique = [...new Set(ids.filter((n) => Number.isInteger(n) && n > 0))];
+  if (!unique.length) return new Map();
+  const { data, error } = await createAdminClient()
+    .from("im_pwd_verifications")
+    .select("id, id_number_last4")
+    .in("id", unique);
+  if (error) return new Map();
+  return new Map(((data ?? []) as { id: number; id_number_last4: string | null }[]).map((r) => [r.id, r.id_number_last4]));
+}

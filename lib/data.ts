@@ -707,3 +707,62 @@ export async function getAddresses(profileId: number): Promise<AddressLite[] | n
     isDefault: a.is_default,
   }));
 }
+
+/** Admin → Discounts: every rule with its target and how often it was used. */
+export interface DiscountRuleAdminLite {
+  id: number;
+  name: string;
+  ruleType: "statutory_20" | "bnpc_5" | "voluntary";
+  ratePercent: number;
+  vatExempt: boolean;
+  weeklyPurchaseCap: number | null;
+  categoryId: string | null;
+  productId: number | null;
+  productTitle: string | null;
+  fundedBy: "seller" | "platform";
+  legalBasis: string;
+  enabled: boolean;
+  signoffNote: string | null;
+  signoffAt: string | null;
+  signoffBy: string | null;
+  usedOnLines: number;
+}
+
+export async function getDiscountRulesForAdmin(): Promise<DiscountRuleAdminLite[] | null> {
+  const res = await db().from("im_discount_rules").select("*").order("created_at", { ascending: false });
+  if (res.error) return null;
+  type Row = {
+    id: number; name: string; rule_type: DiscountRuleAdminLite["ruleType"]; rate_percent: number | string; vat_exempt: boolean;
+    weekly_purchase_cap: number | string | null; category_id: string | null; product_id: number | null;
+    funded_by: "seller" | "platform"; legal_basis: string; enabled: boolean; legal_signoff_note: string | null;
+    legal_signoff_at: string | null; legal_signoff_by: number | null;
+  };
+  const list = (res.data ?? []) as Row[];
+  const productIds = list.map((r) => r.product_id).filter((n): n is number => n != null);
+  const [titles, names, lines] = await Promise.all([
+    productIds.length ? db().from("im_products").select("id, title").in("id", productIds) : Promise.resolve({ data: [] }),
+    getDisplayNames(list.map((r) => r.legal_signoff_by ?? 0)),
+    list.length ? db().from("im_order_items").select("pwd_rule_id").in("pwd_rule_id", list.map((r) => r.id)) : Promise.resolve({ data: [] }),
+  ]);
+  const titleOf = new Map(((titles.data ?? []) as { id: number; title: string }[]).map((p) => [p.id, p.title]));
+  const used = new Map<number, number>();
+  for (const l of (lines.data ?? []) as { pwd_rule_id: number }[]) used.set(l.pwd_rule_id, (used.get(l.pwd_rule_id) ?? 0) + 1);
+  return list.map((r) => ({
+    id: r.id,
+    name: r.name,
+    ruleType: r.rule_type,
+    ratePercent: Number(r.rate_percent),
+    vatExempt: r.vat_exempt,
+    weeklyPurchaseCap: r.weekly_purchase_cap == null ? null : Number(r.weekly_purchase_cap),
+    categoryId: r.category_id,
+    productId: r.product_id,
+    productTitle: r.product_id ? titleOf.get(r.product_id) ?? null : null,
+    fundedBy: r.funded_by,
+    legalBasis: r.legal_basis,
+    enabled: r.enabled,
+    signoffNote: r.legal_signoff_note,
+    signoffAt: r.legal_signoff_at,
+    signoffBy: r.legal_signoff_by ? names[r.legal_signoff_by] ?? null : null,
+    usedOnLines: used.get(r.id) ?? 0,
+  }));
+}

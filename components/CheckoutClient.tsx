@@ -329,6 +329,13 @@ export function CheckoutClient({
                   {l.title} <small className="muted">× {l.quantity}</small>
                   {l.variantLabel ? <div className="muted small">{l.variantLabel}</div> : null}
                   {l.sale ? <div className="muted small">{l.sale.percent}% flash sale</div> : null}
+                  {l.pwd ? (
+                    <div className="pwd-line small">
+                      PWD discount {l.pwd.ratePercent}%: −{money(l.pwd.unitDiscount * l.quantity)}
+                      {l.pwd.capped ? " (weekly limit reached)" : ""}
+                      <span className="muted"> · {l.pwd.legalBasis}</span>
+                    </div>
+                  ) : null}
                 </div>
                 <div className="price">{money(l.lineTotal)}</div>
               </div>
@@ -341,6 +348,12 @@ export function CheckoutClient({
             <dt>Subtotal</dt>
             <dd className="price">{money(cart.subtotal)}</dd>
           </div>
+          {cart.pwdDiscountTotal > 0 ? (
+            <div>
+              <dt>PWD discount (included above)</dt>
+              <dd className="price">−{money(cart.pwdDiscountTotal)}</dd>
+            </div>
+          ) : null}
           <div>
             <dt>
               Shipping ({cart.groups.length} shop{cart.groups.length === 1 ? "" : "s"})
@@ -354,6 +367,18 @@ export function CheckoutClient({
         </dl>
         {cart.saleSavings > 0 ? (
           <p className="muted small">The subtotal already includes {money(cart.saleSavings)} of flash sale savings.</p>
+        ) : null}
+        {cart.pwdIfVerified ? (
+          <p className="notice notice--info">
+            Some of these items have a PWD discount.{" "}
+            <Link href="/account/verification">Verify your PWD ID to get the discount</Link>.
+          </p>
+        ) : null}
+        {cart.pwdDiscountTotal > 0 && payment === "cod" ? (
+          <p className="notice notice--info">
+            Cash on delivery with a PWD discount: please have your PWD ID ready — the seller or courier checks it when
+            the parcel arrives.
+          </p>
         ) : null}
       </aside>
     </div>

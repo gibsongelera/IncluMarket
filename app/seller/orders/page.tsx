@@ -10,6 +10,7 @@ import {
 } from "@/lib/data";
 import { shortName } from "@/lib/format";
 import { roundMoney } from "@/lib/pricing/core";
+import { verificationLast4 } from "@/lib/pwd/data";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +29,19 @@ export default async function SellerOrdersPage() {
     getOrderStatusHistoryForOrders(orderIds),
     getVariantsByIds(myItems.map((it) => it.variant_id).filter((n): n is number => n != null)),
   ]);
-  const names = await getDisplayNames(orders.map((o) => o.buyer_id));
+  const [names, last4] = await Promise.all([
+    getDisplayNames(orders.map((o) => o.buyer_id)),
+    verificationLast4(myItems.map((it) => it.verification_id ?? 0)),
+  ]);
+  const pwdCheck = (orderId: number) => {
+    const lines = myItems.filter((it) => it.order_id === orderId && Number(it.pwd_discount_amount ?? 0) > 0);
+    if (!lines.length) return null;
+    const vid = lines.find((it) => it.verification_id)?.verification_id ?? null;
+    return {
+      amount: roundMoney(lines.reduce((n, it) => n + Number(it.pwd_discount_amount ?? 0), 0)),
+      last4: vid ? last4.get(vid) ?? null : null,
+    };
+  };
 
   const lite: SellerOrderLite[] = orders.map((o) => ({
     id: o.id,
@@ -50,6 +63,7 @@ export default async function SellerOrdersPage() {
     subtotal: roundMoney(
       myItems.filter((it) => it.order_id === o.id).reduce((n, it) => n + it.unit_price * it.quantity, 0)
     ),
+    pwdCheck: pwdCheck(o.id),
   }));
 
   return (

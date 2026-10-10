@@ -182,6 +182,11 @@ export interface PricedCart {
   purchasable: boolean;
   /** First blocking problem, phrased for the buyer. */
   firstProblem: string | null;
+  /**
+   * An enabled PWD rule covers something here, but the buyer is not verified:
+   * show "Verify your PWD ID to get the discount" (C-26).
+   */
+  pwdIfVerified: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -225,6 +230,9 @@ export function priceLines(inputs: LineInput[], catalog: Catalog, opts: PricingO
   const pwd = opts.pwd && opts.pwd.verificationId ? opts.pwd : null;
   // Cap consumption is tracked across the whole cart, per rule.
   const capUsed: Record<number, number> = { ...(pwd?.weeklyUsed ?? {}) };
+  // Rules exist but the buyer is not verified: note whether any would apply.
+  const unverifiedRules = opts.pwd && !opts.pwd.verificationId ? opts.pwd.rules : null;
+  let pwdIfVerified = false;
 
   const lines: PricedLine[] = inputs.map((input, i) => {
     const product = catalog.products.get(input.productId);
@@ -250,6 +258,7 @@ export function priceLines(inputs: LineInput[], catalog: Catalog, opts: PricingO
 
     let unitPrice = saleUnitPrice;
     let pwdApplied: PwdApplied | null = null;
+    if (unverifiedRules && pickPwdRule(unverifiedRules, product)) pwdIfVerified = true;
     if (pwd) {
       const rule = pickPwdRule(pwd.rules, product);
       if (rule) {
@@ -366,6 +375,7 @@ export function priceLines(inputs: LineInput[], catalog: Catalog, opts: PricingO
     grandTotal: roundMoney(subtotal + shippingTotal),
     purchasable: lines.length > 0 && !firstProblem,
     firstProblem,
+    pwdIfVerified,
   };
 }
 

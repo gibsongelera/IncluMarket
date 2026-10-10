@@ -139,6 +139,19 @@ test("no PWD discount without an approved verification", () => {
   );
   assert.equal(cart.lines[0].pwd, null);
   assert.equal(cart.pwdDiscountTotal, 0);
+  assert.equal(cart.pwdIfVerified, true, "…but the cart knows to offer verification");
+});
+
+test("no verification prompt when no rule covers the cart", () => {
+  const other = { ...voluntary, productId: 999 };
+  const cart = priceLines(
+    [{ productId: 1, variantId: 101, quantity: 1 }],
+    catalog({ products: [bag], variants: [bagV] }),
+    { shippingPerSeller: SHIP, pwd: { verificationId: null, rules: [other], weeklyUsed: {} } }
+  );
+  assert.equal(cart.pwdIfVerified, false);
+  const none = priceLines([{ productId: 1, variantId: 101, quantity: 1 }], catalog({ products: [bag], variants: [bagV] }), { shippingPerSeller: SHIP });
+  assert.equal(none.pwdIfVerified, false, "every rule disabled: nothing, not even a prompt");
 });
 
 test("PWD discount applies after the flash sale", () => {

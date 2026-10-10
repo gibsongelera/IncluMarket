@@ -186,6 +186,7 @@ export interface OrderItem {
   pwd_rate?: number | null;
   pwd_discount_amount?: number | null;
   legal_basis?: string | null;
+  verification_id?: number | null;
 }
 
 export interface ProductReview {

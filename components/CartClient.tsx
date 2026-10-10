@@ -172,6 +172,12 @@ export function CartClient({
                         <Link href={`/buyer/product/${line.productId}`}>{line.title}</Link>
                       </div>
                       {line.variantLabel ? <div className="cart-item__meta">{line.variantLabel}</div> : null}
+                      {line.pwd ? (
+                        <div className="pwd-line small">
+                          PWD discount {line.pwd.ratePercent}%: −{money(line.pwd.unitDiscount * line.quantity)}
+                          <span className="muted"> · {line.pwd.legalBasis}</span>
+                        </div>
+                      ) : null}
                       {line.problemText ? (
                         <p className="notice notice--warning cart-item__problem" role="status">
                           {line.problemText}
@@ -249,6 +255,13 @@ export function CartClient({
           </section>
         );
       })}
+
+      {cart.pwdIfVerified ? (
+        <p className="notice notice--info">
+          Some items in your cart have a PWD discount.{" "}
+          <Link href="/account/verification">Verify your PWD ID to get it</Link>.
+        </p>
+      ) : null}
 
       <div className="cart-summary--sticky">
         <span className="muted" role="status" aria-live="polite" aria-atomic="true">

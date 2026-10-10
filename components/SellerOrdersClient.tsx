@@ -40,7 +40,11 @@ export type SellerOrderLite = Pick<
   | "delivered_at"
   | "return_reason"
   | "cancel_reason"
-> & { subtotal: number };
+> & {
+  subtotal: number;
+  /** A PWD discount on this seller's lines: check the ID on delivery (C-26). */
+  pwdCheck: { amount: number; last4: string | null } | null;
+};
 
 const TABS: { value: string; label: string }[] = [
   { value: "all", label: "All" },
@@ -225,6 +229,14 @@ export function SellerOrdersClient({
                           </span>
                         );
                       })}
+                      {o.pwdCheck && o.payment_provider !== "paymongo" ? (
+                        <p className="notice notice--warning small">
+                          <strong>PWD discount applied (−{money(o.pwdCheck.amount)}).</strong> Check the buyer&rsquo;s PWD ID
+                          on delivery{o.pwdCheck.last4 ? ` — ID ending ${o.pwdCheck.last4}` : ""}.
+                        </p>
+                      ) : o.pwdCheck ? (
+                        <p className="muted small">Includes a PWD discount of {money(o.pwdCheck.amount)}.</p>
+                      ) : null}
                       {o.return_reason && o.order_status === "return_requested" ? (
                         <p className="notice notice--warning small">Return reason: {o.return_reason}</p>
                       ) : null}
