@@ -5,7 +5,11 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getSession } from "@/lib/session";
 import { isMissingObject } from "@/lib/db-errors";
 import { cleanUiPrefs, type UiPrefs } from "@/lib/a11y/prefs";
-import { cleanAddress, type AddressFields } from "@/lib/address";
+import { PH_PHONE_RE, cleanAddress, cleanPhone, type AddressFields } from "@/lib/address";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { RATE_LIMITED_MESSAGE, rateLimit } from "@/lib/security/rate-limit";
+import { createNotification, notifyAdmins } from "@/lib/notify";
+import { queueEmail } from "@/lib/email/send";
 
 export interface AccountActionResult {
   ok: boolean;
@@ -210,5 +214,117 @@ export async function setDefaultAddress(id: number): Promise<AccountActionResult
   const { error } = await db.from("im_addresses").update({ is_default: true }).eq("id", own.id);
   if (error) return { ok: false, error: "Could not update. Please try again." };
   revalidatePath("/account/addresses");
+  return { ok: true };
+}
+
+// --- Profile ----------------------------------------------------------------------
+
+/** Name and phone on the account (C-30). The email is changed through support. */
+export async function updateProfile(input: { name: string; phone: string }): Promise<AccountActionResult & { field?: string }> {
+  const session = await getSession();
+  if (!session) return { ok: false, error: "Please sign in again." };
+  const name = String(input?.name ?? "").replace(/\s+/g, " ").trim();
+  if (name.length < 2 || name.length > 80) return { ok: false, field: "name", error: "Enter your name (2 to 80 characters)." };
+  const phone = cleanPhone(input?.phone);
+  if (phone && !PH_PHONE_RE.test(phone)) {
+    return { ok: false, field: "phone", error: "Enter a Philippine number, for example 09171234567, or leave it empty." };
+  }
+  const { error } = await createAdminClient()
+    .from("im_profiles")
+    .update({ name, phone: phone || null, updated_at: new Date().toISOString() })
+    .eq("id", session.user_id);
+  if (error) return { ok: false, error: "Could not save your profile. Please try again." };
+  await createAdminClient().from("im_audit_logs").insert({
+    actor_id: session.user_id,
+    actor_role: session.role,
+    action: "updated_profile",
+    target: `profile:${session.user_id}`,
+  });
+  revalidatePath("/account", "layout");
+  return { ok: true };
+}
+
+const MIN_PASSWORD = 8;
+
+/**
+ * Change the password while signed in. The current password is checked
+ * first, so a borrowed, unlocked device cannot lock its owner out.
+ */
+export async function changePassword(current: string, next: string): Promise<AccountActionResult & { field?: string }> {
+  const session = await getSession();
+  if (!session) return { ok: false, error: "Please sign in again." };
+  const limited = await rateLimit("change_password", `user:${session.user_id}`, { limit: 5, windowSeconds: 900 });
+  if (!limited.ok) return { ok: false, error: RATE_LIMITED_MESSAGE };
+  const pw = String(next ?? "");
+  if (pw.length < MIN_PASSWORD) return { ok: false, field: "next", error: `Use at least ${MIN_PASSWORD} characters.` };
+  if (!/[a-zA-Z]/.test(pw) || !/[0-9]/.test(pw)) return { ok: false, field: "next", error: "Include at least one letter and one number." };
+  if (pw === current) return { ok: false, field: "next", error: "Choose a password different from the current one." };
+
+  const supabase = await createSupabaseServerClient();
+  const check = await supabase.auth.signInWithPassword({ email: session.email, password: String(current ?? "") });
+  if (check.error) return { ok: false, field: "current", error: "Your current password is not right." };
+  const { error } = await supabase.auth.updateUser({ password: pw });
+  if (error) return { ok: false, error: "Could not change your password. Please try again." };
+
+  await createAdminClient().from("im_audit_logs").insert({
+    actor_id: session.user_id,
+    actor_role: session.role,
+    action: "changed_password",
+    target: `profile:${session.user_id}`,
+  });
+  await createNotification({
+    userId: session.user_id,
+    type: "account",
+    title: "Your password was changed",
+    body: "If this was not you, reset your password from the sign-in page and contact us.",
+    link: "/account/profile",
+  });
+  return { ok: true };
+}
+
+// --- Privacy (RA 10173) ------------------------------------------------------------
+
+const PRIVACY_KINDS = ["access", "correction", "deletion", "objection"] as const;
+type PrivacyKind = (typeof PRIVACY_KINDS)[number];
+
+/**
+ * A data-subject request (C-30): stored in im_privacy_requests, sent to the
+ * admins as a task, and confirmed to the person by email.
+ */
+export async function submitPrivacyRequest(kind: string, details: string): Promise<AccountActionResult> {
+  const session = await getSession();
+  if (!session) return { ok: false, error: "Please sign in again." };
+  if (!PRIVACY_KINDS.includes(kind as PrivacyKind)) return { ok: false, error: "Choose what you are asking for." };
+  const text = String(details ?? "").trim().slice(0, 2000);
+  if ((kind === "correction" || kind === "objection") && text.length < 5) {
+    return { ok: false, error: "Tell us what to correct, or what you object to, in a sentence." };
+  }
+  const limited = await rateLimit("privacy_request", `user:${session.user_id}`, { limit: 3, windowSeconds: 86_400 });
+  if (!limited.ok) return { ok: false, error: RATE_LIMITED_MESSAGE };
+
+  const db = createAdminClient();
+  const { data, error } = await db
+    .from("im_privacy_requests")
+    .insert({ profile_id: session.user_id, kind, details: text || null })
+    .select("id")
+    .single();
+  if (error || !data) {
+    if (error && isMissingObject(error)) return { ok: false, error: "Privacy requests need database migration 0019. Please use the Contact page for now." };
+    return { ok: false, error: "Could not send your request. Please try again." };
+  }
+  await db.from("im_audit_logs").insert({
+    actor_id: session.user_id,
+    actor_role: session.role,
+    action: "privacy_request",
+    target: `privacy_request:${data.id} ${kind}`,
+  });
+  await notifyAdmins({
+    type: "account",
+    title: `Privacy request #${data.id}: ${kind}`,
+    body: `From ${session.name}. Respond within 15 days (RA 10173).`,
+    link: "/admin/compliance",
+  });
+  await queueEmail("privacy_request", { email: session.email, name: session.name }, { name: session.name, kind, requestId: data.id });
+  revalidatePath("/account/privacy");
   return { ok: true };
 }

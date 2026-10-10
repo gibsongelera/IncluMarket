@@ -24,7 +24,8 @@ export type EmailKind =
   | "password_reset"
   | "account_status"
   | "pwd_verification"
-  | "flash_sale";
+  | "flash_sale"
+  | "privacy_request";
 
 export type TemplateData = Record<string, unknown>;
 
@@ -229,20 +230,51 @@ export function renderTemplate(kind: EmailKind, d: TemplateData): RenderedEmail 
     }
 
     case "newsletter_welcome": {
+      // The unsubscribe link carries the subscriber's own token (C-42); the
+      // page asks for one click, so a mail scanner cannot unsubscribe anyone.
+      const unsub = d.unsubscribeToken ? `${url}/newsletter/unsubscribe?token=${encodeURIComponent(String(d.unsubscribeToken))}` : null;
       return {
         subject: "You are subscribed — InclusiveMarket",
         html: shell(
           "Thanks for subscribing",
           p("You will hear from us when new PWD-made products and flash sales go live.") +
-            p("We send rarely, and you can unsubscribe from any email."),
+            p("We send rarely.") +
+            (unsub
+              ? p(`Changed your mind? <a href="${esc(unsub)}" style="color:${BRAND_DEEP}">Unsubscribe</a> at any time.`)
+              : ""),
           "Browse the marketplace",
           `${url}/home`
         ),
         text:
           `Thanks for subscribing.\n\n` +
-          `You will hear from us when new PWD-made products and flash sales go live.\n` +
-          `We send rarely, and you can unsubscribe from any email.\n\n` +
-          `Browse the marketplace: ${url}/home\n`,
+          `You will hear from us when new PWD-made products and flash sales go live. We send rarely.\n\n` +
+          `Browse the marketplace: ${url}/home\n` +
+          (unsub ? `\nUnsubscribe: ${unsub}\n` : ""),
+      };
+    }
+
+    case "privacy_request": {
+      const kinds: Record<string, string> = {
+        access: "a copy of your personal data",
+        correction: "a correction to your personal data",
+        deletion: "deletion of your personal data",
+        objection: "to stop a use of your personal data",
+      };
+      const what = kinds[String(d.kind)] ?? "a privacy request";
+      return {
+        subject: `We received your privacy request #${d.requestId} — InclusiveMarket`,
+        html: shell(
+          "We received your privacy request",
+          p(`Hello${d.name ? ` ${esc(d.name)}` : ""}.`) +
+            p(`You asked for ${esc(what)}. Your request number is <strong>#${esc(d.requestId)}</strong>.`) +
+            p("We will reply within 15 days, as the Data Privacy Act (RA 10173) requires. You can follow it in your account."),
+          "View my requests",
+          `${url}/account/privacy`
+        ),
+        text:
+          `We received your privacy request #${d.requestId}.\n\n` +
+          `You asked for ${what}. We will reply within 15 days (RA 10173).\n\n` +
+          `Follow it in your account: ${url}/account/privacy\n`,
       };
     }
 

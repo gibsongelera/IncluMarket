@@ -28,7 +28,7 @@ export function RecommendationRail({
           </summary>
           <p>
             We suggest products from the categories you viewed, saved or bought in the last 90 days. Only you see
-            these suggestions. You can turn them off in <Link href="/account#personalisation">your account</Link>.
+            these suggestions. You can turn them off in <Link href="/account/privacy#personalisation">Account → Privacy</Link>.
           </p>
         </details>
       ) : null}

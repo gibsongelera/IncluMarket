@@ -67,9 +67,11 @@ export const NAV: Record<NavRole, NavItem[]> = {
  */
 export const ACCOUNT_TABS: { href: string; label: string; roles: Exclude<NavRole, "guest">[] }[] = [
   { href: "/account", label: "Overview", roles: ["buyer", "seller", "admin"] },
+  { href: "/account/profile", label: "Profile", roles: ["buyer", "seller", "admin"] },
   { href: "/account/addresses", label: "Addresses", roles: ["buyer"] },
   { href: "/account/verification", label: "PWD verification", roles: ["buyer", "seller"] },
   { href: "/account/notifications", label: "Notifications", roles: ["buyer", "seller", "admin"] },
+  { href: "/account/privacy", label: "Privacy", roles: ["buyer", "seller", "admin"] },
 ];
 
 /** Where the brand mark takes each role. */

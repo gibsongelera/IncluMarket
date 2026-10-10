@@ -766,3 +766,45 @@ export async function getDiscountRulesForAdmin(): Promise<DiscountRuleAdminLite[
     usedOnLines: used.get(r.id) ?? 0,
   }));
 }
+
+/** Is this address on the newsletter (and not unsubscribed)? */
+export async function getNewsletterStatus(email: string): Promise<boolean> {
+  const { data } = await db()
+    .from("im_newsletter_subscribers")
+    .select("unsubscribed_at")
+    .eq("email", email.trim().toLowerCase())
+    .maybeSingle();
+  return Boolean(data) && !(data as { unsubscribed_at: string | null }).unsubscribed_at;
+}
+
+export interface PrivacyRequestLite {
+  id: number;
+  kind: string;
+  details: string | null;
+  status: string;
+  response: string | null;
+  createdAt: string;
+  handledAt: string | null;
+}
+
+/** The person's own privacy requests; null before migration 0019. */
+export async function getMyPrivacyRequests(profileId: number): Promise<PrivacyRequestLite[] | null> {
+  const { data, error } = await db()
+    .from("im_privacy_requests")
+    .select("id, kind, details, status, response, created_at, handled_at")
+    .eq("profile_id", profileId)
+    .order("created_at", { ascending: false })
+    .limit(20);
+  if (error) return null;
+  return ((data ?? []) as { id: number; kind: string; details: string | null; status: string; response: string | null; created_at: string; handled_at: string | null }[]).map(
+    (r) => ({ id: r.id, kind: r.kind, details: r.details, status: r.status, response: r.response, createdAt: r.created_at, handledAt: r.handled_at })
+  );
+}
+
+/** Name and phone for Account → Profile. */
+export async function getMyProfileBasics(profileId: number): Promise<{ name: string; phone: string | null } | null> {
+  return one<{ name: string; phone: string | null }>(
+    "profile",
+    await db().from("im_profiles").select("name, phone").eq("id", profileId).maybeSingle()
+  );
+}
