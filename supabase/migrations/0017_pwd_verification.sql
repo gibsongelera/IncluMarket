@@ -76,11 +76,48 @@ create table if not exists public.im_pwd_verifications (
   )
 );
 
--- One active ID number, one account: a second submission of a number that is
--- under review or approved anywhere fails at the database.
-create unique index if not exists idx_im_pwd_number_active
+-- One active ID number, one account — enforced by the database, not the app:
+--   * at most one submission under review per number, and one approval;
+--   * a number that is under review or approved on one account cannot be
+--     submitted from ANOTHER account (trigger below). The owner can still
+--     submit a renewal with the same number while their current approval
+--     runs; approving the renewal retires the old row in the same
+--     transaction (im_decide_pwd_verification).
+create unique index if not exists idx_im_pwd_number_submitted
   on public.im_pwd_verifications(id_number_hash)
-  where status in ('submitted', 'approved') and id_number_hash is not null;
+  where status = 'submitted' and id_number_hash is not null;
+create unique index if not exists idx_im_pwd_number_approved
+  on public.im_pwd_verifications(id_number_hash)
+  where status = 'approved' and id_number_hash is not null;
+
+create or replace function public.im_pwd_number_guard()
+returns trigger
+language plpgsql
+set search_path = ''
+as $fn$
+begin
+  if new.id_number_hash is null or new.status not in ('submitted', 'approved') then
+    return new;
+  end if;
+  -- Serialise concurrent submissions of the same number.
+  perform pg_advisory_xact_lock(hashtextextended(new.id_number_hash, 17));
+  if exists (
+    select 1 from public.im_pwd_verifications o
+     where o.id_number_hash = new.id_number_hash
+       and o.status in ('submitted', 'approved')
+       and o.profile_id <> new.profile_id
+       and o.id is distinct from new.id
+  ) then
+    raise exception 'This PWD ID number is active on another account'
+      using errcode = 'unique_violation', constraint = 'im_pwd_number_other_account';
+  end if;
+  return new;
+end;
+$fn$;
+drop trigger if exists trg_im_pwd_number_guard on public.im_pwd_verifications;
+create trigger trg_im_pwd_number_guard
+  before insert or update of id_number_hash, status, profile_id on public.im_pwd_verifications
+  for each row execute function public.im_pwd_number_guard();
 -- One open submission per person at a time.
 create unique index if not exists idx_im_pwd_one_open
   on public.im_pwd_verifications(profile_id)
@@ -134,10 +171,71 @@ select distinct on (v.profile_id)
   v.reviewed_at
 from public.im_pwd_verifications v
 where v.status = 'approved'
-  and (v.expires_on is null or v.expires_on >= current_date)
+  -- Expiry is judged on the Philippine calendar date, not the server's UTC one.
+  and (v.expires_on is null or v.expires_on >= (now() at time zone 'Asia/Manila')::date)
 order by v.profile_id, v.reviewed_at desc nulls last, v.id desc;
 -- Service role only: no grant to anon/authenticated.
 revoke all on public.im_verified_pwd from anon, authenticated;
+
+-- ---------------------------------------------------------------------------
+-- The review decision, atomically. Approving a renewal retires the person's
+-- previous approval in the same transaction, so they are never briefly
+-- unverified and the number never has two approvals. The full number is
+-- wiped at the decision either way (Q25).
+-- Returns: ok | not_found | not_submitted | invalid | reason_required | expired_id
+-- ---------------------------------------------------------------------------
+create or replace function public.im_decide_pwd_verification(
+  p_id              bigint,
+  p_decision        text,
+  p_reviewer        bigint,
+  p_reason_code     text default null,
+  p_reason          text default null,
+  p_registry_result text default null,
+  p_registry_note   text default null
+)
+returns text
+language plpgsql
+security definer
+set search_path = ''
+as $fn$
+declare
+  v public.im_pwd_verifications%rowtype;
+begin
+  if p_decision not in ('approved', 'rejected') then return 'invalid'; end if;
+  if p_registry_result is not null and p_registry_result not in ('found', 'not_found', 'not_checked') then
+    return 'invalid';
+  end if;
+  select * into v from public.im_pwd_verifications where id = p_id for update;
+  if not found then return 'not_found'; end if;
+  if v.status <> 'submitted' then return 'not_submitted'; end if;
+  if p_decision = 'rejected' and coalesce(trim(p_reason_code), '') = '' then return 'reason_required'; end if;
+  if p_decision = 'approved' and v.expires_on is not null
+     and v.expires_on < (now() at time zone 'Asia/Manila')::date then
+    return 'expired_id';
+  end if;
+
+  if p_decision = 'approved' then
+    update public.im_pwd_verifications
+       set status = 'expired', reason = 'Replaced by a renewed ID', updated_at = now()
+     where profile_id = v.profile_id and status = 'approved' and id <> p_id;
+  end if;
+
+  update public.im_pwd_verifications
+     set status              = p_decision,
+         reviewer_id         = p_reviewer,
+         reviewed_at         = now(),
+         reason_code         = case when p_decision = 'rejected' then p_reason_code end,
+         reason              = case when p_decision = 'rejected' then nullif(trim(p_reason), '') end,
+         registry_result     = coalesce(p_registry_result, 'not_checked'),
+         registry_check_note = nullif(trim(coalesce(p_registry_note, '')), ''),
+         id_number_encrypted = null,
+         updated_at          = now()
+   where id = p_id;
+  return 'ok';
+end;
+$fn$;
+revoke all on function public.im_decide_pwd_verification(bigint, text, bigint, text, text, text, text)
+  from public, anon, authenticated;
 
 alter table public.im_profiles
   add column if not exists pwd_grace_until timestamptz;

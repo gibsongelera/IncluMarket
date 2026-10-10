@@ -38,10 +38,12 @@ const csp = [
   "script-src 'self' 'unsafe-inline'",
   // Fonts are self-hosted by next/font (app/fonts.ts): no third-party hosts.
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob:",
+  // The Supabase origin serves the 60-second signed URLs admins use to view
+  // PWD ID images (private bucket) and, later, product photos in Storage.
+  `img-src 'self' data: blob: ${supabaseOrigin}`.trim(),
   "font-src 'self' data:",
   `connect-src 'self' ${supabaseOrigin}`.trim(),
-  "media-src 'self' data:",
+  "media-src 'self' data: blob:",
   "worker-src 'self' blob:",
 ]
   .filter(Boolean)
@@ -60,10 +62,12 @@ const securityHeaders = [
   { key: "X-Frame-Options", value: "DENY" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   // microphone stays self-enabled: the accessibility widget's voice commands
-  // use the Web Speech API and break without it.
+  // use the Web Speech API and break without it. camera is self-enabled for
+  // the PWD ID scan (Account → PWD verification); camera=() made getUserMedia
+  // fail before the browser ever asked the user (N-33).
   {
     key: "Permissions-Policy",
-    value: "camera=(), geolocation=(), payment=(), usb=(), microphone=(self)",
+    value: "camera=(self), geolocation=(), payment=(), usb=(), microphone=(self)",
   },
   { key: "X-DNS-Prefetch-Control", value: "on" },
 ];
@@ -76,6 +80,14 @@ const nextConfig = {
     ignoreDuringBuilds: true,
   },
   poweredByHeader: false,
+  experimental: {
+    serverActions: {
+      // The PWD ID submission carries three photos of at most 2 MB each
+      // (front, back, selfie) as multipart form data. The 1 MB default
+      // rejected it before the action ran.
+      bodySizeLimit: "7mb",
+    },
+  },
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },

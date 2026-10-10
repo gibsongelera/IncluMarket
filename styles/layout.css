@@ -124,6 +124,14 @@
 .site-header--admin  .user-strip { background: var(--palette-primary-dark); color: #FFFFFF; }
 
 .user-strip .container { display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; }
+.user-strip__link {
+  margin-left: auto;
+  color: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: .2em;
+  padding-block: .25rem;
+}
 
 /* Footer — themed via --color-footer */
 .site-footer {

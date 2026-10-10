@@ -15,6 +15,9 @@ drop function if exists public.im_search_products(text, text, numeric, numeric, 
 drop function if exists public.im_suggest_products(text, integer);
 drop view if exists public.im_storefront_products;
 drop function if exists public.im_seller_can_sell(bigint);
+drop function if exists public.im_decide_pwd_verification(bigint, text, bigint, text, text, text, text);
+drop trigger if exists trg_im_pwd_number_guard on public.im_pwd_verifications;
+drop function if exists public.im_pwd_number_guard();
 alter table public.im_order_items drop constraint if exists im_order_items_verification_fk;
 
 create or replace view public.im_storefront_products

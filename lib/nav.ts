@@ -38,6 +38,7 @@ export const NAV: Record<NavRole, NavItem[]> = {
     { href: "/buyer/orders", label: "My orders", icon: "box", mobile: "primary", header: true },
     { href: "/buyer/messages", label: "Messages", icon: "message-circle", mobile: "more", header: true },
     { href: "/buyer/support", label: "Help", icon: "chat", mobile: "more", header: true },
+    { href: "/account", label: "Account", icon: "user", mobile: "more" },
   ],
   seller: [
     { href: "/seller/dashboard", label: "Dashboard", icon: "chart", mobile: "primary", header: true, section: "Overview" },
@@ -45,6 +46,7 @@ export const NAV: Record<NavRole, NavItem[]> = {
     { href: "/seller/orders", label: "Orders", icon: "truck", mobile: "primary", header: true, section: "Sales" },
     { href: "/seller/reviews", label: "Reviews", icon: "sparkles", mobile: "more", header: true, section: "Sales" },
     { href: "/seller/messages", label: "Messages", icon: "message-circle", mobile: "primary", header: true, section: "Customers" },
+    { href: "/account/verification", label: "PWD verification", icon: "shield", mobile: "more", section: "Account" },
   ],
   admin: [
     { href: "/admin/users", label: "Users", icon: "users", mobile: "primary", header: true, section: "People" },
@@ -56,6 +58,15 @@ export const NAV: Record<NavRole, NavItem[]> = {
     { href: "/admin/theme", label: "Theme", icon: "sparkles", mobile: "more", header: true, section: "Settings" },
   ],
 };
+
+/**
+ * Tabs inside /account. Verification is for buyers (discount) and sellers
+ * (listings go live); admins review it instead of taking it.
+ */
+export const ACCOUNT_TABS: { href: string; label: string; roles: Exclude<NavRole, "guest">[] }[] = [
+  { href: "/account", label: "Overview", roles: ["buyer", "seller", "admin"] },
+  { href: "/account/verification", label: "PWD verification", roles: ["buyer", "seller"] },
+];
 
 /** Where the brand mark takes each role. */
 export const HOME_HREF: Record<NavRole, string> = {

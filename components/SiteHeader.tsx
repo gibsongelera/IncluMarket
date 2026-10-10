@@ -93,6 +93,9 @@ export async function SiteHeader({
               <span className="role-tag">{session.role}</span> &middot;{" "}
               <span title="Email masked in shared views">{maskEmail(session.email)}</span>
             </span>
+            <Link className="user-strip__link" href="/account">
+              Your account
+            </Link>
           </div>
         </div>
       </header>

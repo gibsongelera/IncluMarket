@@ -22,7 +22,7 @@ export default async function ({ q, runSql, asUser, check }) {
   await ins(a.id, "HASH-ONE");
   let err = null;
   try { await ins(b.id, "HASH-ONE"); } catch (e) { err = e.message; }
-  check("the same ID number cannot be under review on two accounts", /duplicate key|unique/.test(err || ""), err);
+  check("the same ID number cannot be under review on two accounts", /duplicate key|unique|another account/.test(err || ""), err);
 
   err = null;
   try { await ins(a.id, "HASH-OTHER"); } catch (e) { err = e.message; }
@@ -36,10 +36,26 @@ export default async function ({ q, runSql, asUser, check }) {
   await runSql(`update im_pwd_verifications set status='approved', reviewed_at=now() where id_number_hash='HASH-ONE'`);
   err = null;
   try { await ins(b.id, "HASH-ONE"); } catch (e) { err = e.message; }
-  check("an approved number stays bound to its account", /duplicate key|unique/.test(err || ""), err);
+  check("an approved number stays bound to its account", /duplicate key|unique|another account/.test(err || ""), err);
 
   const verified = async (pid) => (await q(`select count(*)::int as n from im_verified_pwd where profile_id=${pid}`))[0].n === 1;
   check("approved and unexpired → verified", await verified(a.id));
+
+  // Renewal: the owner may resubmit the same number while still verified.
+  err = null;
+  try { await ins(a.id, "HASH-ONE"); } catch (e) { err = e.message; }
+  check("the owner can submit a renewal with the same number while verified", err === null, err);
+  const [renewal] = await q(`select id from im_pwd_verifications where profile_id=${a.id} and status='submitted'`);
+  const decide = async (id, decision, code = null) =>
+    (await q(`select public.im_decide_pwd_verification(${id}, '${decision}', ${x.id}, ${code ? `'${code}'` : "null"}, null, 'found', 'Listed in the registry') as r`))[0].r;
+  check("approving the renewal retires the old approval in the same step", (await decide(renewal.id, "approved")) === "ok");
+  const rows = await q(`select status from im_pwd_verifications where profile_id=${a.id} order by id`);
+  check("…leaving exactly one approval",
+    rows.filter((r) => r.status === "approved").length === 1 && rows.some((r) => r.status === "expired"), JSON.stringify(rows));
+  check("…and the person stays verified throughout", await verified(a.id));
+  check("a decision cannot be made twice", (await decide(renewal.id, "rejected", "other")) === "not_submitted");
+  const rpc = await asUser(BX, "authenticated", `select public.im_decide_pwd_verification(${renewal.id}, 'approved', ${x.id})`);
+  check("clients cannot call the decision function", !rpc.ok, rpc.error);
 
   // Selling gate + badge.
   await runSql(`
@@ -64,6 +80,20 @@ export default async function ({ q, runSql, asUser, check }) {
     (await q(`select count(*)::int as n from im_storefront_products where id=1701`))[0].n === 0);
   await ins(b.id, "HASH-ONE");
   check("a revoked number can be used again by its rightful owner after review", true);
+
+  // Rejection needs a reason, and wipes the full number either way.
+  const [bRow] = await q(`select id from im_pwd_verifications where profile_id=${b.id} and status='submitted'`);
+  await runSql(`update im_pwd_verifications set id_number_encrypted='v1.sealed' where id=${bRow.id}`);
+  check("a rejection without a reason is refused", (await decide(bRow.id, "rejected")) === "reason_required");
+  check("a rejection with a reason is recorded", (await decide(bRow.id, "rejected", "unreadable")) === "ok");
+  const [bAfter] = await q(`select status, reason_code, id_number_encrypted, registry_result from im_pwd_verifications where id=${bRow.id}`);
+  check("…and the full number is wiped at the decision",
+    bAfter.status === "rejected" && bAfter.reason_code === "unreadable" && bAfter.id_number_encrypted === null && bAfter.registry_result === "found",
+    JSON.stringify(bAfter));
+  await runSql(`insert into im_pwd_verifications (profile_id, id_number_hash, id_number_last4, expires_on, status)
+                values (${b.id}, 'HASH-OLD', '9999', current_date - 3, 'submitted')`);
+  const [old] = await q(`select id from im_pwd_verifications where id_number_hash='HASH-OLD'`);
+  check("an ID that expired while waiting cannot be approved", (await decide(old.id, "approved")) === "expired_id");
 
   // Client access.
   const own = await asUser(BX, "authenticated", `select id from im_pwd_verifications`);
