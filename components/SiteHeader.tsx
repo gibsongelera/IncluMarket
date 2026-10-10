@@ -10,40 +10,8 @@ import { ScopedSearchBox } from "./ScopedSearchBox";
 import { NotificationBell } from "./NotificationBell";
 import { LogoutButton } from "./HeaderActions";
 import { MobileNav } from "./MobileNav";
-
-type NavItem = { href: string; label: string; key: string };
-
-const NAV: Record<Role, NavItem[]> = {
-  buyer: [
-    { href: "/home", label: "Shop", key: "home" },
-    { href: "/buyer/wishlist", label: "Wishlist", key: "wishlist" },
-    { href: "/buyer/orders", label: "My Orders", key: "orders" },
-    { href: "/buyer/messages", label: "Messages", key: "messages" },
-    { href: "/buyer/support", label: "Support", key: "support" },
-  ],
-  seller: [
-    { href: "/seller/dashboard", label: "Dashboard", key: "dashboard" },
-    { href: "/seller/products", label: "Products", key: "products" },
-    { href: "/seller/orders", label: "Orders", key: "orders" },
-    { href: "/seller/messages", label: "Messages", key: "messages" },
-    { href: "/seller/reviews", label: "Reviews", key: "reviews" },
-  ],
-  admin: [
-    { href: "/admin/users", label: "Users", key: "users" },
-    { href: "/admin/products", label: "Products", key: "products" },
-    { href: "/admin/tickets", label: "Tickets", key: "tickets" },
-    { href: "/admin/compliance", label: "Compliance", key: "compliance" },
-    { href: "/admin/reports", label: "Reports", key: "reports" },
-    { href: "/admin/payments", label: "Payments", key: "payments" },
-    { href: "/admin/theme", label: "Theme", key: "theme" },
-  ],
-};
-
-const BRAND_HREF: Record<Role, string> = {
-  buyer: "/home",
-  seller: "/seller/dashboard",
-  admin: "/admin/users",
-};
+import { HeaderNavLinks } from "./HeaderNavLinks";
+import { HOME_HREF } from "@/lib/nav";
 
 export async function SiteHeader({
   variant,
@@ -51,11 +19,13 @@ export async function SiteHeader({
   session,
 }: {
   variant: Role;
-  active: string;
+  /** @deprecated The current page is read from the URL; kept so callers compile. */
+  active?: string;
   session: SessionUser | null;
 }) {
   if (!session) {
     return (
+      <>
       <header className="site-header site-header--buyer" role="banner">
         <div className="container header-row">
           <Link className="brand" href="/home" aria-label="InclusiveMarket home">
@@ -74,6 +44,8 @@ export async function SiteHeader({
           </nav>
         </div>
       </header>
+      <MobileNav variant="guest" />
+      </>
     );
   }
 
@@ -88,7 +60,7 @@ export async function SiteHeader({
     <>
       <header className={`site-header site-header--${variant}`} role="banner">
         <div className="container header-row">
-          <Link className="brand" href={BRAND_HREF[variant]} aria-label="InclusiveMarket home">
+          <Link className="brand" href={HOME_HREF[variant]} aria-label="InclusiveMarket home">
             <span className="brand-mark" aria-hidden="true">
               IM
             </span>
@@ -103,18 +75,7 @@ export async function SiteHeader({
           {variant === "buyer" ? <SearchBox /> : <ScopedSearchBox variant={variant} />}
 
           <nav className="header-nav" aria-label="Primary">
-            {NAV[variant].map((item) => (
-              <Link
-                key={item.key}
-                className={`nav-link${active === item.key ? " nav-link--active" : ""}`}
-                href={item.href}
-              >
-                {item.label}
-                {item.key === "messages" && unreadMessages > 0 ? (
-                  <CartBadge count={unreadMessages} />
-                ) : null}
-              </Link>
-            ))}
+            <HeaderNavLinks variant={variant} unreadMessages={unreadMessages} />
             {variant === "buyer" ? (
               <Link className="nav-link nav-link--cart" href="/buyer/cart" aria-label="Cart">
                 Cart <CartBadge count={cartCount} />

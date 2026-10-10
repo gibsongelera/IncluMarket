@@ -1,25 +1,25 @@
-import Link from "next/link";
+import { SiteHeader } from "./SiteHeader";
 import { SiteFooter } from "./SiteFooter";
+import { getRenderSession } from "@/lib/session";
 
-export function StaticPageLayout({
+/**
+ * Shell for the content pages (About, Contact, FAQ, Privacy, Terms,
+ * Accessibility, account notices). It used to render a logo-only header —
+ * no search, no navigation, no way to sign in — so these pages were a dead
+ * end, worst of all on a phone (N-31). They now get the same header and
+ * phone navigation as the rest of the site, for guests and signed-in users.
+ */
+export async function StaticPageLayout({
   title,
   children,
 }: {
   title: string;
   children: React.ReactNode;
 }) {
+  const session = await getRenderSession().catch(() => null);
   return (
     <>
-      <header className="static-header" role="banner">
-        <div className="container">
-          <Link className="brand" href="/" aria-label="InclusiveMarket home">
-            <span className="brand-mark" aria-hidden="true">
-              IM
-            </span>
-            <span className="brand-word">InclusiveMarket</span>
-          </Link>
-        </div>
-      </header>
+      <SiteHeader variant={session?.role ?? "buyer"} session={session} />
       <main id="main" tabIndex={-1} className="container static-page">
         <article className="prose">
           <h1>{title}</h1>

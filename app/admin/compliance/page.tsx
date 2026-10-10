@@ -1,6 +1,4 @@
 import { requireRole } from "@/lib/session";
-import { SiteHeader } from "@/components/SiteHeader";
-import { SiteFooter } from "@/components/SiteFooter";
 import { Chart } from "@/components/Chart";
 import { formatDateTime } from "@/lib/format";
 import {
@@ -61,97 +59,93 @@ export default async function AdminCompliancePage() {
   const rows = audits.slice(0, 40);
 
   return (
-    <>
-      <SiteHeader variant="admin" active="compliance" session={session} />
-      <main id="main" tabIndex={-1} className="container main--admin">
-        <h1>Ecosystem compliance monitor</h1>
-        <p className="muted">
-          RA 10173 (Data Privacy Act) alignment and audit trail visibility.
-        </p>
+    <main id="main" tabIndex={-1} className="main--admin">
+      <h1>Ecosystem compliance monitor</h1>
+      <p className="muted">
+        RA 10173 (Data Privacy Act) alignment and audit trail visibility.
+      </p>
 
-        <section className="kpis" aria-label="Compliance metrics">
-          <article className="kpi">
-            <span className="kpi__label">Users with logged consent</span>
-            <strong className="kpi__value">{consentedIds.size}</strong>
-          </article>
-          <article className="kpi">
-            <span className="kpi__label">PII fields masked in public views</span>
-            <strong className="kpi__value">{profiles.length}</strong>
-          </article>
-          <article className="kpi">
-            <span className="kpi__label">Password storage (simulated)</span>
-            <strong className="kpi__value">bcrypt cost 12</strong>
-          </article>
-          <article className="kpi">
-            <span className="kpi__label">Transport (simulated)</span>
-            <strong className="kpi__value">TLS 1.2+</strong>
-          </article>
-        </section>
+      <section className="kpis" aria-label="Compliance metrics">
+        <article className="kpi">
+          <span className="kpi__label">Users with logged consent</span>
+          <strong className="kpi__value">{consentedIds.size}</strong>
+        </article>
+        <article className="kpi">
+          <span className="kpi__label">PII fields masked in public views</span>
+          <strong className="kpi__value">{profiles.length}</strong>
+        </article>
+        <article className="kpi">
+          <span className="kpi__label">Password storage (simulated)</span>
+          <strong className="kpi__value">bcrypt cost 12</strong>
+        </article>
+        <article className="kpi">
+          <span className="kpi__label">Transport (simulated)</span>
+          <strong className="kpi__value">TLS 1.2+</strong>
+        </article>
+      </section>
 
-        <section className="chart-grid">
-          <article className="chart-card">
-            <h2>Daily activity (last 14 days)</h2>
-            <Chart
-              kind="line"
-              ariaLabel="Daily activity chart"
-              data={[{ points: buckets.map((b) => ({ label: b.label, value: b.value })) }]}
-            />
-          </article>
-          <article className="chart-card">
-            <h2>Orders by status</h2>
-            <Chart kind="pie" ariaLabel="Orders by status chart" data={pieData} />
-          </article>
-        </section>
+      <section className="chart-grid">
+        <article className="chart-card">
+          <h2>Daily activity (last 14 days)</h2>
+          <Chart
+            kind="line"
+            ariaLabel="Daily activity chart"
+            data={[{ points: buckets.map((b) => ({ label: b.label, value: b.value })) }]}
+          />
+        </article>
+        <article className="chart-card">
+          <h2>Orders by status</h2>
+          <Chart kind="pie" ariaLabel="Orders by status chart" data={pieData} />
+        </article>
+      </section>
 
-        <section>
-          <h2>Audit trail (recent events)</h2>
-          <TableWrap label="Audit log">
-            <table className="data-table data-table--cards" aria-label="Audit trail">
-              <thead>
+      <section>
+        <h2>Audit trail (recent events)</h2>
+        <TableWrap label="Audit log">
+          <table className="data-table data-table--cards" aria-label="Audit trail">
+            <thead>
+              <tr>
+                <th>Timestamp</th>
+                <th>Actor</th>
+                <th>Action</th>
+                <th>Target</th>
+              </tr>
+            </thead>
+            <tbody id="audit-rows">
+              {rows.length === 0 ? (
                 <tr>
-                  <th>Timestamp</th>
-                  <th>Actor</th>
-                  <th>Action</th>
-                  <th>Target</th>
+                  <td colSpan={4} className="empty">
+                    No audit entries yet.
+                  </td>
                 </tr>
-              </thead>
-              <tbody id="audit-rows">
-                {rows.length === 0 ? (
-                  <tr>
-                    <td colSpan={4} className="empty">
-                      No audit entries yet.
+              ) : (
+                rows.map((a) => (
+                  <tr key={a.id}>
+                    <td>{formatDateTime(a.created_at)}</td>
+                    <td>
+                      {a.actor_id != null ? nameById[a.actor_id] || `user:${a.actor_id}` : "system"}{" "}
+                      <span className="muted small">({a.actor_role})</span>
+                    </td>
+                    <td>{a.action}</td>
+                    <td>
+                      <code>{a.target}</code>
                     </td>
                   </tr>
-                ) : (
-                  rows.map((a) => (
-                    <tr key={a.id}>
-                      <td>{formatDateTime(a.created_at)}</td>
-                      <td>
-                        {a.actor_id != null ? nameById[a.actor_id] || `user:${a.actor_id}` : "system"}{" "}
-                        <span className="muted small">({a.actor_role})</span>
-                      </td>
-                      <td>{a.action}</td>
-                      <td>
-                        <code>{a.target}</code>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </TableWrap>
-        </section>
+                ))
+              )}
+            </tbody>
+          </table>
+        </TableWrap>
+      </section>
 
-        <section className="note">
-          <h2>Security note</h2>
-          <p>
-            Authentication uses Supabase Auth with email confirmation for new signups.
-            Passwords are verified by Supabase. AES-256-at-rest and TLS 1.2+ apply at the
-            platform layer for stored data in transit and at rest.
-          </p>
-        </section>
-      </main>
-      <SiteFooter />
-    </>
+      <section className="note">
+        <h2>Security note</h2>
+        <p>
+          Authentication uses Supabase Auth with email confirmation for new signups.
+          Passwords are verified by Supabase. AES-256-at-rest and TLS 1.2+ apply at the
+          platform layer for stored data in transit and at rest.
+        </p>
+      </section>
+    </main>
   );
 }

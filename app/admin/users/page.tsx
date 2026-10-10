@@ -1,6 +1,4 @@
 import { requireRole } from "@/lib/session";
-import { SiteHeader } from "@/components/SiteHeader";
-import { SiteFooter } from "@/components/SiteFooter";
 import { AdminUsersClient } from "@/components/AdminUsersClient";
 import {
   getConsentLogs,
@@ -35,12 +33,8 @@ export default async function AdminUsersPage() {
   const users = profiles.map((u) => ({ ...u, footprint: footprint(u.id) }));
 
   return (
-    <>
-      <SiteHeader variant="admin" active="users" session={session} />
-      <main id="main" tabIndex={-1} className="container main--admin">
-        <AdminUsersClient users={users} currentAdminId={session.user_id} />
-      </main>
-      <SiteFooter />
-    </>
+    <main id="main" tabIndex={-1} className="main--admin">
+      <AdminUsersClient users={users} currentAdminId={session.user_id} />
+    </main>
   );
 }

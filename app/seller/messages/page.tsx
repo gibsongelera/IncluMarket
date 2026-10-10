@@ -1,6 +1,4 @@
 import { requireRole } from "@/lib/session";
-import { SiteHeader } from "@/components/SiteHeader";
-import { SiteFooter } from "@/components/SiteFooter";
 import { MessagesClient } from "@/components/MessagesClient";
 import { getConversationsForUser, getDisplayNames, getMessagesForConversations } from "@/lib/data";
 
@@ -22,20 +20,16 @@ export default async function SellerMessagesPage({
   ]);
 
   return (
-    <>
-      <SiteHeader variant="seller" active="messages" session={session} />
-      <main id="main" tabIndex={-1} className="container main--messages">
-        <h1>Messages</h1>
-        <MessagesClient
-          viewerRole="seller"
-          viewerId={session.user_id}
-          conversations={conversations}
-          messages={messages}
-          participants={Object.entries(names).map(([id, name]) => ({ id: Number(id), name }))}
-          initialConversationId={sp.c ? Number(sp.c) : null}
-        />
-      </main>
-      <SiteFooter />
-    </>
+    <main id="main" tabIndex={-1} className="container main--messages">
+      <h1>Messages</h1>
+      <MessagesClient
+        viewerRole="seller"
+        viewerId={session.user_id}
+        conversations={conversations}
+        messages={messages}
+        participants={Object.entries(names).map(([id, name]) => ({ id: Number(id), name }))}
+        initialConversationId={sp.c ? Number(sp.c) : null}
+      />
+    </main>
   );
 }

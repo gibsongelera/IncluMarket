@@ -826,6 +826,30 @@ h3 {
   }
 }
 
+/* --- Seller Centre / Admin sidebar (lg) ------------------------------- */
+@media (min-width: 1024px) {
+  .console {
+    grid-template-columns: 14rem minmax(0, 1fr);
+    align-items: start;
+  }
+  .console-nav {
+    display: block;
+    position: sticky;
+    top: calc(var(--header-total) + var(--space-4));
+    margin-top: 1.5rem;
+    padding: var(--space-3);
+    background: var(--canvas-white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+  }
+  /* The sidebar carries these links now; the header keeps search, the bell
+     and sign-out. */
+  .site-header--seller .header-nav .nav-link,
+  .site-header--admin .header-nav .nav-link {
+    display: none;
+  }
+}
+
 /* --- The product grid: its ONLY definition (B-17) -----------------------
    It was defined five times across three files, and `auto-fill` kept empty
    tracks, which is the "large empty area" the client saw. Explicit column

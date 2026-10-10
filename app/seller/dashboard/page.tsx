@@ -1,6 +1,4 @@
 import { requireRole } from "@/lib/session";
-import { SiteHeader } from "@/components/SiteHeader";
-import { SiteFooter } from "@/components/SiteFooter";
 import { Chart } from "@/components/Chart";
 import { Pill } from "@/components/Pill";
 import { money, formatDate, shortName } from "@/lib/format";
@@ -106,81 +104,77 @@ export default async function SellerDashboardPage() {
     .slice(0, 8);
 
   return (
-    <>
-      <SiteHeader variant="seller" active="dashboard" session={session} />
-      <main id="main" tabIndex={-1} className="container main--seller">
-        <h1>Merchant dashboard</h1>
+    <main id="main" tabIndex={-1} className="main--seller">
+      <h1>Merchant dashboard</h1>
 
-        <section className="kpis" aria-label="Key metrics">
-          <article className="kpi">
-            <span className="kpi__label">Monthly revenue</span>
-            <strong className="kpi__value">{money(revenue30)}</strong>
-          </article>
-          <article className="kpi">
-            <span className="kpi__label">Orders (30d)</span>
-            <strong className="kpi__value">{orders30.size}</strong>
-          </article>
-          <article className="kpi">
-            <span className="kpi__label">Items sold (30d)</span>
-            <strong className="kpi__value">{items30}</strong>
-          </article>
-          <article className="kpi">
-            <span className="kpi__label">Low-stock variants</span>
-            <strong className="kpi__value">{lowStock}</strong>
-          </article>
-        </section>
+      <section className="kpis" aria-label="Key metrics">
+        <article className="kpi">
+          <span className="kpi__label">Monthly revenue</span>
+          <strong className="kpi__value">{money(revenue30)}</strong>
+        </article>
+        <article className="kpi">
+          <span className="kpi__label">Orders (30d)</span>
+          <strong className="kpi__value">{orders30.size}</strong>
+        </article>
+        <article className="kpi">
+          <span className="kpi__label">Items sold (30d)</span>
+          <strong className="kpi__value">{items30}</strong>
+        </article>
+        <article className="kpi">
+          <span className="kpi__label">Low-stock variants</span>
+          <strong className="kpi__value">{lowStock}</strong>
+        </article>
+      </section>
 
-        <section className="chart-grid">
-          <article className="chart-card">
-            <h2>Sales volume (last 12 weeks)</h2>
-            <Chart
-              kind="line"
-              ariaLabel="Weekly sales volume chart"
-              currency
-              data={[{ points: buckets.map((b) => ({ label: b.label, value: b.value })) }]}
-            />
-          </article>
-          <article className="chart-card">
-            <h2>Inventory turnover by product</h2>
-            <Chart kind="bar" ariaLabel="Inventory turnover chart" data={turnover} color="var(--brand-brown)" />
-          </article>
-        </section>
+      <section className="chart-grid">
+        <article className="chart-card">
+          <h2>Sales volume (last 12 weeks)</h2>
+          <Chart
+            kind="line"
+            ariaLabel="Weekly sales volume chart"
+            currency
+            data={[{ points: buckets.map((b) => ({ label: b.label, value: b.value })) }]}
+          />
+        </article>
+        <article className="chart-card">
+          <h2>Inventory turnover by product</h2>
+          <Chart kind="bar" ariaLabel="Inventory turnover chart" data={turnover} color="var(--brand-brown)" />
+        </article>
+      </section>
 
-        <section className="recent">
-          <h2>Recent orders</h2>
-          {mineOrders.length === 0 ? (
-            <p className="empty">No recent orders.</p>
-          ) : (
-            <TableWrap label="Recent orders">
-              <table className="data-table data-table--cards" aria-label="Recent orders">
-                <thead>
-                  <tr>
-                    <th>Order</th>
-                    <th>Buyer</th>
-                    <th>Placed</th>
-                    <th>Your items</th>
-                    <th>Status</th>
+      <section className="recent">
+        <h2>Recent orders</h2>
+        {mineOrders.length === 0 ? (
+          <p className="empty">No recent orders.</p>
+        ) : (
+          <TableWrap label="Recent orders">
+            <table className="data-table data-table--cards" aria-label="Recent orders">
+              <thead>
+                <tr>
+                  <th>Order</th>
+                  <th>Buyer</th>
+                  <th>Placed</th>
+                  <th>Your items</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {mineOrders.map((o) => (
+                  <tr key={o.id}>
+                    <td>#{o.id}</td>
+                    <td>{shortName(nameById[o.buyer_id])}</td>
+                    <td>{formatDate(o.created_at)}</td>
+                    <td>{money(mySubtotal[o.id] || 0)}</td>
+                    <td>
+                      <Pill status={o.order_status} />
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {mineOrders.map((o) => (
-                    <tr key={o.id}>
-                      <td>#{o.id}</td>
-                      <td>{shortName(nameById[o.buyer_id])}</td>
-                      <td>{formatDate(o.created_at)}</td>
-                      <td>{money(mySubtotal[o.id] || 0)}</td>
-                      <td>
-                        <Pill status={o.order_status} />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </TableWrap>
-          )}
-        </section>
-      </main>
-      <SiteFooter />
-    </>
+                ))}
+              </tbody>
+            </table>
+          </TableWrap>
+        )}
+      </section>
+    </main>
   );
 }

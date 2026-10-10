@@ -1,6 +1,4 @@
 import { requireRole } from "@/lib/session";
-import { SiteHeader } from "@/components/SiteHeader";
-import { SiteFooter } from "@/components/SiteFooter";
 import { SellerOrdersClient, type SellerOrderLite } from "@/components/SellerOrdersClient";
 import {
   getDisplayNames,
@@ -55,20 +53,16 @@ export default async function SellerOrdersPage() {
   }));
 
   return (
-    <>
-      <SiteHeader variant="seller" active="orders" session={session} />
-      <main id="main" tabIndex={-1} className="container main--seller">
-        <h1>Order fulfillment</h1>
-        <SellerOrdersClient
-          orders={lite}
-          orderItems={myItems}
-          products={products.map((p) => ({ id: p.id, title: p.title }))}
-          variants={variants.map((v) => ({ id: v.id, color_name: v.color_name, size: v.size }))}
-          buyers={Object.entries(names).map(([id, name]) => ({ id: Number(id), name: shortName(name) }))}
-          history={history}
-        />
-      </main>
-      <SiteFooter />
-    </>
+    <main id="main" tabIndex={-1} className="main--seller">
+      <h1>Order fulfillment</h1>
+      <SellerOrdersClient
+        orders={lite}
+        orderItems={myItems}
+        products={products.map((p) => ({ id: p.id, title: p.title }))}
+        variants={variants.map((v) => ({ id: v.id, color_name: v.color_name, size: v.size }))}
+        buyers={Object.entries(names).map(([id, name]) => ({ id: Number(id), name: shortName(name) }))}
+        history={history}
+      />
+    </main>
   );
 }

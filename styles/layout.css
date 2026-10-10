@@ -705,6 +705,48 @@
 
 /* Seller */
 .main--seller, .main--admin { padding-top: 1.5rem; padding-bottom: 2rem; display: grid; gap: 1.25rem; }
+
+/* Seller Centre / Admin shell: one column, plus a left sidebar from lg up
+   (responsive.css). The phone tab bar and header links cover smaller screens. */
+.console { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-5); }
+.console__content { min-width: 0; }
+.console-nav { display: none; }
+.console-nav__title {
+  margin: 0 0 var(--space-3);
+  font-family: var(--font-display);
+  font-weight: 800;
+  color: var(--text-charcoal);
+}
+.console-nav__group + .console-nav__group { margin-top: var(--space-4); }
+.console-nav__section {
+  margin: 0 0 var(--space-1);
+  padding-inline: var(--space-3);
+  font-size: .75rem;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.console-nav ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.console-nav__link {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 2.75rem;
+  padding: var(--space-2) var(--space-3);
+  border-left: 3px solid transparent;
+  border-radius: var(--radius-sm);
+  color: var(--text-charcoal);
+  font-weight: 600;
+  text-decoration: none;
+}
+.console-nav__link:hover { background: var(--surface-gray); }
+/* Current page: tint, bar AND aria-current — never colour alone. */
+.console-nav__link.is-current {
+  background: var(--brand-blue-100);
+  border-left-color: var(--brand-blue);
+  color: var(--brand-blue-800);
+}
 .page-head { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; }
 .kpis {
   display: grid;

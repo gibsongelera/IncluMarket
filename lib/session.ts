@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -70,8 +71,16 @@ export async function isSignedInButSuspended(): Promise<boolean> {
   return data?.account_status === "suspended";
 }
 
+/**
+ * getSession() memoised for one server render. The Seller Centre and Admin
+ * layouts and the page inside them both need the session; without this every
+ * page view made two Supabase Auth round trips. Server actions keep calling
+ * getSession() directly — a sign-in or sign-out changes the answer mid-request.
+ */
+export const getRenderSession = cache(getSession);
+
 export async function requireRole(roles: Role[]): Promise<SessionUser> {
-  const session = await getSession();
+  const session = await getRenderSession();
   if (!session) {
     // A suspended user used to be bounced silently to the storefront (B-14);
     // they now get a page that says what happened and what to do.

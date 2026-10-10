@@ -1,6 +1,4 @@
 import { requireRole } from "@/lib/session";
-import { SiteHeader } from "@/components/SiteHeader";
-import { SiteFooter } from "@/components/SiteFooter";
 import { AdminThemeClient } from "@/components/AdminThemeClient";
 import { getThemePresets, getThemePreset } from "@/lib/theme";
 import { getThemeSettings } from "@/lib/data";
@@ -29,19 +27,15 @@ export default async function AdminThemePage() {
   }));
 
   return (
-    <>
-      <SiteHeader variant="admin" active="theme" session={session} />
-      <main id="main" tabIndex={-1} className="container main--admin">
-        <div className="page-head">
-          <h1>Theme &amp; appearance</h1>
-          <p className="lede muted">
-            Customize nav, body, and footer colors. Presets sync live across buyer, seller, and admin
-            pages.
-          </p>
-        </div>
-        <AdminThemeClient initial={initial} presets={presets} />
-      </main>
-      <SiteFooter />
-    </>
+    <main id="main" tabIndex={-1} className="main--admin">
+      <div className="page-head">
+        <h1>Theme &amp; appearance</h1>
+        <p className="lede muted">
+          Customize nav, body, and footer colors. Presets sync live across buyer, seller, and admin
+          pages.
+        </p>
+      </div>
+      <AdminThemeClient initial={initial} presets={presets} />
+    </main>
   );
 }

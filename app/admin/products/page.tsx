@@ -1,6 +1,4 @@
 import { requireRole } from "@/lib/session";
-import { SiteHeader } from "@/components/SiteHeader";
-import { SiteFooter } from "@/components/SiteFooter";
 import { AdminProductsClient } from "@/components/AdminProductsClient";
 import { getAllProducts, getCategories, getProfiles } from "@/lib/data";
 
@@ -15,17 +13,13 @@ export default async function AdminProductsPage() {
   ]);
 
   return (
-    <>
-      <SiteHeader variant="admin" active="products" session={session} />
-      <main id="main" tabIndex={-1} className="container main--admin">
-        <h1>Product verification queue</h1>
-        <AdminProductsClient
-          products={products}
-          categories={categories}
-          sellers={profiles.map((p) => ({ id: p.id, name: p.name, email: p.email }))}
-        />
-      </main>
-      <SiteFooter />
-    </>
+    <main id="main" tabIndex={-1} className="main--admin">
+      <h1>Product verification queue</h1>
+      <AdminProductsClient
+        products={products}
+        categories={categories}
+        sellers={profiles.map((p) => ({ id: p.id, name: p.name, email: p.email }))}
+      />
+    </main>
   );
 }

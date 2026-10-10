@@ -1,6 +1,4 @@
 import { requireRole } from "@/lib/session";
-import { SiteHeader } from "@/components/SiteHeader";
-import { SiteFooter } from "@/components/SiteFooter";
 import { SellerReviewsClient } from "@/components/SellerReviewsClient";
 import { getDisplayNames, getReviewsForProducts, getSellerProductIndex } from "@/lib/data";
 import { shortName } from "@/lib/format";
@@ -16,17 +14,13 @@ export default async function SellerReviewsPage() {
   const names = await getDisplayNames(reviews.map((r) => r.buyer_id));
 
   return (
-    <>
-      <SiteHeader variant="seller" active="reviews" session={session} />
-      <main id="main" tabIndex={-1} className="container main--seller">
-        <h1>Customer reviews</h1>
-        <SellerReviewsClient
-          reviews={reviews}
-          products={products.map((p) => ({ id: p.id, title: p.title }))}
-          buyers={Object.entries(names).map(([id, name]) => ({ id: Number(id), name: shortName(name) }))}
-        />
-      </main>
-      <SiteFooter />
-    </>
+    <main id="main" tabIndex={-1} className="main--seller">
+      <h1>Customer reviews</h1>
+      <SellerReviewsClient
+        reviews={reviews}
+        products={products.map((p) => ({ id: p.id, title: p.title }))}
+        buyers={Object.entries(names).map(([id, name]) => ({ id: Number(id), name: shortName(name) }))}
+      />
+    </main>
   );
 }

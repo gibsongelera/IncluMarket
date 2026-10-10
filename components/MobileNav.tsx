@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Icon } from "./Icon";
 import { logoutAction } from "@/lib/actions/auth";
-import type { Role } from "@/lib/types";
+import { isCurrent, NAV, type NavItem, type NavRole } from "@/lib/nav";
 
 /**
  * Bottom tab bar for phones, plus a "More" sheet for the overflow.
@@ -24,54 +24,13 @@ import type { Role } from "@/lib/types";
  *     cognitive disabilities, so the icons are decorative and the text is the
  *     accessible name.
  *
- * Rendered by SiteHeader so all 20 authenticated pages get it without edits.
+ * Rendered by SiteHeader so every page gets it without edits — guests too:
+ * they used to get no phone navigation at all (N-31). Items come from
+ * lib/nav.ts, shared with the header links and the console sidebar.
  */
 
-type Item = {
-  href: string;
-  label: string;
-  icon: string;
-  /** Also treat these path prefixes as "this tab is current". */
-  match?: string[];
-};
-
-const PRIMARY: Record<Role, Item[]> = {
-  buyer: [
-    { href: "/home", label: "Shop", icon: "grid", match: ["/buyer/product"] },
-    { href: "/buyer/wishlist", label: "Wishlist", icon: "heart" },
-    { href: "/buyer/cart", label: "Cart", icon: "cart", match: ["/buyer/checkout"] },
-    { href: "/buyer/orders", label: "Orders", icon: "box" },
-  ],
-  seller: [
-    { href: "/seller/dashboard", label: "Home", icon: "chart" },
-    { href: "/seller/products", label: "Products", icon: "box" },
-    { href: "/seller/orders", label: "Orders", icon: "truck" },
-    { href: "/seller/messages", label: "Chats", icon: "message-circle" },
-  ],
-  admin: [
-    { href: "/admin/users", label: "Users", icon: "users" },
-    { href: "/admin/products", label: "Products", icon: "box" },
-    { href: "/admin/tickets", label: "Tickets", icon: "flag" },
-    { href: "/admin/reports", label: "Reports", icon: "chart" },
-  ],
-};
-
-const OVERFLOW: Record<Role, Item[]> = {
-  buyer: [
-    { href: "/buyer/messages", label: "Messages", icon: "message-circle" },
-    { href: "/buyer/support", label: "Support", icon: "chat" },
-  ],
-  seller: [{ href: "/seller/reviews", label: "Reviews", icon: "sparkles" }],
-  admin: [
-    { href: "/admin/compliance", label: "Compliance", icon: "shield" },
-    { href: "/admin/payments", label: "Payments", icon: "download" },
-    { href: "/admin/theme", label: "Theme", icon: "sparkles" },
-  ],
-};
-
-function isCurrent(pathname: string, item: Item): boolean {
-  if (pathname === item.href) return true;
-  return (item.match ?? []).some((prefix) => pathname.startsWith(prefix));
+function isCurrentItem(pathname: string, item: NavItem): boolean {
+  return isCurrent(pathname, item);
 }
 
 export function MobileNav({
@@ -79,7 +38,7 @@ export function MobileNav({
   cartCount = 0,
   unreadMessages = 0,
 }: {
-  variant: Role;
+  variant: NavRole;
   cartCount?: number;
   unreadMessages?: number;
 }) {
@@ -87,8 +46,9 @@ export function MobileNav({
   const dialogRef = useRef<HTMLDialogElement>(null);
   const moreButtonRef = useRef<HTMLButtonElement>(null);
 
-  const primary = PRIMARY[variant] ?? PRIMARY.buyer;
-  const overflow = OVERFLOW[variant] ?? [];
+  const items = NAV[variant] ?? NAV.guest;
+  const primary = items.filter((i) => i.mobile === "primary").slice(0, 4);
+  const overflow = items.filter((i) => i.mobile === "more");
 
   // Reserve exactly the bar's height at the bottom of the page, so the last row
   // of content is never hidden behind it and the floating buttons can offset
@@ -129,11 +89,11 @@ export function MobileNav({
     <>
       <nav className="mobile-nav" aria-label="Primary">
         {primary.map((item) => {
-          const current = isCurrent(pathname, item);
+          const current = isCurrentItem(pathname, item);
           const badge =
             item.href === "/buyer/cart"
               ? cartCount
-              : item.label === "Chats" || item.label === "Messages"
+              : item.href.endsWith("/messages")
                 ? unreadMessages
                 : 0;
 
@@ -185,12 +145,14 @@ export function MobileNav({
               </Link>
             </li>
           ))}
-          <li>
-            <button type="button" onClick={() => void logoutAction()}>
-              <Icon name="logout" size={20} />
-              Sign out
-            </button>
-          </li>
+          {variant === "guest" ? null : (
+            <li>
+              <button type="button" onClick={() => void logoutAction()}>
+                <Icon name="logout" size={20} />
+                Sign out
+              </button>
+            </li>
+          )}
           <li>
             <button type="button" onClick={closeMore}>
               <Icon name="x" size={20} />
