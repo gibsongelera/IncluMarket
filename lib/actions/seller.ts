@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getSession } from "@/lib/session";
 import { createNotification, notifyAdmins } from "@/lib/notify";
 import { transitionOrder } from "@/lib/orders/transition";
+import { isMissingObject } from "@/lib/db-errors";
 import { orderSellerIds } from "@/lib/orders/sellers";
 import type { OrderState } from "@/lib/orders/state";
 import {
@@ -490,5 +491,59 @@ export async function setProductPublished(productId: number, published: boolean)
   revalidatePath("/seller/products");
   revalidatePath("/home");
   revalidatePath(`/buyer/product/${productId}`);
+  return { ok: true };
+}
+
+/**
+ * Reply publicly to a review of one of this seller's products (C-18). An
+ * empty reply removes it. The buyer is notified. Before migration 0019 there
+ * is nowhere to store a reply, and the seller is told so.
+ */
+export async function replyToReview(reviewId: number, text: string): Promise<ActionResult> {
+  const seller = await requireSeller();
+  if (!seller) return { ok: false, error: "Seller access required." };
+  const reply = boundedText(text ?? "", 1000);
+  if (reply && reply.length < 2) return { ok: false, error: "Write a short reply, or leave it empty to remove it." };
+
+  const db = createAdminClient();
+  const { data: review } = await db
+    .from("im_product_reviews")
+    .select("id, product_id, buyer_id")
+    .eq("id", reviewId)
+    .maybeSingle();
+  if (!review) return { ok: false, error: "That review no longer exists." };
+  const { data: product } = await db
+    .from("im_products")
+    .select("seller_id, title")
+    .eq("id", review.product_id)
+    .maybeSingle();
+  if (!product || product.seller_id !== seller.user_id) return { ok: false, error: "You can reply only to reviews of your own products." };
+
+  const { error } = await db
+    .from("im_product_reviews")
+    .update({ seller_reply: reply || null, seller_reply_at: reply ? new Date().toISOString() : null })
+    .eq("id", reviewId);
+  if (error) {
+    if (isMissingObject(error)) return { ok: false, error: "Replies need database migration 0019." };
+    return { ok: false, error: "Could not save your reply. Please try again." };
+  }
+
+  await db.from("im_audit_logs").insert({
+    actor_id: seller.user_id,
+    actor_role: "seller",
+    action: reply ? "replied_to_review" : "removed_review_reply",
+    target: `review:${reviewId}`,
+  });
+  if (reply) {
+    await createNotification({
+      userId: review.buyer_id,
+      type: "review_reply",
+      title: "The seller replied to your review",
+      body: `On “${product.title}”.`,
+      link: `/buyer/product/${review.product_id}#reviews-title`,
+    });
+  }
+  revalidatePath("/seller/reviews");
+  revalidatePath(`/buyer/product/${review.product_id}`);
   return { ok: true };
 }

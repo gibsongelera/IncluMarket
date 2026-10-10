@@ -462,16 +462,22 @@ export async function addReview(
   if (!bought?.length)
     return { ok: false, error: "You can review a product once it has been delivered to you." };
 
-  const { error } = await db.from("im_product_reviews").upsert(
-    {
-      product_id: productId,
-      buyer_id: session.user_id,
-      rating_score: rating,
-      comment_text: boundedText(comment, 2000),
-      created_at: new Date().toISOString(),
-    },
-    { onConflict: "product_id,buyer_id" }
-  );
+  const now = new Date().toISOString();
+  const base = {
+    product_id: productId,
+    buyer_id: session.user_id,
+    rating_score: rating,
+    comment_text: boundedText(comment, 2000),
+    created_at: now,
+  };
+  // Tie the review to the delivered order line behind it (migration 0019);
+  // a seller's reply on an earlier version is kept.
+  let { error } = await db
+    .from("im_product_reviews")
+    .upsert({ ...base, order_item_id: bought[0].id, updated_at: now }, { onConflict: "product_id,buyer_id" });
+  if (error && isMissingObject(error)) {
+    ({ error } = await db.from("im_product_reviews").upsert(base, { onConflict: "product_id,buyer_id" }));
+  }
   if (error) return { ok: false, error: "Could not save your review. Please try again." };
   await db.from("im_audit_logs").insert({
     actor_id: session.user_id,

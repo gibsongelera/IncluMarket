@@ -5,30 +5,22 @@ import { getSession } from "@/lib/session";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { ProductDetailClient } from "@/components/ProductDetailClient";
-import { StarRating } from "@/components/StarRating";
-import { formatDate } from "@/lib/format";
 import {
   getActiveSaleForProduct,
   getCategories,
   getDisplayNames,
   getProductById,
   getPublicProductById,
-  getReviewsByProduct,
   getVariantsByProduct,
   getWishlistProductIds,
-  ratingByProduct,
 } from "@/lib/data";
 import type { Product } from "@/lib/types";
 import type { SessionUser } from "@/lib/types";
 import { isVerifiedPwd } from "@/lib/pwd/data";
+import { getReviewsLite, summarize } from "@/lib/reviews";
+import { ReviewsSection } from "@/components/ReviewsSection";
 
 export const dynamic = "force-dynamic";
-
-function reviewerName(name: string | undefined): string {
-  if (!name) return "Buyer";
-  const parts = name.split(" ");
-  return parts[0] + " " + (parts[1] || "").charAt(0) + ".";
-}
 
 /**
  * Resolve what this visitor may see.
@@ -75,18 +67,18 @@ export default async function ProductPage({
 
   const [variants, reviews, categories, sale] = await Promise.all([
     getVariantsByProduct(product.id),
-    getReviewsByProduct(product.id),
+    getReviewsLite([product.id]),
     getCategories(),
     getActiveSaleForProduct(product.id),
   ]);
   const [names, sellerVerified, wishlistIds] = await Promise.all([
-    getDisplayNames([product.seller_id, ...reviews.map((r) => r.buyer_id)]),
+    getDisplayNames([product.seller_id]),
     isVerifiedPwd(product.seller_id),
     session?.role === "buyer" ? getWishlistProductIds(session.user_id) : Promise.resolve([] as number[]),
   ]);
   const cat = categories.find((c) => c.id === product.category);
   const catFolder = cat ? cat.folder || cat.label : product.category || "Uncategorized";
-  const { avg, count } = ratingByProduct(reviews);
+  const summary = summarize(reviews);
 
   return (
     <>
@@ -111,30 +103,12 @@ export default async function ProductPage({
           wishlisted={wishlistIds.includes(product.id)}
           categoryFolder={catFolder}
           userId={session?.role === "buyer" ? session.user_id : undefined}
-          rating={avg[product.id] || 0}
-          ratingCount={count[product.id] || 0}
+          rating={summary.average}
+          ratingCount={summary.count}
           salePercent={sale ? Number(sale.discount_percent) : null}
         />
 
-        <section className="reviews" aria-labelledby="reviews-title">
-          <h2 id="reviews-title">Customer reviews</h2>
-          <div className="reviews-list">
-            {reviews.length === 0 ? (
-              <p className="empty">No reviews yet.</p>
-            ) : (
-              reviews.map((r) => (
-                <article className="review" key={r.id}>
-                  <header>
-                    <strong>{reviewerName(names[r.buyer_id])}</strong>
-                    <span className="muted small">{formatDate(r.created_at)}</span>
-                  </header>
-                  <StarRating score={r.rating_score} />
-                  <p>{r.comment_text}</p>
-                </article>
-              ))
-            )}
-          </div>
-        </section>
+        <ReviewsSection reviews={reviews} summary={summary} />
       </main>
       <SiteFooter />
     </>

@@ -1377,3 +1377,11 @@ h3 {
     position: static;
   }
 }
+
+@media (min-width: 768px) {
+  /* Product page reviews: the breakdown beside the list. */
+  .reviews__layout {
+    grid-template-columns: 16rem minmax(0, 1fr);
+    align-items: start;
+  }
+}

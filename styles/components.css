@@ -172,6 +172,41 @@
 .details-list dt { font-weight: 700; color: var(--text-muted); }
 .details-list dd { margin: 0; overflow-wrap: anywhere; }
 
+/* --- Reviews (product page, Seller Centre) ------------------------------- */
+.reviews__layout { display: grid; gap: var(--space-5); }
+.reviews__average { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin: 0 0 var(--space-3); }
+.reviews__average > strong { font-size: var(--step-2); }
+.reviews__breakdown { display: grid; gap: var(--space-1); }
+.breakdown-row {
+  display: grid;
+  grid-template-columns: 5rem minmax(0, 1fr) 2.5rem;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 2.75rem;
+  padding: 0 var(--space-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  font: inherit;
+  color: var(--text-charcoal);
+  text-align: left;
+  cursor: pointer;
+}
+.breakdown-row--all { display: block; font-weight: 700; }
+.breakdown-row:hover:not(:disabled) { background: var(--surface-gray); }
+.breakdown-row[aria-pressed="true"] { border-color: var(--brand-blue); background: var(--brand-blue-100); font-weight: 700; }
+.breakdown-row:disabled { color: var(--text-muted); cursor: default; }
+.breakdown-row__bar { height: .5rem; border-radius: 999px; background: var(--surface-gray-2); overflow: hidden; }
+.breakdown-row__bar > span { display: block; height: 100%; background: var(--star-edge); }
+.breakdown-row__count { text-align: right; font-variant-numeric: tabular-nums; }
+.reviews__list { display: grid; gap: var(--space-3); align-content: start; }
+.reviews__list > p { margin: 0; }
+.review header { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.review__reply { margin-top: var(--space-2); padding: var(--space-3); border-left: 4px solid var(--brand-brown); background: var(--brand-brown-100); border-radius: var(--radius-sm); }
+.review__reply p { margin: 0; }
+.review__reply-label { font-weight: 700; margin-bottom: var(--space-1) !important; }
+.review__reply-form { display: grid; gap: var(--space-2); margin-top: var(--space-2); }
+
 /* --- Account area --------------------------------------------------------- */
 .account-tabs { margin-top: var(--space-4); }
 .account-tabs .tab { text-decoration: none; display: inline-flex; align-items: center; min-height: 2.75rem; }
