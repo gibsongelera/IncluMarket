@@ -50,6 +50,7 @@ export const NAV: Record<NavRole, NavItem[]> = {
   ],
   admin: [
     { href: "/admin/users", label: "Users", icon: "users", mobile: "primary", header: true, section: "People" },
+    { href: "/admin/verifications", label: "Verifications", icon: "shield", mobile: "more", header: true, section: "People" },
     { href: "/admin/products", label: "Products", icon: "box", mobile: "primary", header: true, section: "Catalog" },
     { href: "/admin/tickets", label: "Tickets", icon: "flag", mobile: "primary", header: true, section: "Support" },
     { href: "/admin/reports", label: "Reports", icon: "chart", mobile: "primary", header: true, section: "Insight" },
