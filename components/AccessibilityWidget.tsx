@@ -20,7 +20,24 @@ import {
   nextFontSize,
   parseStoredFontSize,
   scrollBehavior,
+  type UiPrefs,
 } from "@/lib/a11y/prefs";
+import { getUiPrefs, saveUiPrefs } from "@/lib/actions/account";
+
+/** localStorage key → account field (im_ui_prefs), for syncing (C-22). */
+const KEY_TO_PREF: Record<string, keyof UiPrefs> = {
+  [A11Y_KEYS.fontSize]: "fontSize",
+  [A11Y_KEYS.contrast]: "contrast",
+  [A11Y_KEYS.reduceMotion]: "reduceMotion",
+  [A11Y_KEYS.largeCursors]: "largeCursors",
+  [A11Y_KEYS.visualAlerts]: "visualAlerts",
+  [A11Y_KEYS.tts]: "tts",
+  [A11Y_KEYS.voice]: "voice",
+  [A11Y_KEYS.reading]: "reading",
+  [A11Y_KEYS.highlight]: "highlight",
+  [A11Y_KEYS.speechRate]: "speechRate",
+};
+const PULLED_KEY = "im_prefs_pulled";
 
 type TabId = "display" | "speech" | "voice" | "help";
 
@@ -92,6 +109,12 @@ export function AccessibilityWidget() {
   const panelRef = useRef<HTMLDivElement>(null);
   const fabRef = useRef<HTMLButtonElement>(null);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
+  /** Signed in: changes are also saved to the account. */
+  const accountRef = useRef(false);
+  /** Applying the account's settings: do not echo them back. */
+  const pullingRef = useRef(false);
+  const pendingRef = useRef<Partial<UiPrefs>>({});
+  const pushTimerRef = useRef<number | null>(null);
 
   /**
    * onend fires *after* the effect cleanup that triggered it, so it cannot read
@@ -384,8 +407,85 @@ export function AccessibilityWidget() {
   }, [voiceCmds]);
 
   function persist(key: string, value: string) {
-    window.localStorage.setItem(key, value);
+    try {
+      window.localStorage.setItem(key, value);
+    } catch {
+      // Blocked storage: the setting still applies for this page.
+    }
+    const field = KEY_TO_PREF[key];
+    if (!field || !accountRef.current || pullingRef.current) return;
+    (pendingRef.current as Record<string, unknown>)[field] =
+      field === "fontSize" || field === "speechRate" ? Number(value) : value === "true";
+    if (pushTimerRef.current) window.clearTimeout(pushTimerRef.current);
+    pushTimerRef.current = window.setTimeout(() => {
+      const changes = pendingRef.current;
+      pendingRef.current = {};
+      void saveUiPrefs(changes).catch(() => {});
+    }, 800);
   }
+
+  /** The account's settings win once per sign-in on this device (C-22). */
+  function applyFromAccount(p: UiPrefs) {
+    pullingRef.current = true;
+    setFontExact(p.fontSize);
+    toggleContrast(p.contrast);
+    toggleReduceMotion(p.reduceMotion);
+    toggleLargeCursors(p.largeCursors);
+    setVisualAlerts(p.visualAlerts);
+    persist(A11Y_KEYS.visualAlerts, String(p.visualAlerts));
+    setTts(p.tts);
+    persist(A11Y_KEYS.tts, String(p.tts));
+    toggleReading(p.reading);
+    toggleHighlight(p.highlight);
+    setSpeechRate(p.speechRate);
+    persist(A11Y_KEYS.speechRate, String(p.speechRate));
+    setVoiceCmds(checkVoiceSupport(window) === "ready" && p.voice);
+    persist(A11Y_KEYS.voice, String(p.voice));
+    pullingRef.current = false;
+  }
+
+  function localPrefs(): UiPrefs {
+    const ls = window.localStorage;
+    return {
+      fontSize: parseStoredFontSize(ls.getItem(A11Y_KEYS.fontSize)),
+      contrast: ls.getItem(A11Y_KEYS.contrast) === "true",
+      reduceMotion: ls.getItem(A11Y_KEYS.reduceMotion) === "true",
+      largeCursors: ls.getItem(A11Y_KEYS.largeCursors) === "true",
+      visualAlerts: ls.getItem(A11Y_KEYS.visualAlerts) === "true",
+      tts: ls.getItem(A11Y_KEYS.tts) === "true",
+      voice: ls.getItem(A11Y_KEYS.voice) === "true",
+      reading: ls.getItem(A11Y_KEYS.reading) === "true",
+      highlight: ls.getItem(A11Y_KEYS.highlight) !== "false",
+      speechRate: Number(ls.getItem(A11Y_KEYS.speechRate) || "1") || 1,
+    };
+  }
+
+  // After this device's own settings are applied: if someone is signed in,
+  // apply their account's settings once per sign-in (a setting chosen on
+  // another device follows them here), or — when the account has none yet —
+  // save this device's settings to it. Guests stay browser-only.
+  useEffect(() => {
+    let cancelled = false;
+    getUiPrefs()
+      .then((res) => {
+        if (cancelled || !res.signedIn || !res.userId) return;
+        accountRef.current = true;
+        let pulled: string | null = null;
+        try {
+          pulled = window.sessionStorage.getItem(PULLED_KEY);
+          window.sessionStorage.setItem(PULLED_KEY, String(res.userId));
+        } catch {}
+        if (pulled === String(res.userId)) return;
+        if (res.prefs) applyFromAccount(res.prefs);
+        else void saveUiPrefs(localPrefs()).catch(() => {});
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+    // Runs once per page load; the functions it calls only touch state setters.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function changeFont(delta: number) {
     const next = nextFontSize(fontSize, delta);

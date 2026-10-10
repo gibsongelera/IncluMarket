@@ -33,7 +33,7 @@ export default async function NotFound() {
           category below.
         </p>
         <div className="page-state__search">
-          <SearchBox />
+          <SearchBox idBase="nf-search" />
         </div>
         {categories.length ? (
           <nav aria-labelledby="nf-cats">

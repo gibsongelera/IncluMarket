@@ -175,3 +175,35 @@ export function matchVoiceCommand(utterance: string): VoiceAction {
   }
   return null;
 }
+
+/** The toolbar's settings as they are stored on the account (im_ui_prefs). */
+export interface UiPrefs {
+  fontSize: FontSizePx;
+  contrast: boolean;
+  reduceMotion: boolean;
+  largeCursors: boolean;
+  visualAlerts: boolean;
+  tts: boolean;
+  voice: boolean;
+  reading: boolean;
+  highlight: boolean;
+  speechRate: number;
+}
+
+/**
+ * Keep only valid settings from untrusted input (the save action is a public
+ * endpoint). Unknown keys and wrong types are dropped, not coerced.
+ */
+export function cleanUiPrefs(input: unknown): Partial<UiPrefs> {
+  if (!input || typeof input !== "object") return {};
+  const src = input as Record<string, unknown>;
+  const out: Partial<UiPrefs> = {};
+  if (typeof src.fontSize === "number" && Number.isFinite(src.fontSize)) out.fontSize = clampFontSize(src.fontSize);
+  for (const k of ["contrast", "reduceMotion", "largeCursors", "visualAlerts", "tts", "voice", "reading", "highlight"] as const) {
+    if (typeof src[k] === "boolean") out[k] = src[k] as boolean;
+  }
+  if (typeof src.speechRate === "number" && Number.isFinite(src.speechRate)) {
+    out.speechRate = Math.round(Math.min(2, Math.max(0.5, src.speechRate)) * 100) / 100;
+  }
+  return out;
+}

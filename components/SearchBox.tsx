@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { suggestProducts } from "@/lib/actions/search";
 import type { Suggestions } from "@/lib/storefront-core";
@@ -51,9 +51,19 @@ const GROUP_LABEL: Record<Option["kind"], string> = {
  * recent searches (kept only in this browser). Enter searches /search, which
  * has the filters. Arrow keys move through every suggestion; Escape closes.
  */
-export function SearchBox({ initialQ = "" }: { initialQ?: string }) {
+export function SearchBox({
+  initialQ = "",
+  idBase = "search",
+}: {
+  initialQ?: string;
+  /** Prefix for element ids; give a second search box on a page its own. */
+  idBase?: string;
+}) {
   const router = useRouter();
-  const listboxId = useId();
+  // Fixed ids rather than useId(): the header renders inside streamed
+  // boundaries, and a generated id differed between server and client.
+  const inputId = `${idBase}-input`;
+  const listboxId = `${idBase}-suggestions`;
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [q, setQ] = useState(initialQ);
   const [found, setFound] = useState<Suggestions>({ products: [], categories: [], sellers: [] });
@@ -147,12 +157,12 @@ export function SearchBox({ initialQ = "" }: { initialQ?: string }) {
         setOpen(false);
       }}
     >
-      <label htmlFor="search-input" className="sr-only">
+      <label htmlFor={inputId} className="sr-only">
         Search products
       </label>
       <div className="search__combobox">
         <input
-          id="search-input"
+          id={inputId}
           name="q"
           type="search"
           placeholder="Search PWD-made products…"
