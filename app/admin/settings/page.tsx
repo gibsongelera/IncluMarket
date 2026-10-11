@@ -16,8 +16,8 @@ export default async function AdminSettingsPage() {
     <main id="main" tabIndex={-1} className="main--admin">
       <h1>Settings</h1>
       <p className="muted">
-        Changes apply at once and are recorded in the audit log. If you change ID photo retention or the return window,
-        update the Privacy Policy and FAQ to match.
+        Changes apply at once and are recorded in the audit log. The Privacy Policy, FAQ and Terms read these numbers,
+        so they stay in step.
       </p>
       {settings === null ? (
         <p className="notice notice--info">Settings need database migration 0014. The defaults apply until then.</p>

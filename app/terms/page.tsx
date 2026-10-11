@@ -1,50 +1,60 @@
 import { StaticPageLayout } from "@/components/StaticPageLayout";
+import { getSettingInts } from "@/lib/settings";
+import { SITE } from "@/lib/site";
 
-export const metadata = { title: "Terms" };
+export const dynamic = "force-dynamic";
+export const metadata = { title: "Terms of use" };
 
-export default function TermsPage() {
+export default async function TermsPage() {
+  const s = await getSettingInts({ return_window_days: 7 });
   return (
-    <StaticPageLayout title="Terms of Service">
+    <StaticPageLayout title="Terms of use">
       <p>
-        These terms govern your use of InclusiveMarket. By creating an account
-        you agree to them.
+        These terms cover your use of {SITE.name}, run by {SITE.operator}. By creating an account you agree to them.
       </p>
+
       <h2>Accounts</h2>
       <p>
-        You must provide accurate information when registering. Admin
-        accounts are provisioned directly and are not available through
-        public sign-up. You're responsible for activity under your account.
+        Give accurate details when you sign up and keep your password to yourself; you are responsible for what happens
+        under your account. Administrator accounts are created by AVRC staff, not through sign-up. We may suspend an
+        account that breaks these terms, and we tell you why.
       </p>
-      <h2>Selling on InclusiveMarket</h2>
+
+      <h2>Selling</h2>
       <p>
-        Sellers list products for review before they go live. InclusiveMarket
-        (via its administrators) may approve, flag, or remove a listing that
-        violates these terms or applicable law. Sellers are responsible for
-        the accuracy of their listings and for fulfilling orders they accept.
+        Sellers verify their PWD ID before their products are listed. Every listing is reviewed before it appears, and
+        again when its name, price, photos or description change. We may decline, hide or remove a listing that breaks
+        these terms or the law, and we tell the seller why. Sellers are responsible for describing their items honestly,
+        shipping the orders they accept, and handling returns.
       </p>
-      <h2>Buying on InclusiveMarket</h2>
+
+      <h2>Buying</h2>
       <p>
-        Orders are a contract between buyer and seller; InclusiveMarket
-        facilitates the transaction and provides order tracking, messaging,
-        and a support-ticket escalation path if something goes wrong.
+        A sale is between you and the seller; {SITE.name} runs the shop, the checkout and the help desk. You can cancel
+        an order until it ships, and ask for a return within {s.return_window_days} days of delivery. If you and the
+        seller disagree, an administrator decides.
       </p>
+
+      <h2>PWD discounts</h2>
+      <p>
+        A PWD discount applies only to items covered by a discount rule, and only for a buyer with an approved, unexpired
+        PWD verification. Using someone else&rsquo;s ID, or a false one, ends the verification and may end the account.
+      </p>
+
       <h2>Reviews</h2>
       <p>
-        Reviews must reflect a genuine experience with the product. One
-        review per buyer per product is permitted, and can be edited but not
-        duplicated.
+        Reviews must describe your own experience. You can leave one review per product and edit it later. We may hide a
+        review that is abusive, shares personal details, is spam, or is not about the product, and we tell you why.
       </p>
-      <h2>Prohibited use</h2>
+
+      <h2>Not allowed</h2>
       <p>
-        Do not use InclusiveMarket to list illegal goods, harass another user, or
-        attempt to bypass the platform's security or role restrictions.
-        Violations may result in account suspension.
+        Listing illegal or dangerous goods, harassing anyone, or trying to get around the shop&rsquo;s security or
+        another person&rsquo;s account.
       </p>
+
       <h2>Changes</h2>
-      <p>
-        We may update these terms as the platform evolves. Material changes
-        will be communicated through the in-app notification center.
-      </p>
+      <p>We may update these terms. We will tell you about important changes in the app before they apply.</p>
     </StaticPageLayout>
   );
 }
