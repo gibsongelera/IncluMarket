@@ -201,15 +201,14 @@
   color: #FFFFFF;
 }
 .footer-links { list-style: none; margin: 0; padding: 0; display: grid; gap: .4rem; }
-.footer-social { display: flex; gap: .6rem; margin-top: .6rem; }
+/* Shown only when real profile URLs exist (lib/site.ts). Icon plus a visible
+   name, and a full-size target. */
+.footer-social { list-style: none; margin: 0; padding: 0; display: grid; gap: .4rem; }
 .footer-social a {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--color-footer-text) 30%, transparent);
+  gap: .5rem;
+  min-height: 2.75rem;
 }
 .newsletter-form { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .5rem; }
 .newsletter-form input {
