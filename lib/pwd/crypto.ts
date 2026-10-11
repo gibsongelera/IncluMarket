@@ -23,7 +23,9 @@ import { createCipheriv, createDecipheriv, createHmac, createHash, randomBytes }
 const DEV_FALLBACK = "inclusivemarket-dev-only-pwd-key-do-not-use-in-production";
 
 function key(name: "PWD_ID_HASH_KEY" | "PWD_ID_ENC_KEY"): Buffer | null {
-  const raw = process.env[name];
+  // Trimmed: a newline or space picked up when pasting the value into the
+  // host's settings must not silently change the key.
+  const raw = process.env[name]?.trim();
   if (raw && raw.length >= 16) return createHash("sha256").update(raw).digest();
   if (process.env.NODE_ENV === "production") return null;
   return createHash("sha256").update(`${DEV_FALLBACK}:${name}`).digest();
