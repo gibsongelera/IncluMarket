@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { usePresence } from "@/lib/a11y/use-presence";
 import { sendChatMessage, escalateChat, fetchChatHistory } from "@/lib/actions/chat";
 import { toast } from "@/lib/toast";
 import { flashVisualAlert } from "./VisualAlert";
@@ -16,6 +17,7 @@ const LEGACY_KEYS = ["im_chat_session_id", "im_chat_guest_id"];
 
 export function ChatWidget() {
   const [open, setOpen] = useState(false);
+  const presence = usePresence(open);
   const [messages, setMessages] = useState<ChatEntry[]>([
     {
       role: "bot",
@@ -108,8 +110,15 @@ export function ChatWidget() {
 
   return (
     <div className="chat-widget" ref={panelRef}>
-      {open ? (
-        <div className="chat-panel" role="dialog" aria-label="InclusiveMarket assistant" aria-modal="false">
+      {presence.mounted ? (
+        <div
+          className="chat-panel"
+          data-state={presence.closing ? "closing" : "open"}
+          inert={presence.closing}
+          role="dialog"
+          aria-label="InclusiveMarket assistant"
+          aria-modal="false"
+        >
           <div className="chat-panel__head">
             <strong>InclusiveMarket Assistant</strong>
             <button

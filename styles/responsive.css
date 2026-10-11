@@ -1366,17 +1366,18 @@ h3 {
 
 @media (prefers-reduced-motion: no-preference) {
   .is-deeplinked {
-    animation: deeplink-pulse 2.4s ease-out 1;
+    animation: deeplink-pulse 1.2s var(--ease-out) 1;
   }
 }
 
 @keyframes deeplink-pulse {
-  0%,
-  22% {
-    background: var(--brand-yellow);
+  from {
+    outline: 3px solid var(--brand-blue);
+    outline-offset: 2px;
   }
-  100% {
-    background: var(--brand-blue-100);
+  to {
+    outline: 3px solid transparent;
+    outline-offset: 2px;
   }
 }
 

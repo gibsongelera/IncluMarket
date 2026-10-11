@@ -19,31 +19,6 @@ const HOME_BY_ROLE: Record<Role, string> = {
   admin: "/admin",
 };
 
-function useCountUp(target: number) {
-  const [value, setValue] = useState(0);
-  useEffect(() => {
-    if (
-      typeof window !== "undefined" &&
-      window.matchMedia &&
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches
-    ) {
-      setValue(target);
-      return;
-    }
-    const start = performance.now();
-    const duration = 700;
-    let raf = 0;
-    const tick = (t: number) => {
-      const p = Math.min(1, (t - start) / duration);
-      setValue(Math.round(target * (1 - Math.pow(1 - p, 3))));
-      if (p < 1) raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [target]);
-  return value;
-}
-
 export function LandingClient({
   stats,
 }: {
@@ -112,9 +87,8 @@ export function LandingClient({
   }
   const emailRef = useRef<HTMLInputElement>(null);
 
-  const products = useCountUp(stats.products);
-  const sellers = useCountUp(stats.sellers);
-  const orders = useCountUp(stats.orders);
+  // Shown only once the shop has real numbers to show (D-04).
+  const showStats = stats.products > 0 && stats.sellers > 0;
 
   useEffect(() => {
     const t = setTimeout(() => emailRef.current?.focus(), 100);
@@ -210,9 +184,6 @@ export function LandingClient({
 
       <div className="landing-shell">
         <aside className="landing-hero" aria-labelledby="hero-title">
-          <div className="landing-hero__bg" aria-hidden="true" />
-          <div className="landing-hero__blob landing-hero__blob--red" aria-hidden="true" />
-          <div className="landing-hero__blob landing-hero__blob--yellow" aria-hidden="true" />
 
           <div className="landing-hero__content">
             <a className="landing-brand" href="/" aria-label="InclusiveMarket home">
@@ -222,60 +193,55 @@ export function LandingClient({
               <span className="landing-brand__name">InclusiveMarket</span>
             </a>
 
-            <p className="landing-eyebrow">
-              <span className="dot dot--live" aria-hidden="true" />
-              InkluTrack Ecosystem
-            </p>
+            <p className="landing-eyebrow">Part of InkluTrack</p>
 
             <h1 id="hero-title" className="landing-hero__title">
-              A marketplace built for <span className="hl">PWD&nbsp;livelihood</span>.
+              Buy and sell products made by <span className="hl">PWD trainees</span> of AVRC Region&nbsp;IX.
             </h1>
 
             <p className="landing-hero__lede">
-              Bridging vocational training with a real storefront &mdash; buyers, PWD sellers, and
-              administrators, unified under DSWD identity and WCAG&nbsp;2.1&nbsp;AA accessibility.
+              Bags, clothes, crafts, food and more, made by persons with disabilities. Every sale is income for the
+              person who made it.
             </p>
 
             <ul className="landing-benefits">
               <li>
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12" /></svg>
-                Shopee-style multi-role storefront (Buyer &middot; Seller &middot; Admin)
+                Pay cash on delivery, or online with GCash, Maya, GrabPay or card
               </li>
               <li>
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12" /></svg>
-                Variant matrix, order fulfillment, and live sales analytics
+                Sellers verify their PWD ID with AVRC staff; every listing is reviewed
               </li>
               <li>
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12" /></svg>
-                Compliance dashboard, audit trail, and PII masking
+                Larger text, high contrast and read-aloud on every page
               </li>
             </ul>
 
-            <div className="landing-badges" aria-label="Standards">
-              <span className="chip">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" /></svg>
-                WCAG 2.1 AA
-              </span>
-              <span className="chip">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="10" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
-                RA 10173 (Data Privacy)
-              </span>
-              <span className="chip">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 2 3 7v6c0 5 4 8 9 9 5-1 9-4 9-9V7l-9-5Z" /><path d="m9 12 2 2 4-4" /></svg>
-                DSWD MC 01, s.2024
-              </span>
-            </div>
-
-            <div className="landing-metrics" aria-label="Marketplace snapshot">
-              <div><strong>{products}</strong><span>Products listed</span></div>
-              <div><strong>{sellers}</strong><span>PWD sellers</span></div>
-              <div><strong>{orders}</strong><span>Orders</span></div>
-            </div>
+            {showStats ? (
+              <dl className="landing-metrics">
+                <div>
+                  <dt>Products in the shop</dt>
+                  <dd>{stats.products.toLocaleString("en-PH")}</dd>
+                </div>
+                <div>
+                  <dt>PWD sellers</dt>
+                  <dd>{stats.sellers.toLocaleString("en-PH")}</dd>
+                </div>
+                {stats.orders > 0 ? (
+                  <div>
+                    <dt>Orders so far</dt>
+                    <dd>{stats.orders.toLocaleString("en-PH")}</dd>
+                  </div>
+                ) : null}
+              </dl>
+            ) : null}
           </div>
 
           <div className="landing-hero__foot">
-            <span className="muted">&copy; 2026 InclusiveMarket &middot; ZPPSU-CICS Capstone</span>
-            <span className="muted">RA 7277 &middot; RA 10173</span>
+            <span className="muted">&copy; InclusiveMarket &middot; Run by AVRC Region IX</span>
+            <span className="muted">ZPPSU-CICS capstone project</span>
           </div>
         </aside>
 
@@ -639,8 +605,8 @@ export function LandingClient({
           </div>
 
           <p className="landing-legal">
-            &copy; 2026 InclusiveMarket &middot; Aligned to <strong>RA 7277</strong> &amp;{" "}
-            <strong>RA 10173</strong>
+            <a href="/privacy">Privacy Policy</a> &middot; <a href="/terms">Terms of use</a> &middot;{" "}
+            <a href="/accessibility">Accessibility</a>
           </p>
         </section>
       </div>

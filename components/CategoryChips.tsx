@@ -41,16 +41,6 @@ const CAT_ICONS: Record<string, IconDefinition> = {
   wellness: faSpa,
   services: faPalette,
 };
-// One designated colour per category, extending the core palette.
-const CAT_COLORS: Record<string, string> = {
-  bags: "var(--palette-deep)",
-  apparel: "var(--palette-teal)",
-  crafts: "var(--palette-olive)",
-  food: "var(--palette-primary-dark)",
-  accessories: "var(--palette-plum)",
-  wellness: "var(--palette-forest)",
-  services: "var(--palette-rose)",
-};
 
 /**
  * Category folders as links (they were buttons that filtered in the
@@ -83,7 +73,7 @@ export function CategoryChips({
             scroll={false}
           >
             <span className="chip-emoji" aria-hidden="true">
-              <FontAwesomeIcon icon={faStore} style={{ color: !current ? undefined : "var(--palette-primary)" }} />
+              <FontAwesomeIcon icon={faStore} />
             </span>{" "}
             All items
             <span className="chip-count">
@@ -103,10 +93,7 @@ export function CategoryChips({
                 scroll={false}
               >
                 <span className="chip-emoji" aria-hidden="true">
-                  <FontAwesomeIcon
-                    icon={ICON_BY_KEY[c.icon as CategoryIconKey] || CAT_ICONS[c.id] || faBoxOpen}
-                    style={{ color: active ? undefined : CAT_COLORS[c.id] || "var(--text-muted)" }}
-                  />
+                  <FontAwesomeIcon icon={ICON_BY_KEY[c.icon as CategoryIconKey] || CAT_ICONS[c.id] || faBoxOpen} />
                 </span>{" "}
                 {c.folder || c.label}
                 <span className="chip-count">

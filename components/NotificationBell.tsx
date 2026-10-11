@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { usePresence } from "@/lib/a11y/use-presence";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { formatDateTime } from "@/lib/format";
@@ -22,6 +23,7 @@ export function NotificationBell({
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const presence = usePresence(open);
   const [unread, setUnread] = useState(initialUnread);
   const [items, setItems] = useState(initialNotifications);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -121,9 +123,11 @@ export function NotificationBell({
         <Icon name="bell" size={18} />
         {unread > 0 ? <span className="icon-btn__count">{unread > 9 ? "9+" : unread}</span> : null}
       </button>
-      {open ? (
+      {presence.mounted ? (
         <div
           className="notification-panel"
+          data-state={presence.closing ? "closing" : "open"}
+          inert={presence.closing}
           id="notification-panel"
           role="dialog"
           aria-label="Notifications"

@@ -44,6 +44,8 @@ export function ProductDetailClient({
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(wishlisted);
+  // Animate the heart only after a tap, never on page load (M-13).
+  const [heartTouched, setHeartTouched] = useState(false);
   const [saving, setSaving] = useState(false);
 
   async function toggleSaved() {
@@ -52,6 +54,7 @@ export function ProductDetailClient({
     const res = await toggleWishlistAction(product.id);
     setSaving(false);
     if (!res.ok) return toast(res.error || "Could not update your wishlist.", "error");
+    setHeartTouched(true);
     setSaved(Boolean(res.inWishlist));
     toast(res.inWishlist ? "Saved to your wishlist." : "Removed from your wishlist.", "success");
     router.refresh();
@@ -242,7 +245,9 @@ export function ProductDetailClient({
             onClick={toggleSaved}
             disabled={saving}
           >
+            <span key={saved ? "on" : "off"} className={`icon-swap${heartTouched ? " icon-swap--animate" : ""}`}>
             <Icon name={saved ? "heart-filled" : "heart"} size={22} />
+          </span>
           </button>
         </div>
         <p className="muted pd__seller">

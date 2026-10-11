@@ -54,6 +54,8 @@ export function ProductCard({
   image?: string | null;
 }) {
   const [inWishlist, setInWishlist] = useState(Boolean(wishlisted));
+  // Animate the heart only after a tap, never on page load (M-13).
+  const [heartTouched, setHeartTouched] = useState(false);
   const [busy, setBusy] = useState(false);
   const photo = image ?? product.images?.[0] ?? null;
   const isNew = Date.now() - new Date(product.created_at).getTime() < 1000 * 60 * 60 * 24 * 30;
@@ -69,6 +71,7 @@ export function ProductCard({
       toast(res.error || "Could not update wishlist.", "error");
       return;
     }
+    setHeartTouched(true);
     setInWishlist(Boolean(res.inWishlist));
     toast(res.inWishlist ? "Saved to your wishlist." : "Removed from your wishlist.", "success");
   }
@@ -84,7 +87,9 @@ export function ProductCard({
           onClick={onToggleWishlist}
           disabled={busy}
         >
-          <Icon name={inWishlist ? "heart-filled" : "heart"} size={18} />
+          <span key={inWishlist ? "on" : "off"} className={`icon-swap${heartTouched ? " icon-swap--animate" : ""}`}>
+            <Icon name={inWishlist ? "heart-filled" : "heart"} size={18} />
+          </span>
         </button>
       ) : null}
       <Link className="product-card__link" href={`/buyer/product/${product.id}`} prefetch={false}>

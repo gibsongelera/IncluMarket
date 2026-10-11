@@ -358,9 +358,11 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   cursor: pointer;
-  transition: box-shadow .12s ease, transform .12s ease;
+  transition: box-shadow var(--dur-2) var(--ease-out), transform var(--dur-2) var(--ease-out);
 }
-.seller-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+@media (hover: hover) and (pointer: fine) {
+  .seller-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+}
 .seller-card__avatar {
   display: inline-flex;
   align-items: center;

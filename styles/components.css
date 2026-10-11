@@ -12,10 +12,13 @@
   cursor: pointer;
   min-height: 40px;
   line-height: 1.1;
-  transition: background-color .15s ease, border-color .15s ease, transform .05s ease;
+  transition:
+    background-color var(--dur-1) var(--ease-out),
+    border-color var(--dur-1) var(--ease-out),
+    transform var(--dur-1) var(--ease-out);
   text-decoration: none;
 }
-.btn:active { transform: translateY(1px); }
+.btn:active { transform: scale(0.98); }
 .btn[disabled], .btn[aria-disabled="true"] {
   opacity: .55;
   cursor: not-allowed;
@@ -704,8 +707,8 @@ fieldset {
     opacity: 0;
     translate: 0 var(--space-1);
     transition:
-      opacity var(--transition-base) ease,
-      translate var(--transition-base) ease,
+      opacity var(--dur-2) var(--ease-out),
+      translate var(--dur-2) var(--ease-out),
       overlay var(--transition-base) allow-discrete,
       display var(--transition-base) allow-discrete;
   }
@@ -826,7 +829,10 @@ fieldset {
   color: var(--text-charcoal);
   cursor: pointer;
   padding: 0;
-  transition: background-color .15s ease, color .15s ease, border-color .15s ease;
+  transition:
+    background-color var(--dur-1) var(--ease-out),
+    color var(--dur-1) var(--ease-out),
+    border-color var(--dur-1) var(--ease-out);
 }
 .icon-btn:hover { background: var(--surface-gray); }
 .icon-btn[aria-pressed="true"] {
@@ -1192,3 +1198,44 @@ fieldset {
 .setting-row > p { margin: 0; }
 .setting-row__control { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
 .setting-row__control input { width: 8rem; max-width: 100%; }
+
+/* --- Popovers (M-04) -------------------------------------------------------
+   The bell, chat and accessibility panels used to appear and vanish in one
+   frame. They now grow a few pixels from their trigger's corner (160 ms)
+   and leave faster (120 ms, usePresence keeps them mounted and inert for
+   it). Both reduced-motion switches make them instant again. */
+.notification-panel { transform-origin: top right; }
+.chat-panel { transform-origin: bottom right; }
+.a11y-panel { transform-origin: bottom left; }
+@media (prefers-reduced-motion: no-preference) {
+  .notification-panel,
+  .chat-panel,
+  .a11y-panel {
+    transition:
+      opacity var(--dur-2) var(--ease-out),
+      transform var(--dur-2) var(--ease-out);
+  }
+  @starting-style {
+    .notification-panel { opacity: 0; transform: translateY(-4px) scale(0.98); }
+    .chat-panel,
+    .a11y-panel { opacity: 0; transform: translateY(4px) scale(0.98); }
+  }
+  .notification-panel[data-state="closing"],
+  .chat-panel[data-state="closing"],
+  .a11y-panel[data-state="closing"] {
+    opacity: 0;
+    transition-duration: var(--dur-1);
+  }
+  .notification-panel[data-state="closing"] { transform: translateY(-4px) scale(0.98); }
+  .chat-panel[data-state="closing"],
+  .a11y-panel[data-state="closing"] { transform: translateY(4px) scale(0.98); }
+}
+
+/* --- Icon swap (M-13): the wishlist heart fades and grows in, 120 ms --- */
+.icon-swap { display: inline-flex; }
+@media (prefers-reduced-motion: no-preference) {
+  .icon-swap--animate { animation: icon-swap-in var(--dur-1) var(--ease-out); }
+}
+@keyframes icon-swap-in {
+  from { opacity: 0; transform: scale(0.9); }
+}

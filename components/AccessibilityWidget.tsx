@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { usePresence } from "@/lib/a11y/use-presence";
 import { useRouter } from "next/navigation";
 import { Icon } from "./Icon";
 import { flashVisualAlert } from "./VisualAlert";
@@ -90,6 +91,7 @@ function stopSpeaking() {
 export function AccessibilityWidget() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const presence = usePresence(open);
   const [tab, setTab] = useState<TabId>("display");
   const [fontSize, setFontSize] = useState<FontSizePx>(16);
   const [contrast, setContrast] = useState(false);
@@ -581,9 +583,11 @@ export function AccessibilityWidget() {
 
   return (
     <div className="a11y-widget" ref={wrapRef}>
-      {open ? (
+      {presence.mounted ? (
         <div
           className="a11y-panel a11y-panel--rich"
+          data-state={presence.closing ? "closing" : "open"}
+          inert={presence.closing}
           role="dialog"
           aria-modal="true"
           aria-label="Accessibility settings"
