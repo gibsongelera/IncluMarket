@@ -33,6 +33,17 @@ async function hasRpc(name, body) {
   return j.code !== "PGRST202";
 }
 
+/** Is the function listed in PostgREST's OpenAPI document? Reads only — a write
+ *  function (0023) must never be called just to see whether it exists. */
+let spec = null;
+async function inSpec(fn) {
+  if (!spec) {
+    const r = await fetch(`${URL_}/rest/v1/`, { headers: { ...H, Accept: "application/openapi+json" } });
+    spec = r.ok ? await r.json() : { paths: {} };
+  }
+  return Boolean(spec.paths?.[`/rpc/${fn}`]);
+}
+
 const CHECKS = [
   ["0013_surface_b_lockdown", () => hasRpc("im_can_see_order", { p_order_id: 0 })],
   ["0014_order_state_machine", () => hasTable("im_settings")],
@@ -42,11 +53,21 @@ const CHECKS = [
   ["0018_pwd_discount_rules", () => hasTable("im_discount_rules")],
   ["0019_buyer_seller_support", () => hasTable("im_addresses")],
   ["0020_earnings_payouts_categories", () => hasTable("im_seller_earnings", "order_id")],
+  ["0021_featured_windows", () => hasTable("im_products", "featured_position")],
+  // Re-asserts two columns 0007 already added: present means nothing to apply.
+  ["0022_ui_prefs_complete", () => hasTable("im_ui_prefs", "visual_alerts")],
+  ["0023_product_media_backfill", () => inSpec("im_move_product_image_to_storage")],
+  // A trigger only: nothing PostgREST can see. Reported, not counted.
+  ["0024_flash_sale_rules", null],
 ];
 
 let missing = 0;
 console.log(`Database: ${URL_.replace(/^https:\/\/([a-z0-9]{4})[a-z0-9]*/, "https://$1…")}`);
 for (const [name, test] of CHECKS) {
+  if (!test) {
+    console.log(`  ? unknown  ${name}.sql (trigger only, not visible read-only; apply it after the one above)`);
+    continue;
+  }
   let ok = false;
   try {
     ok = await test();
