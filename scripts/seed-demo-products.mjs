@@ -300,5 +300,6 @@ async function main() {
 
 main().catch((err) => {
   console.error(err);
-  process.exit(1);
+  // exitCode, not exit(): exiting while sockets close aborts Node on Windows.
+  process.exitCode = 1;
 });

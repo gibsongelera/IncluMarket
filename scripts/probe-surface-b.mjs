@@ -104,4 +104,4 @@ r = await rest("GET", "im_products?select=id,status&status=neq.approved");
 report("anon: no non-approved products visible", r.status === 200 && Array.isArray(r.data) && r.data.length === 0, r);
 
 console.log(fails ? `\n${fails} problem(s).` : "\nAll Surface B checks passed.");
-process.exit(fails ? 1 : 0);
+process.exitCode = fails ? 1 : 0;

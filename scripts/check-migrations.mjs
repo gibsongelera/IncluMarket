@@ -78,4 +78,4 @@ for (const [name, test] of CHECKS) {
   if (!ok) missing++;
 }
 console.log(missing ? `\n${missing} migration(s) missing. Apply them in order before deploying.` : "\nAll migrations present.");
-process.exit(missing ? 1 : 0);
+process.exitCode = missing ? 1 : 0;

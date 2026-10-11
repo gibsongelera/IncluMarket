@@ -619,4 +619,4 @@ const errors = results.filter((r) => r.level === "error").length;
 const warns = results.filter((r) => r.level === "warn").length;
 console.log(`\n${"=".repeat(70)}`);
 console.log(`${errors} error(s), ${warns} warning(s)\n`);
-process.exit(errors ? 1 : 0);
+process.exitCode = errors ? 1 : 0;
