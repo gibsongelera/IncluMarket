@@ -28,6 +28,15 @@ export const metadata: Metadata = {
   description:
     "Buy bags, apparel, crafts, food and more made by persons with disabilities trained at AVRC Region IX. Accessible by design. Part of the InkluTrack ecosystem.",
   applicationName: "InclusiveMarket",
+  // Installable on phones (C-48): manifest and icons, no offline mode.
+  manifest: "/manifest.webmanifest",
+  icons: {
+    icon: [
+      { url: "/icons/icon-32.png", sizes: "32x32", type: "image/png" },
+      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+    ],
+    apple: "/icons/apple-touch-icon.png",
+  },
 };
 
 // Theme + contrast are request-time; avoid static prerender crashing when

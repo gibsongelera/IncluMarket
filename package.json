@@ -18,7 +18,8 @@
     "check-env": "node --env-file=.env.local scripts/check-env.mjs",
     "test-email": "node scripts/test-email.mjs",
     "check-migrations": "node --env-file=.env.local scripts/check-migrations.mjs",
-    "backfill-product-images": "node --env-file=.env.local scripts/backfill-product-images.mjs"
+    "backfill-product-images": "node --env-file=.env.local scripts/backfill-product-images.mjs",
+    "make-icons": "node scripts/make-icons.mjs"
   },
   "dependencies": {
     "@fortawesome/fontawesome-svg-core": "^7.3.1",
