@@ -30,6 +30,8 @@ npm install
 cp .env.example .env.local        # fill in values; see "Environment" below
 # apply the database migrations (see "Database"), then:
 npm run provision-users           # demo accounts from SEED_* variables
+# PWD demo accounts only: buyer with/without PWD, seller verified/unverified
+npm run provision-users -- --only-pwd-demo
 npm run seed-demo-products        # optional demo catalogue
 npm run dev                       # http://localhost:3000
 ```
