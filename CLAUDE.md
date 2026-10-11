@@ -1,7 +1,13 @@
-# IncluMarket — project instructions
+# InclusiveMarket — project instructions
 
-A PWD (Persons with Disabilities) livelihood marketplace for Region IX,
+A PWD (Persons with Disabilities) livelihood marketplace for AVRC Region IX,
 Philippines. Capstone project, part of the InkluTrack ecosystem.
+
+The product is **InclusiveMarket**, the ecosystem **InkluTrack**. Older
+spellings (IncluMarket, InkluMarket) survive only in lowercase internal
+identifiers — the `im_` table prefix, the `inclumarket-*` skill folders,
+storage keys — and in applied migrations. `scripts/check-brand-name.mjs`
+enforces this for anything a user can see.
 
 ## What this actually is
 
@@ -12,12 +18,12 @@ different application.
 |---|---|
 | Framework | **Next.js 15 App Router**. Not Vite, not an SPA. |
 | Styling | **Hand-written CSS** in `styles/`. **No Tailwind**, no PostCSS pipeline, no CSS-in-JS. Do not suggest adding one. |
-| Data | **Supabase Postgres**, 29 `im_`-prefixed tables. Not localStorage. |
+| Data | **Supabase Postgres**, 40 `im_`-prefixed tables (migrations 0001–0024). Not localStorage. |
 | Pages | All async **Server Components**. No React Context providers anywhere. |
-| Mutations | **Server actions** in `lib/actions/*.ts`. Two route handlers only: the auth callback and the PayMongo webhook. |
-| Reads | `lib/data.ts`, `import "server-only"` |
+| Mutations | **Server actions** in `lib/actions/*.ts`. Three route handlers only: `app/auth/callback` and `app/auth/confirm` (Supabase email links) and `app/api/webhooks/paymongo`. Do not add another; background work runs as throttled sweeps on page loads (no cron). |
+| Reads | `lib/data.ts` and the other `import "server-only"` modules (`storefront.ts`, `admin-content.ts`, `finance.ts`, `pwd/data.ts`, …) that shape DTOs — never raw rows to the client |
 | Payments | **PayMongo** (covers GCash, Maya, GrabPay, card as methods) |
-| Email | **Brevo** HTTP API v3 |
+| Email | **Resend** (default) or **Brevo**, both over HTTP; templates in `lib/email/templates.ts` |
 | Chatbot | Rule-based by default; **OpenRouter** when `CHAT_PROVIDER=openrouter` |
 
 ## Conventions
@@ -26,8 +32,24 @@ different application.
 - Pages set `export const dynamic = "force-dynamic"`.
 - Modals are native `<dialog>`.
 - Toasts fire a `window` CustomEvent (`lib/toast.ts`).
-- Product images are base64 data URLs in `im_product_images` — there is no
-  Storage bucket. (PWD ID uploads must **not** follow this pattern.)
+- Images go to **Supabase Storage**: product, shop and banner photos to the
+  public `product-media` bucket through `lib/media.ts` (magic-byte type
+  check, EXIF refused, 1 MB, generated paths); PWD ID photos to the private
+  `pwd-ids` bucket, read only through 60-second signed URLs. Older product
+  photos may still be data URLs until `npm run backfill-product-images` runs
+  (migration 0023); readers accept both. Never add a new base64-in-Postgres
+  image.
+- Every data page has a loading state, an error boundary and a designed empty
+  state (`scripts/check-page-states.mjs`). Product and shop pages have **no**
+  `loading.tsx` on purpose: streaming would turn their `notFound()` into a
+  200.
+- A feature that needs a migration newer than production degrades: reads fall
+  back (`isMissingObject`) and the page says which migration it needs.
+- Settings the client may change (return window, retention, fees) live in
+  `im_settings` with bounds in `lib/settings-spec.ts`; pages that quote them
+  read them, so copy cannot drift from behaviour.
+- Contact details and social links come from `lib/site.ts` (environment);
+  never hard-code a placeholder address or a link to nowhere.
 - No `useTransition`/`useFormState` in older components; do not add them
   where the existing pattern is a plain async handler.
 
@@ -87,7 +109,8 @@ npm run verify
 ```
 
 Runs the contrast checker, the server-action guard audit, the responsive audit,
-the control inventory, and the smoke suite. All must exit 0.
+the control inventory, the page-props, brand-name, grid and page-states checks,
+the smoke suite, the unit tests and the PGlite migration tests. All must exit 0.
 
 Note that `npm run smoke` alone is a **string-matching harness** — it greps
 files. It would pass on an app where every button is dead. It is a structural

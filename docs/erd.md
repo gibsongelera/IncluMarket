@@ -1,6 +1,6 @@
-# IncluMarket — Entity Relationship Diagram
+# InclusiveMarket — Entity Relationship Diagram
 
-All IncluMarket tables are namespaced with an `im_` prefix because the Supabase
+All InclusiveMarket tables are namespaced with an `im_` prefix because the Supabase
 project is shared with the wider InkluTrack ecosystem (avoids collisions with an
 existing `public.profiles` / `public.orders`). Profiles link to Supabase Auth via
 `auth_user_id`. Cart lines live in `im_cart_items`.
@@ -274,6 +274,165 @@ erDiagram
 on existing tables (migration `0005_growth_schema.sql`), not shown as
 separate entities above.
 
+## Commerce, verification and support (migrations 0007–0024)
+
+40 tables in all. The diagram shows the tables added after the growth rebuild,
+with their key columns; the next section lists the columns those migrations
+added to existing tables. Every table has RLS on; the application writes with
+the service role after its own checks, and no table accepts writes from the
+browser's public key (0013).
+
+```mermaid
+erDiagram
+    im_profiles ||--o{ im_checkouts              : "pays (buyer_id)"
+    im_checkouts ||--o{ im_orders                : "splits into (checkout_id)"
+    im_profiles ||--o{ im_orders                 : "fulfils (seller_id)"
+    im_profiles ||--o{ im_pwd_verifications      : "verifies (profile_id)"
+    im_pwd_verifications ||--o{ im_order_items   : "discount proof (verification_id)"
+    im_profiles ||--o{ im_pwd_verification_flags : "flagged (profile_id)"
+    im_discount_rules ||--o{ im_order_items      : "applied (pwd_rule_id)"
+    im_categories ||--o{ im_discount_rules       : "covers (category_id)"
+    im_products ||--o{ im_discount_rules         : "covers (product_id)"
+    im_flash_sales ||--o{ im_order_items         : "priced by (flash_sale_id)"
+    im_profiles ||--o{ im_payouts                : "requests (seller_id)"
+    im_profiles ||--o{ im_addresses              : "ships to (profile_id)"
+    im_profiles ||--o{ im_notification_prefs     : "chooses (profile_id)"
+    im_profiles ||--o{ im_product_views          : "views (profile_id)"
+    im_products ||--o{ im_product_views          : "viewed (product_id)"
+    im_order_items ||--o| im_product_reviews     : "earns (order_item_id)"
+    im_profiles ||--o{ im_privacy_requests       : "asks (profile_id)"
+    im_profiles ||--o{ im_contact_messages       : "writes (profile_id, optional)"
+    im_profiles ||--o{ im_banners                : "creates (created_by)"
+    im_profiles ||--o{ im_settings               : "changes (updated_by)"
+
+    im_checkouts {
+        bigint  id PK
+        bigint  buyer_id FK
+        text    payment_provider "cod | paymongo"
+        text    payment_status
+        text    payment_reference "PayMongo checkout session"
+        numeric grand_total
+    }
+    im_pwd_verifications {
+        bigint  id PK
+        bigint  profile_id FK
+        text    method "id_scan | avrc_in_person"
+        text    id_number_hash "HMAC, PWD_ID_HASH_KEY"
+        text    id_number_last4
+        text    id_number_encrypted "AES-GCM, wiped at decision"
+        text    issuing_lgu
+        date    expires_on
+        text    front_path "private pwd-ids bucket"
+        text    status "submitted | approved | rejected | expired | revoked"
+        bigint  reviewer_id FK
+        timestamptz images_deleted_at
+    }
+    im_pwd_verification_flags {
+        bigint  id PK
+        bigint  profile_id FK
+        bigint  existing_verification_id FK
+        text    kind "duplicate number"
+        timestamptz resolved_at
+    }
+    im_discount_rules {
+        bigint  id PK
+        text    rule_type "statutory_20 | bnpc_5 | voluntary"
+        numeric rate_percent
+        numeric weekly_purchase_cap
+        text    category_id FK
+        bigint  product_id FK
+        text    legal_basis
+        boolean enabled "needs legal sign-off"
+        bigint  legal_signoff_by FK
+    }
+    im_payouts {
+        bigint  id PK
+        bigint  seller_id FK
+        numeric amount
+        text    method
+        text    status "requested | approved | paid | rejected"
+        bigint  processed_by FK
+    }
+    im_addresses {
+        bigint  id PK
+        bigint  profile_id FK
+        text    recipient
+        text    phone
+        text    line1
+        text    city
+        boolean is_default "one per profile"
+    }
+    im_notification_prefs {
+        bigint  profile_id PK
+        text    type PK
+        boolean in_app
+        boolean email
+    }
+    im_product_views {
+        bigint  id PK
+        bigint  profile_id FK
+        bigint  product_id FK
+        timestamptz viewed_at "kept 90 days"
+    }
+    im_banners {
+        bigint  id PK
+        text    title
+        text    alt_text
+        text    image_url "product-media bucket"
+        text    link_url "internal paths only"
+        timestamptz starts_at
+        timestamptz ends_at
+        integer position
+        boolean is_active
+    }
+    im_privacy_requests {
+        bigint  id PK
+        bigint  profile_id FK
+        text    kind "access | correction | deletion | objection"
+        text    status "open | in_progress | done | rejected"
+        text    response
+        bigint  handled_by FK
+    }
+    im_contact_messages {
+        bigint  id PK
+        bigint  profile_id FK "null for guests"
+        text    name
+        text    email
+        text    topic
+        text    message
+        text    status "new | answered | closed"
+    }
+    im_settings {
+        text    key PK
+        jsonb   value
+        bigint  updated_by FK
+    }
+```
+
+Also present, unchanged since earlier migrations: `im_rate_limits` (0009,
+salted-hash identifiers), `im_activity_logs`, `im_transactions` and
+`im_payment_providers` (0007; the provider table is no longer read — online
+payment is on when the PayMongo key is configured).
+
+### Columns added to existing tables
+
+| Table | Added by | Columns |
+|---|---|---|
+| im_orders | 0014, 0015 | `seller_id`, `checkout_id`, `subtotal`, `shipping_fee`; courier, tracking, shipped/delivered/cancelled/returned timestamps and reasons, `refund_due`. Status is enforced by a state machine |
+| im_order_items | 0015, 0017, 0018 | `base_unit_price`, `flash_sale_id`, `sale_discount_pct`, `pwd_rule_id`, `pwd_rate`, `pwd_discount_amount`, `pwd_eligible_amount`, `vat_exempt_amount`, `legal_basis`, `verification_id` |
+| im_order_status_history | 0014 | `actor_role` |
+| im_products | 0016, 0021 | moderation (`moderation_reason`, `moderated_by`, `moderated_at`, `submitted_at`), `adaptive_tags`, pre-computed `rating_avg`, `rating_count`, `sold_count`, `stock_total`, `search_tsv`; featured order and window |
+| im_product_reviews | 0019 | `order_item_id`, `status` (visible/hidden), `hidden_reason`, `hidden_by`, `hidden_at`, `seller_reply`, `seller_reply_at`, `updated_at` |
+| im_profiles | 0017, 0019 | `pwd_grace_until`; `personalization_opt_out`, `shop_name`, `shop_logo_url`, `shop_banner_url`, `pickup_city` |
+| im_categories | 0020 | `position`, `icon`, `description`, `is_active` (retire without deleting) |
+| im_newsletter_subscribers | 0019 | `unsubscribe_token`, `consent_text` |
+| im_flash_sales | 0024 | rules enforced by trigger (one live sale per product, bounded discount and length) |
+| im_ui_prefs | 0022 | every accessibility preference, so they follow the account |
+
+Views: `im_public_sellers` (public seller fields only), `im_storefront_products`
+(live, sellable listings with stats), `im_verified_pwd` (the single source of
+"verified"), `im_seller_earnings` (per-order earnings after fees).
+
 ## Referential integrity summary
 
 | Child                | Parent(s)                              | On delete            |
@@ -290,6 +449,13 @@ separate entities above.
 | im_audit_logs        | im_profiles (actor)                    | SET NULL (preserve)  |
 | im_theme_settings    | im_profiles (updated_by)               | SET NULL             |
 | im_ui_prefs          | im_profiles                            | CASCADE              |
+| im_orders (0015)     | im_checkouts, im_profiles (seller)     | SET NULL             |
+| im_pwd_verifications | im_profiles                            | CASCADE              |
+| im_addresses         | im_profiles                            | CASCADE              |
+| im_product_views     | im_profiles, im_products               | CASCADE              |
+| im_privacy_requests  | im_profiles                            | SET NULL (preserve)  |
+| im_contact_messages  | im_profiles                            | SET NULL (preserve)  |
+| im_discount_rules    | im_categories, im_products             | CASCADE              |
 
 Audit rows survive user deletion (`actor_id` set to NULL) so the compliance trail
 stays intact — the one intentional exception to the cascade rules.

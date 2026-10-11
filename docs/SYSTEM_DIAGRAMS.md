@@ -1,8 +1,8 @@
-# IncluMarket — System Diagrams and Specifications
+# InclusiveMarket — System Diagrams and Specifications
 
 Single reference for architecture, flows, data, UML, requirements, glossary, and technology.
 
-**FigJam board (all generated diagrams):** [IncluMarket diagrams](https://www.figma.com/board/MUqtGs9UgXpJIGFgH6VS0O)
+**FigJam board (diagrams generated before the client revision):** [InclusiveMarket diagrams](https://www.figma.com/board/MUqtGs9UgXpJIGFgH6VS0O). The Mermaid diagrams in this file are current; where they differ from the board, this file wins.
 
 Live app: [https://inclumarket.vercel.app](https://inclumarket.vercel.app)
 
@@ -24,32 +24,44 @@ FigJam cannot generate UML **use-case ovals** or **class diagrams**. Those are m
 
 ## 1. System architecture
 
-Browser → Vercel Edge (Next.js middleware) → IncluMarket App Router → Supabase Postgres. Auth cookies come from Supabase Auth. Checkout/payouts are scaffolded against payment providers (PayMongo primary; Stripe, PayPal, Maya, GCash configurable).
+Browser → Vercel (Next.js middleware refreshes the Supabase session) → App
+Router pages and server actions → Supabase (Postgres, Auth, Storage). Online
+payment goes to PayMongo's hosted checkout and comes back through a signed
+webhook. Email goes out over Resend or Brevo's HTTP API. The chatbot is
+rule-based unless OpenRouter is configured.
 
 ```mermaid
 flowchart LR
     subgraph client ["Clients"]
-        web["Web Browser"]
+        web["Web browser (installable web app)"]
     end
-    subgraph gateway ["Edge"]
-        vercel["Vercel Edge"]
+    subgraph service ["Vercel"]
+        mw["Middleware: session refresh"]
+        app["InclusiveMarket Next.js 15<br/>Server Components + server actions"]
+        hooks["Route handlers:<br/>/auth/callback, /auth/confirm,<br/>/api/webhooks/paymongo"]
     end
-    subgraph service ["Application"]
-        app["IncluMarket Next.js"]
+    subgraph supa ["Supabase"]
+        pg["Postgres (40 im_ tables, RLS)"]
+        auth["Auth"]
+        storage["Storage: product-media (public),<br/>pwd-ids (private)"]
     end
-    subgraph datastore ["Data Stores"]
-        pg["Supabase Postgres"]
-    end
-    subgraph external ["External"]
-        auth["Supabase Auth"]
-        pay["Payment Providers"]
+    subgraph external ["External services"]
+        pay["PayMongo<br/>GCash, Maya, GrabPay, card"]
+        mail["Resend / Brevo"]
+        llm["OpenRouter (optional)"]
     end
 
-    web -->|"HTTPS"| vercel
-    vercel -->|"Routes + session"| app
-    app -->|"SQL via supabase-js"| pg
-    app -.->|"Auth cookies"| auth
-    app -.->|"Checkout / payouts"| pay
+    web -->|"HTTPS"| mw --> app
+    app -->|"service role, after role checks"| pg
+    app -->|"sessions"| auth
+    app -->|"uploads, signed URLs"| storage
+    web -->|"public images"| storage
+    app -->|"checkout session"| pay
+    pay -->|"signed webhook"| hooks
+    hooks --> pg
+    auth -->|"email links"| hooks
+    app -->|"transactional email"| mail
+    app -.->|"chat replies"| llm
 ```
 
 ---
@@ -86,6 +98,7 @@ flowchart TD
         fulfill["Fulfill orders"]
         payout["Request payout"]
         msgS["Message buyer"]
+        verifyS["Verify PWD ID"]
     end
 
     subgraph adminUC ["Admin"]
@@ -93,6 +106,8 @@ flowchart TD
         moderate["Moderate products"]
         tickets["Resolve tickets"]
         reports["Export reports"]
+        verifyA["Review PWD IDs"]
+        disputes["Settle returns, record refunds"]
     end
 
     guest --> browse
@@ -113,6 +128,10 @@ flowchart TD
     seller --> fulfill
     seller --> payout
     seller --> msgS
+    seller --> verifyS
+    buyer --> verifyS
+    admin --> verifyA
+    admin --> disputes
     admin --> users
     admin --> moderate
     admin --> tickets
@@ -136,14 +155,23 @@ flowchart TD
 | UC-11 | Seller | Create / edit products and variants | `/seller/products` |
 | UC-12 | Seller | Fulfill orders (processing → shipped → delivered) | `/seller/orders` |
 | UC-13 | Seller | View reviews | `/seller/reviews` |
-| UC-14 | Seller | Request payout | payments / payouts |
+| UC-14 | Seller | See earnings and request a payout | `/seller/finance` |
 | UC-15 | Admin | Manage users and account status | `/admin/users` |
 | UC-16 | Admin | Moderate products (approve / flag) | `/admin/products` |
 | UC-17 | Admin | Resolve tickets | `/admin/tickets` |
 | UC-18 | Admin | Export Excel reports | `/admin/reports` |
-| UC-19 | Admin | Configure payment providers | `/admin/payments` |
+| UC-19 | Admin | Check payment status (read-only) | `/admin/payments` |
 | UC-20 | Admin | Customize theme tokens | `/admin/theme` |
-| UC-21 | Admin | Compliance / audit view | `/admin/compliance` |
+| UC-21 | Admin | Answer privacy requests and contact messages; audit trail | `/admin/compliance` |
+| UC-22 | Buyer, Seller | Verify PWD ID (upload or camera) | `/account/verification` |
+| UC-23 | Admin | Approve, reject, revoke PWD verifications; resolve duplicate flags | `/admin/verifications` |
+| UC-24 | Admin | Settle returns, cancel orders, record refunds | `/admin/orders` |
+| UC-25 | Admin | Approve and pay seller payouts | `/admin/payouts` |
+| UC-26 | Admin | Categories, review hiding, homepage banners | `/admin/categories`, `/admin/reviews`, `/admin/banners` |
+| UC-27 | Admin | PWD discount rules with legal sign-off; settings | `/admin/discounts`, `/admin/settings` |
+| UC-28 | Seller | Shop settings, flash sales, packing slips, support | `/seller/shop`, `/seller/flash-sales`, `/seller/orders`, `/seller/support` |
+| UC-29 | Any user | Addresses, notification choices, privacy requests | `/account/*` |
+| UC-30 | Guest | Contact form | `/contact` |
 
 ---
 
@@ -153,33 +181,39 @@ flowchart TD
 
 ```mermaid
 flowchart LR
-    start(["Open /home"]) --> browse["Browse or search"]
-    browse --> product["Open product page"]
-    product --> signedIn{"Signed in as buyer?"}
-    signedIn -->|"No"| login["Sign in"]
-    login --> cart
-    signedIn -->|"Yes"| cart["Add to cart"]
-    cart --> checkout["Checkout"]
-    checkout --> stock{"Stock available?"}
-    stock -->|"No"| fail["Show error"]
-    fail -.-> cart
-    stock -->|"Yes"| order["Create order"]
-    order --> notify["Notify seller"]
-    notify --> done(["Track in orders"])
+    start(["Open /home or /search"]) --> product["Product page"]
+    product --> signedIn{"Signed in?"}
+    signedIn -->|"No"| login["Sign in"] --> cart
+    signedIn -->|"Yes"| cart["Cart: choose items"]
+    cart --> checkout["Checkout: address, payment"]
+    checkout --> price["Pricing engine: flash sale →<br/>PWD rule (verified only) → weekly cap →<br/>₱60 shipping per seller"]
+    price --> stock{"Stock reserved?"}
+    stock -->|"No"| fail["Explain which item"] -.-> cart
+    stock -->|"Yes"| split["One checkout, one order per seller"]
+    split --> pay{"Payment"}
+    pay -->|"Cash on delivery"| placed["Orders pending; sellers notified"]
+    pay -->|"PayMongo"| hosted["PayMongo hosted page"]
+    hosted --> webhook["Signed webhook marks paid"]
+    webhook --> placed
+    hosted -.->|"abandoned"| release["Hold expires; stock released"]
+    placed --> done(["Track each order"])
 ```
 
 ### 3.2 Seller listing and fulfillment
 
 ```mermaid
 flowchart LR
-    start(["Seller dashboard"]) --> create["Create product"]
+    start(["Seller Centre"]) --> verify{"PWD ID verified<br/>(or in grace period)?"}
+    verify -->|"No"| verifyFlow["Verify PWD ID"] -.-> start
+    verify -->|"Yes"| create["Create product (5-step wizard)"]
     create --> pending["Status pending"]
     pending --> adminRev["Admin reviews"]
     adminRev --> decision{"Approve?"}
     decision -->|"No"| flagged["Status flagged"]
     flagged -.-> create
     decision -->|"Yes"| live["Status approved"]
-    live --> stock["Manage variants"]
+    live -.->|"name, price, photos or<br/>description change"| pending
+    live --> stock["Manage options and stock"]
     stock --> orders["Incoming orders"]
     orders --> ship["Mark shipped"]
     ship --> delivered["Mark delivered"]
@@ -187,38 +221,74 @@ flowchart LR
     payout --> done(["Paid or rejected"])
 ```
 
-### 3.3 Admin moderation
+### 3.3 Admin console
 
 ```mermaid
 flowchart TD
-    start(["Admin signs in"]) --> home["Admin home"]
-    home --> users["Users"]
+    start(["Admin signs in"]) --> home["Overview: to-do counts,<br/>each tile links to its list"]
+    home --> verif["Verifications"]
     home --> products["Products"]
+    home --> orders["Orders, returns, refunds"]
+    home --> payouts["Payouts"]
     home --> tickets["Tickets"]
-    home --> reports["Reports"]
-    home --> payments["Payments"]
-    home --> theme["Theme"]
+    home --> compliance["Privacy requests,<br/>contact inbox, audit trail"]
+    home --> catalogue["Categories, reviews, banners"]
+    home --> config["Discount rules, settings,<br/>payments status, theme"]
 
-    users --> userAct{"Action"}
-    userAct -->|"Suspend"| suspend["account_status suspended"]
-    userAct -->|"Approve seller"| approveU["account_status active"]
+    verif --> vAct{"Decision"}
+    vAct -->|"Approve"| vOk["Verified; user notified"]
+    vAct -->|"Reject with reason"| vNo["User notified, may resubmit"]
+    products --> pAct{"Moderation"}
+    pAct -->|"Approve"| ap["Live"]
+    pAct -->|"Flag with reason"| fl["Hidden; seller told why"]
+    orders --> oAct{"Dispute"}
+    oAct -->|"Accept return"| ret["Returned; refund due if paid online"]
+    oAct -->|"Decline"| dec["Stays delivered"]
+    ret --> refund["Record refund reference"]
+    payouts --> pay{"Request"}
+    pay -->|"Approve → mark paid"| paid["Paid"]
+    pay -->|"Reject"| rej["Balance released"]
+```
 
-    products --> prodAct{"Moderation"}
-    prodAct -->|"Approve"| ap["Product approved"]
-    prodAct -->|"Flag"| fl["Product flagged"]
+### 3.4 PWD verification
 
-    tickets --> tAct{"Ticket"}
-    tAct -->|"Reply"| reply["Add response"]
-    tAct -->|"Resolve"| resolved["Ticket resolved"]
+```mermaid
+flowchart LR
+    start(["Account → PWD verification"]) --> form["ID number, issuing LGU,<br/>expiry, front and back photos"]
+    form --> checks{"Server checks"}
+    checks -->|"Expired, unreadable,<br/>EXIF, too small"| fix["Say what to fix"] -.-> form
+    checks -->|"Number already used"| flag["Blocked; admin flag raised"]
+    checks -->|"OK"| stored["Photos → private bucket;<br/>number → HMAC + last4<br/>(+ sealed copy until decision)"]
+    stored --> review["Admin reviews within target days;<br/>may check the DOH registry"]
+    review -->|"Approve"| ok["Verified: badge, seller listing,<br/>PWD discounts where a rule applies"]
+    review -->|"Reject"| no["Reason sent; may resubmit"]
+    ok --> expiry["Reminder before expiry;<br/>expires automatically"]
+    ok -.->|"misuse"| revoke["Admin revokes"]
+    review --> purge["Photos deleted after<br/>the retention period"]
+```
 
-    reports --> xlsx["IncluMarket .xlsx"]
-    payments --> payCfg["Enable providers"]
-    theme --> tokens["DSWD color tokens"]
+### 3.5 Returns and refunds
+
+```mermaid
+flowchart LR
+    delivered(["Delivered"]) --> ask{"Within the return window?"}
+    ask -->|"No"| closed(["No return"])
+    ask -->|"Yes"| req["Buyer asks, with a reason"]
+    req --> seller{"Seller decides"}
+    seller -->|"Approve"| returned["Returned; stock restored"]
+    seller -->|"Decline"| dispute["Buyer can open a help request;<br/>admin settles"]
+    dispute --> returned
+    dispute --> stays(["Stays delivered"])
+    returned --> online{"Paid online?"}
+    online -->|"Yes"| refund["Refund due → admin records<br/>the PayMongo refund reference"]
+    online -->|"No"| done(["Done"])
 ```
 
 ---
 
 ## 4. Entity-relationship diagrams
+
+The diagrams below cover the original tables. The tables and columns added by migrations 0013–0024 (checkouts, PWD verification, discount rules, addresses, banners, privacy requests, contact inbox, settings) are in **[docs/erd.md](erd.md)**.
 
 Tables use the `im_` prefix (shared Supabase project with InkluTrack). Profiles link to `auth.users` via `auth_user_id`. Full column lists: `docs/erd.md` and migrations `0001`–`0008`.
 
@@ -587,27 +657,31 @@ Homes: buyer → `/home`, seller → `/seller/dashboard`, admin → `/admin/user
 
 ```mermaid
 sequenceDiagram
-    title Buyer checkout
+    title Buyer checkout (one checkout, one order per seller)
     participant Buyer
-    participant CartPage
-    participant Checkout
-    participant ShopAction
+    participant Checkout as Checkout page
+    participant Action as shop.ts placeOrder
+    participant Engine as Pricing engine
     participant Postgres
-    participant Seller
+    participant PayMongo
+    participant Webhook as /api/webhooks/paymongo
 
-    Buyer->>CartPage: Review cart lines
-    CartPage->>Checkout: Go to checkout
-    Buyer->>Checkout: Confirm shipping and pay
-    Checkout->>ShopAction: placeOrder
-    ShopAction->>Postgres: Read cart and stock
-    Postgres-->>ShopAction: Lines and quantities
-    ShopAction->>Postgres: Insert im_orders and items
-    ShopAction->>Postgres: Decrement variant stock
-    ShopAction->>Postgres: Clear cart and notify
-    Postgres-->>ShopAction: Order id
-    ShopAction-->>Checkout: ok plus order id
-    Checkout-->>Buyer: Orders page
-    ShopAction->>Seller: Notification new_order
+    Buyer->>Checkout: Choose items, address, payment
+    Checkout->>Action: placeOrder(selection, address, method)
+    Action->>Engine: priceCartForBuyer
+    Engine->>Postgres: Lines, flash sales, verified PWD, rules, weekly cap
+    Engine-->>Action: Priced lines, per-seller groups, totals
+    Action->>Postgres: Create checkout + orders + items, reserve stock (one transaction)
+    alt Cash on delivery
+        Action-->>Checkout: Orders placed
+        Action->>Postgres: Notify each seller
+    else PayMongo
+        Action->>PayMongo: Create checkout session (exact same totals)
+        PayMongo-->>Buyer: Hosted payment page
+        PayMongo->>Webhook: checkout_session.payment.paid (signed)
+        Webhook->>Postgres: Verify signature, mark checkout and orders paid (idempotent)
+        Webhook->>Postgres: Notify sellers; queue receipt email
+    end
 ```
 
 ### 5.5 Sequence — messaging
@@ -642,11 +716,16 @@ sequenceDiagram
 stateDiagram-v2
     direction LR
     [*] --> Pending: placeOrder
-    Pending --> Processing: seller accepts
-    Processing --> Shipped: mark shipped
-    Shipped --> Delivered: mark delivered
-    Delivered --> Returned: buyer returns
+    Pending --> Processing: seller accepts (online orders only once paid)
+    Pending --> Cancelled: buyer, seller, admin or payment timeout
+    Processing --> Shipped: seller adds courier and tracking
+    Processing --> Cancelled: seller or admin, with reason
+    Shipped --> Delivered: buyer, seller or admin
+    Delivered --> ReturnRequested: buyer, within the return window
+    ReturnRequested --> Returned: seller or admin approves
+    ReturnRequested --> Delivered: seller or admin declines
     Delivered --> [*]
+    Cancelled --> [*]
     Returned --> [*]
 ```
 
@@ -661,6 +740,10 @@ stateDiagram-v2
     Approved --> Flagged: admin flags
     Flagged --> Approved: admin restores
     Flagged --> Pending: seller edits
+    Approved --> Pending: seller changes what buyers see
+    Approved --> Archived: seller unpublishes
+    Archived --> Approved: seller republishes
+    Archived --> [*]
     Approved --> [*]
 ```
 
@@ -673,6 +756,7 @@ stateDiagram-v2
     Open --> InProgress: admin assigns
     InProgress --> Resolved: admin resolves
     Open --> Resolved: admin resolves
+    Resolved --> Open: user replies
     Resolved --> [*]
 ```
 
@@ -711,23 +795,28 @@ stateDiagram-v2
 | FR-01 | Users authenticate with email/password via Supabase Auth; unconfirmed signups must confirm email. | `lib/actions/auth.ts` |
 | FR-02 | Role-based homes and route guards for buyer, seller, admin. | `lib/session.ts`, middleware |
 | FR-03 | Guests and any role may view the public catalog and product pages. | `/home`, `/buyer/product/[id]` |
-| FR-04 | Buyers add variants to a server-side cart, wishlist products, and place orders that decrement stock. | `lib/actions/cart.ts`, `shop.ts` |
-| FR-05 | Orders record shipping fields and optional payment provider; status history is logged. | `im_orders`, `im_order_status_history` |
-| FR-06 | Buyers rate products 1–5 with optional comment. | `im_product_reviews` |
+| FR-04 | Buyers add variants to a server-side cart, choose which lines to buy, and check out; one checkout becomes one order per seller, with stock reserved in the same transaction. | `lib/actions/cart.ts`, `shop.ts`, `im_checkouts` |
+| FR-05 | Payment by cash on delivery or PayMongo (GCash, Maya, GrabPay, card); a signed, idempotent webhook marks orders paid. Status follows a database-enforced state machine with history. | `lib/payments/`, `lib/orders/`, `0014` |
+| FR-06 | Buyers who received a product rate it 1–5 with an optional comment; sellers reply; admins hide a review with a reason. | `im_product_reviews`, `/admin/reviews` |
 | FR-07 | Buyers and sellers message per conversation (unique buyer+seller pair). | `im_conversations`, `im_messages` |
 | FR-08 | Floating chatbot works for guests and users; sessions can escalate to a support ticket. | `ChatWidget`, `im_chat_sessions` |
-| FR-09 | Buyers open tickets; admins reply and change status. | `/buyer/support`, `/admin/tickets` |
+| FR-09 | Buyers and sellers open help requests and reply; admins reply and resolve; both sides are notified. | `/buyer/support`, `/seller/support`, `/admin/tickets` |
 | FR-10 | Sellers create products (pending until admin approval) with variants, images, and stock. | `/seller/products` |
 | FR-11 | Sellers advance order status along the allowed path. | `/seller/orders` |
-| FR-12 | Admins approve/flag products, suspend/restore accounts, configure providers, theme, and payments. | `/admin/*` |
+| FR-12 | Admins work from an overview of to-dos: moderate listings (with reasons), verify PWD IDs, settle returns and record refunds, approve payouts, manage users, categories, banners, discount rules, settings and the theme. Payments is read-only status. | `/admin/*` |
 | FR-13 | Admins export `.xlsx` reports (users, products, orders, reviews, tickets, audit, or full). | `lib/reports/excel.ts` |
 | FR-14 | Accessibility toolbar: font size, contrast, TTS, voice commands, reading mode, reduced motion, visual alerts. | `lib/a11y/prefs.ts`, `im_ui_prefs` |
 | FR-15 | In-app notifications for low stock, orders, shipping, reviews, flash sales, messages, chat escalation. | `im_notifications` |
-| FR-16 | Flash sales with percent discount and start/end window. | `im_flash_sales` |
+| FR-16 | Flash sales with percent discount and start/end window, one live sale per product; wishlisting buyers are notified. | `im_flash_sales`, `0024` |
 | FR-17 | Consent and audit logs for compliance. | `im_consent_logs`, `im_audit_logs` |
-| FR-18 | Newsletter subscribe/unsubscribe. | `im_newsletter_subscribers` |
-| FR-19 | Static pages: About, Contact, FAQ, Privacy, Terms, Accessibility. | `app/about` etc. |
-| FR-20 | Seller payout requests; admin approve/pay/reject. | `im_payouts` |
+| FR-18 | Newsletter subscribe and token unsubscribe; admin list and CSV export. | `im_newsletter_subscribers`, `/admin/newsletter` |
+| FR-19 | Truthful static pages; contact form for guests and users into an admin inbox. | `app/about` etc., `im_contact_messages` |
+| FR-20 | Seller earnings and payout requests (minimum and fee from settings); admin approve, mark paid, reject. | `im_payouts`, `im_seller_earnings` |
+| FR-21 | PWD ID verification: upload or camera capture, duplicate-number block, admin decision with reasons, expiry, revocation, image retention. | `lib/pwd/`, `/account/verification`, `/admin/verifications` |
+| FR-22 | PWD discounts only through enabled rules with a legal basis and sign-off, only for verified buyers, with the weekly cap where it applies. | `lib/pricing/`, `im_discount_rules` |
+| FR-23 | Search with typo tolerance, category and PWD-friendly-feature filters, sort, and paging. | `lib/storefront.ts`, `/search` |
+| FR-24 | Saved addresses, notification preferences per type, recommendation opt-out, data-subject requests. | `/account/*` |
+| FR-25 | Installable web app (manifest and icons; no offline mode). | `public/manifest.webmanifest` |
 
 ---
 
@@ -735,17 +824,17 @@ stateDiagram-v2
 
 | ID | Category | Requirement |
 | --- | --- | --- |
-| NFR-01 | Accessibility | WCAG 2.1 AA: skip link, `main` landmark, keyboard a11y toolbar, high contrast, semantic product cards. |
-| NFR-02 | Security | RLS on all `im_*` tables; mutations go through role-checked server actions; service-role key is server-only. |
+| NFR-01 | Accessibility | Aim WCAG 2.2 AA; usable at 24 px root font and 320 px width; no drag-only interactions; 44 px targets; reduced motion honoured from the OS and the toolbar. |
+| NFR-02 | Security | Every server action checks the caller before the service-role client (guard audit in `verify`); RLS on all `im_*` tables and no client writes with the public key (0013); rate limits on public endpoints. |
 | NFR-03 | Privacy | Emails masked in cross-role UI and Excel exports; consent logs; no service-role in the browser bundle. |
 | NFR-04 | Internationalization | Currency ISO 4217 `PHP`; timestamps ISO 8601 UTC in reports; `en-PH` date formatting in UI. |
-| NFR-05 | Performance | Next.js 15 App Router on Vercel; product images client-resized (≤800px, quality 0.82, ≤1 MB data URLs). |
+| NFR-05 | Performance | Storefront reads from a pre-computed view with paging; images resized on the device and served from Storage (≤1 MB). |
 | NFR-06 | Availability | Production on Vercel; Supabase managed Postgres + Auth. |
-| NFR-07 | Maintainability | `im_` table prefix; typed domain in `lib/types.ts`; server actions return `{ ok, error }` and write audit rows. |
+| NFR-07 | Maintainability | `tsc --strict` as the lint gate; `npm run verify` (checks, unit tests, PGlite migration tests) must pass before a change lands; every migration from 0013 has a rollback. |
 | NFR-08 | Auditability | Every admin/seller/buyer mutation can write `im_audit_logs`; reports include an audit sheet. |
-| NFR-09 | Usability | DSWD blue / red / yellow / white tokens; admin theme customizer; toasts for action feedback. |
+| NFR-09 | Usability | Blue and brown palette (red only for danger) with contrast checked in CI; plain-language copy; toasts that wait and can be paused. |
 | NFR-10 | Integrity | Stock checks at checkout; FK `ON DELETE` cascade or set-null as documented in `docs/erd.md`; payout/transaction amount checks. |
-| NFR-11 | Compatibility | Modern evergreen browsers; no native mobile app (responsive web). |
+| NFR-11 | Compatibility | Modern evergreen browsers; responsive web app, installable on phones; no native app. |
 | NFR-12 | Observability | Activity feed (`im_activity_logs`) plus Vercel deployment logs. |
 
 ---
@@ -754,8 +843,11 @@ stateDiagram-v2
 
 | Term | Definition |
 | --- | --- |
-| **IncluMarket** | PWD-livelihood marketplace in the InkluTrack ecosystem (this Next.js + Supabase app). |
-| **PWD** | Person with disability. Profiles store `disability_type`, `assistive_needs`, and optional `pwd_id_url`. |
+| **InclusiveMarket** | PWD-livelihood marketplace in the InkluTrack ecosystem (this Next.js + Supabase app). Older spellings survive only in internal identifiers. |
+| **AVRC Region IX** | Area Vocational Rehabilitation Center, Zamboanga Peninsula — trains the PWD sellers and runs the admin console. |
+| **PWD** | Person with disability. A PWD verification (`im_pwd_verifications`) is the single source of "verified" (`im_verified_pwd`). |
+| **PWD discount rule** | Configuration for a discount (RA 10754 20%, DTI-DA JMC 01-2022 BNPC 5%, or voluntary) — off until a legal sign-off. |
+| **Checkout** | One payment covering one order per seller (`im_checkouts`). |
 | **DSWD** | Department of Social Welfare and Development (Philippines). Brand colors: blue (primary), red (compassion), yellow/gold (hope), white (background). |
 | **Buyer / Seller / Admin** | The three `im_profiles.role` values. Admin is not available via public signup. |
 | **Guest** | Unauthenticated visitor; may browse, use chatbot, and adjust local a11y prefs. |
@@ -769,11 +861,11 @@ stateDiagram-v2
 | **Conversation** | Direct buyer–seller thread, optionally tied to a product. |
 | **Payout** | Seller withdrawal request (bank / GCash / Maya / PayPal / other). |
 | **Transaction** | Ledger row for an order payment (`im_transactions`). |
-| **WCAG 2.1 AA** | Web Content Accessibility Guidelines level AA — target for UI. |
+| **WCAG 2.2 AA** | Web Content Accessibility Guidelines level AA — target for UI. |
 | **TTS** | Text-to-speech in the accessibility toolbar. |
 | **ISO 8601 / ISO 4217** | Date-time and currency codes used in Excel reports. |
 | **Vercel** | Hosting and CDN for the production Next.js app. |
-| **Supabase** | Postgres, Auth, and (optional) dashboard for migrations. |
+| **Supabase** | Postgres, Auth and Storage (`product-media` public, `pwd-ids` private). |
 
 ---
 
@@ -794,10 +886,10 @@ stateDiagram-v2
 
 | Layer | Technology | Notes |
 | --- | --- | --- |
-| Database | PostgreSQL (Supabase) | `im_*` schema, migrations `0001`–`0008` |
+| Database | PostgreSQL (Supabase) | `im_*` schema, migrations `0001`–`0024`; PGlite for migration tests |
 | Auth | Supabase Auth | Cookie session via `@supabase/ssr` |
 | Client | `@supabase/supabase-js` | Server + admin (service role) clients |
-| Security | RLS + `im_current_profile_role()` | Policies in `0002`, `0004`, `0006`, `0008` |
+| Security | RLS + `im_current_profile_role()` | Policies from `0002`; client writes revoked in `0013` |
 
 ### Libraries and standards
 
@@ -807,9 +899,10 @@ stateDiagram-v2
 | Money | PHP, ISO 4217 |
 | Dates | ISO 8601 UTC in exports; `en-PH` in UI |
 | Chatbot | Rule-based `lib/chatbot/responder.ts` (pluggable `CHAT_PROVIDER`) |
-| Payments (scaffold) | PayMongo, Stripe, PayPal, Maya, GCash rows in `im_payment_providers` |
+| Payments | PayMongo Checkout Sessions (GCash, Maya, GrabPay, card) with a signed webhook |
 | Accessibility | CSS + `im_ui_prefs` + Web Speech API (TTS / voice) |
-| Images | Base64 data URLs on `im_product_images` (no Storage bucket) |
+| Images | Supabase Storage via `lib/media.ts` (product, shop, banner) and the private `pwd-ids` bucket |
+| Email | Resend or Brevo HTTP API; templates in `lib/email/templates.ts` |
 
 ### Environment variables
 
@@ -819,7 +912,14 @@ stateDiagram-v2
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Public |
 | `NEXT_PUBLIC_SITE_URL` | Public (Vercel URL in production) |
 | `SUPABASE_SERVICE_ROLE_KEY` | Server only |
-| `CHAT_PROVIDER` | Optional |
+| `PWD_ID_HASH_KEY`, `PWD_ID_ENC_KEY` | Server only — required in production |
+| `RATE_LIMIT_SALT` | Server only |
+| `PAYMONGO_SECRET_KEY`, `PAYMONGO_WEBHOOK_SECRET`, `PAYMONGO_ENV` | Server only |
+| `EMAIL_*`, `RESEND_API_KEY`, `BREVO_API_KEY` | Server only |
+| `CHAT_PROVIDER`, `OPENROUTER_*` | Optional |
+| `NEXT_PUBLIC_CONTACT_*`, `NEXT_PUBLIC_FACEBOOK_URL`, `NEXT_PUBLIC_INSTAGRAM_URL` | Public, optional |
+
+The full list with explanations is in `.env.example`.
 
 ### Repository layout (diagram-relevant)
 
@@ -827,7 +927,10 @@ stateDiagram-v2
 app/                 Pages (buyer, seller, admin, static, auth)
 components/          Client widgets (header, chat, a11y, cards)
 lib/actions/         Server mutations
-lib/data.ts          Reads
+lib/data.ts …        Reads (server-only DTO shaping)
+lib/pricing/         One pricing engine for cart, checkout, PayMongo and orders
+lib/orders/          Order state machine
+lib/pwd/             PWD verification
 lib/reports/excel.ts Report workbooks
 lib/a11y/            Accessibility prefs
 lib/chatbot/         Bot responder
@@ -841,8 +944,8 @@ docs/                This file, erd.md, REBUILD_PLAN.md
 
 Open the board, then arrange sections if they overlap: [https://www.figma.com/board/MUqtGs9UgXpJIGFgH6VS0O](https://www.figma.com/board/MUqtGs9UgXpJIGFgH6VS0O)
 
-1. IncluMarket System Architecture  
-2. IncluMarket Use Cases  
+1. System Architecture  
+2. Use Cases  
 3. Buyer Purchase Flow  
 4. Seller Listing and Fulfillment  
 5. Admin Moderation Flow  

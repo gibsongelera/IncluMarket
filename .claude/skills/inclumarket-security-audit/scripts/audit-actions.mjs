@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * IncluMarket server-action guard audit.
+ * InclusiveMarket server-action guard audit.
  *
  * Every export of a "use server" module is a public, unauthenticated HTTP
  * endpoint. This lists them and reports any that touch the service-role client

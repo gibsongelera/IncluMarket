@@ -1,13 +1,13 @@
 ---
 name: inclumarket-responsive
-description: Make IncluMarket work on phone, tablet, laptop and any screen size, with no CSS framework. Use when asked to "make it responsive", "fix mobile", "it looks broken on my phone", "it overflows", "test different screen sizes", "mobile layout", or when adding any layout CSS. Encodes this repo's hand-written mobile-first breakpoint convention, the table-to-card pattern, and the 12-24px accessibility font scale that breaks fixed pixel offsets.
+description: Make InclusiveMarket work on phone, tablet, laptop and any screen size, with no CSS framework. Use when asked to "make it responsive", "fix mobile", "it looks broken on my phone", "it overflows", "test different screen sizes", "mobile layout", or when adding any layout CSS. Encodes this repo's hand-written mobile-first breakpoint convention, the table-to-card pattern, and the 12-24px accessibility font scale that breaks fixed pixel offsets.
 license: MIT
 metadata:
   project: inklumarket-next
   version: "1.0"
 ---
 
-# IncluMarket Responsive Layout
+# InclusiveMarket Responsive Layout
 
 ## When to Use This Skill
 

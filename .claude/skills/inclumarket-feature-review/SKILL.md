@@ -1,13 +1,13 @@
 ---
 name: inclumarket-feature-review
-description: Verify that every button, form and feature in IncluMarket actually works end to end — not just that it compiles. Use when asked to "review the app", "does everything work", "test all the buttons", "check every feature", "QA pass", "verify my changes", or before a demo or capstone submission. Builds a route and control inventory, finds dead controls and orphan actions, then drives the real app in a browser.
+description: Verify that every button, form and feature in InclusiveMarket actually works end to end — not just that it compiles. Use when asked to "review the app", "does everything work", "test all the buttons", "check every feature", "QA pass", "verify my changes", or before a demo or capstone submission. Builds a route and control inventory, finds dead controls and orphan actions, then drives the real app in a browser.
 license: MIT
 metadata:
   project: inklumarket-next
   version: "1.0"
 ---
 
-# IncluMarket Feature Review
+# InclusiveMarket Feature Review
 
 ## When to Use This Skill
 

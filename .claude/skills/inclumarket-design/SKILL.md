@@ -1,13 +1,13 @@
 ---
 name: inclumarket-design
-description: IncluMarket's design-token system, CSS layer order and visual conventions. Use when asked to "change the styling", "add a component", "fix the colors", "make it look better", "match the design", "theme it", or when editing anything under styles/ or adding a className. Encodes project-specific footguns that generic design-system skills do not know about.
+description: InclusiveMarket's design-token system, CSS layer order and visual conventions. Use when asked to "change the styling", "add a component", "fix the colors", "make it look better", "match the design", "theme it", or when editing anything under styles/ or adding a className. Encodes project-specific footguns that generic design-system skills do not know about.
 license: MIT
 metadata:
   project: inklumarket-next
   version: "1.0"
 ---
 
-# IncluMarket Design System
+# InclusiveMarket Design System
 
 ## When to Use This Skill
 

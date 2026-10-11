@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * IncluMarket contrast and token checker.
+ * InclusiveMarket contrast and token checker.
  *
  * Catches the three token mistakes that have each shipped to users:
  *   1. a background-only token used for `color:`  (white-on-white text)

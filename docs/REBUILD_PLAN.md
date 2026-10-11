@@ -1,8 +1,10 @@
-# IncluMarket — Growth Rebuild Plan
+# InclusiveMarket — Growth Rebuild Plan
 
 Status tracker for the feature-expansion rebuild agreed on 2026-08-04. This is
 an **evolve-in-place** rebuild: the existing schema, auth, RLS, and WCAG-2.1-AA
 accessibility foundation is kept and extended — nothing working is thrown away.
+
+> **Superseded in part by the client revision (October 2026)** — see "Client revision v3" at the end. Phases 1–17 below are kept as history; where they disagree with the code or the README, the code and README are right.
 
 **Status: all 14 phases + final verification complete.** `npm run build` is
 clean. See "Final phase" at the bottom for the ship-gate summary and "Open
@@ -283,7 +285,7 @@ workbook (users, products, orders, reviews, tickets, audit_logs — or `"all"`).
 Exports resolve **real display names** (seller/buyer/product/category/assignee/
 actor) beside IDs, use **ISO 8601 UTC** date cells (`yyyy-mm-dd hh:mm:ss`),
 **ISO 4217** PHP amounts as numeric cells (`#,##0.00` + Currency column), and
-download as `IncluMarket_<Report>_Report_YYYY-MM-DD.xlsx`. Emails stay masked;
+download as `InclusiveMarket_<Report>_Report_YYYY-MM-DD.xlsx`. Emails stay masked;
 `assistive_needs` is still omitted from exports.
 
 - `npm install exceljs` (first non-Supabase/Next dependency — flagged).
@@ -450,12 +452,41 @@ login only gates the transaction.
   it; a full dev-server restart (not just a browser refresh) is needed on
   the user's side for the same reason.
 
+## Client revision v3 (October 2026) ✅ done
+
+Driven by `docs/prompts/CLIENT_REVISION_PROMPT.md`: a Stage A plan (ADRs,
+baseline findings B-/N-, change items C-01–C-48 and D-01–D-09, a motion audit
+M-01–M-13), approved with every default, then steps S0–S10, each verified with
+`tsc` and `npm run verify` and committed under its step id
+(`git log --grep "^S[0-9]"`).
+
+| Step | What changed |
+|---|---|
+| S0 | Repository hygiene: pending work committed, LF line endings, `.agents` ignored, before-screenshots kept, `npm test` |
+| S1 | Correctness and security: database failures surfaced, only approved listings from active sellers public, one pricing pipeline, seller writes scoped, reviews need a delivery, Surface B closed (0013), suspend/anonymise with reasons |
+| S2 | Schema 0014–0020: order state machine, one order per seller, moderation/stats/search view, PWD verification, discount rules, buyer/seller/support tables, earnings and payouts |
+| S3 | Brand (InclusiveMarket), blue and brown palette, one product grid and card, console sidebars, 404/error/loading states, self-hosted fonts, toasts and live regions |
+| S4 | Account area and PWD verification end to end (scan, submit, admin queue, expiry, reminders, retention) |
+| S5 | Server-side storefront (home, search, sort), wishlist, reviews, featured windows (0021), recommendations, order tracking, account-synced accessibility (0022), shop pages, notifications, product page, cart selection and addresses, PWD discount engine, account pages |
+| S6 | Seller Centre: to-dos and setup, product wizard, photos to Storage (0023), packing slip, flash-sale rules (0024), finance and payouts, shop logo and banner, seller support |
+| S7 | Admin console: overview, orders and refunds, users, moderation reasons, categories, reviews, banners, newsletter, settings, privacy and contact inboxes, read-only payments, ticket notifications both ways |
+| S8 | Truthful static pages, contact form, `lib/site.ts`, footer without placeholders, web app manifest |
+| S9 | Motion polish and the motion audit report (`motion-audits/`, local) |
+| S10 | README, CLAUDE.md, ERD, system diagrams, skills, this section; proposal Markdown regenerated from the .docx |
+
 ## Open items that need the user, not a guess
 
-1. **Chatbot API key/provider** — ships on the mock responder until supplied.
-2. **Real social media URLs** for the footer — placeholders until supplied.
-3. **Legal copy** for Privacy Policy / Terms — drafted generically for a PH
-   PWD marketplace; a lawyer should review before real launch.
-4. Running `scripts/seed-demo-products.mjs` and the Supabase migrations
-   requires the user's live Supabase project credentials — I cannot execute
-   this myself without `.env.local`.
+1. **Apply migrations 0013–0024** — to a development Supabase project first,
+   then production. Rollbacks are in `supabase/rollback/`. Then run
+   `npm run backfill-product-images` (dry run first).
+2. **Set `PWD_ID_HASH_KEY` and `PWD_ID_ENC_KEY`** in production (and
+   `RATE_LIMIT_SALT`); PWD verification refuses to run without them.
+3. **Legal answers** — which discount rules apply (RA 10754, DTI-DA JMC
+   01-2022, voluntary), and a lawyer's review of the Privacy Policy and Terms.
+   Every discount rule stays off until then.
+4. **Contact details and social URLs** — set `NEXT_PUBLIC_CONTACT_*` and the
+   social URL variables; nothing shows until they exist.
+5. **Signed-in checks** — the buyer, seller and admin journeys need a real
+   sign-in against the migrated development project (and a phone for the ID
+   camera).
+6. **Chatbot provider** — optional; the rule-based responder works without one.

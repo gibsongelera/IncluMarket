@@ -1,243 +1,192 @@
-# IncluMarket — Next.js + Supabase
+# InclusiveMarket
 
-Accessible PWD-livelihood marketplace for the **InkluTrack** ecosystem.
-Built with **Next.js (App Router) + TypeScript** and a **Supabase / PostgreSQL**
-backend. Visual design uses the shared CSS in `styles/` (tokens, base, layout,
-components, shopee, landing), including the admin theme customizer.
+An online shop for products made by persons with disabilities (PWD) — trainees
+and graduates of AVRC Region IX (Area Vocational Rehabilitation Center,
+Zamboanga Peninsula). Part of the **InkluTrack** capstone project (ZPPSU, College
+of Information and Computing Science).
+
+Buyers browse and pay (cash on delivery or PayMongo); sellers verify their PWD ID
+and run their shop; AVRC staff moderate, verify and settle disputes from the
+admin console. Accessibility is a build requirement, not a feature.
+
+| | |
+|---|---|
+| Framework | Next.js 15 App Router, TypeScript (strict) — async Server Components, server actions |
+| Styling | Hand-written CSS in `styles/` (no Tailwind, no CSS-in-JS) |
+| Data | Supabase Postgres (40 `im_` tables), Supabase Auth, Supabase Storage |
+| Payments | PayMongo Checkout Sessions (GCash, Maya, GrabPay, card) |
+| Email | Resend (default) or Brevo, over HTTP |
+| Chatbot | Rule-based; OpenRouter LLM when `CHAT_PROVIDER=openrouter` |
+
+`CLAUDE.md` holds the working rules for this codebase; read it before changing
+anything.
 
 ---
 
 ## Quick start
 
 ```bash
-# 1. Install dependencies
 npm install
-
-# 2. Configure environment
-cp .env.example .env.local   # then fill in real values
-
-# 3. Apply database migrations (see Database below), then provision accounts
-node --env-file=.env.local scripts/provision-users.mjs
-node --env-file=.env.local scripts/seed-demo-products.mjs   # optional demo catalog
-
-# 4. Run the dev server
-npm run dev                  # http://localhost:3000
-
-# 5. Production build
-npm run build && npm start
+cp .env.example .env.local        # fill in values; see "Environment" below
+# apply the database migrations (see "Database"), then:
+npm run provision-users           # demo accounts from SEED_* variables
+npm run seed-demo-products        # optional demo catalogue
+npm run dev                       # http://localhost:3000
 ```
 
-### Environment variables
+**One `.next`, one process.** While `npm run dev` is running, do not run
+`npm run build` or start a second dev server (not even on another port). If you
+see `MODULE_NOT_FOUND .next/server/...` or a 404 on `/login`, stop every dev
+server, delete `.next`, and start one.
 
-Create `.env.local` (git-ignored — never commit it):
-
-```
-NEXT_PUBLIC_SUPABASE_URL=https://YOUR-PROJECT-ref.supabase.co
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_xxxxxxxx
-SUPABASE_SERVICE_ROLE_KEY=eyJ...   # SERVER ONLY — never prefix with NEXT_PUBLIC_
-NEXT_PUBLIC_SITE_URL=http://localhost:3000
-```
-
-`.env.example` contains placeholders and is safe to commit.
-
-### Deploy on Vercel
-
-1. Import the GitHub repo in Vercel.
-2. **Project Settings → Environment Variables** — add for **Production** and **Preview**:
-
-| Name | Notes |
-|------|--------|
-| `NEXT_PUBLIC_SUPABASE_URL` | Your project URL |
-| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Publishable / anon key |
-| `SUPABASE_SERVICE_ROLE_KEY` | **Server-only** — do **not** use `NEXT_PUBLIC_` |
-| `NEXT_PUBLIC_SITE_URL` | Your Vercel URL, e.g. `https://your-app.vercel.app` |
-
-3. Redeploy after saving env vars (env changes do not apply to an in-flight build).
-4. In Supabase Auth → URL configuration, add your Vercel domain to **Site URL** and **Redirect URLs** (`https://your-app.vercel.app/auth/callback`).
-
-The root layout soft-fails theme loading when the service-role key is missing at build time so `npm run build` can complete; login and data features still need those variables at **runtime**.
-
----
-
-## Accounts
-
-Demo accounts are created by `scripts/provision-users.mjs` via the Supabase
-Auth Admin API (`email_confirm: true` so they can sign in without clicking a
-confirmation link). **No credentials are stored in this repository.**
-
-Set these in `.env.local` first (see `.env.example`), then run the script:
+## Checks
 
 ```bash
-npm run provision-users
+npm run verify     # all of the below; must exit 0 before any change is "done"
+npx tsc --noEmit   # strict types (the lint gate)
+npm test           # node:test unit tests
+npm run test:db    # migrations 0013+ against PGlite, with rollbacks
 ```
 
-| Variable                | Purpose                                    |
-| ----------------------- | ------------------------------------------ |
-| `SEED_ACCOUNT_PASSWORD` | Shared password. Minimum 12 characters.    |
-| `SEED_ADMIN_EMAIL`      | Admin account address                      |
-| `SEED_SELLER_EMAIL`     | Seller account address (plus `SEED_SELLER2_EMAIL`, `SEED_SELLER3_EMAIL`) |
-| `SEED_BUYER_EMAIL`      | Buyer account address (plus `SEED_BUYER2_EMAIL`) |
-
-The script refuses to run without `SEED_ACCOUNT_PASSWORD`, rejects passwords
-shorter than 12 characters, and refuses to seed against a non-localhost
-`NEXT_PUBLIC_SITE_URL` unless `ALLOW_SEED_IN_PROD=1` is set explicitly.
-
-> Earlier revisions of this file published six working accounts — including an
-> admin — that all shared the password `Admin123`, against a live deployment.
-> If you deployed from a commit before this change, rotate those accounts.
-
-New self-serve signups use real Supabase Auth with **email confirmation**.
-After signup, users must confirm via the link (`app/auth/callback`) before
-signing in. Unconfirmed login attempts show “Please confirm your email first”
-with a resend option.
-
-**Admin cannot be self-registered.** The signup trigger only ever mints
-`buyer` or `seller`, regardless of what the client sends in user metadata —
-see `supabase/migrations/0009_security_hardening.sql`.
+`verify` runs the contrast checker, the server-action guard audit, the
+responsive audit, the control inventory (no dead buttons, no orphan actions),
+page-props, page-states, grid and brand-name checks, the unit and database
+tests, and the smoke suite. `npm run smoke` alone only greps files — it is a
+regression net, never proof that a feature works.
 
 ---
 
-## Routes
+## Environment
 
-| Area   | Routes |
-| ------ | ------ |
-| Public | `/` (redirects: signed-in → dashboard, guest → `/buyer/home`), `/login` (sign in / sign up), `/buyer/home` **and** `/buyer/product/[id]` (public storefront — browsable without an account, Shopee-style), `/auth/callback`, `/about`, `/contact`, `/faq`, `/privacy`, `/terms`, `/accessibility` |
-| Buyer  | `/buyer/wishlist`, `/buyer/cart`, `/buyer/checkout`, `/buyer/orders`, `/buyer/messages`, `/buyer/support` |
-| Seller | `/seller/dashboard`, `/seller/products`, `/seller/orders`, `/seller/messages`, `/seller/reviews` |
-| Admin  | `/admin/users`, `/admin/products`, `/admin/tickets`, `/admin/compliance`, `/admin/reports`, `/admin/theme` |
+Everything is documented in `.env.example`. `NEXT_PUBLIC_*` values are
+**inlined into the browser bundle**; never put a secret behind that prefix.
 
-A customer-service chat widget (bottom-right) and an accessibility widget
-(bottom-left — high contrast, text size, reduce motion) are both mounted
-site-wide, including on public pages.
+| Variable | Needed for |
+|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Everything |
+| `SUPABASE_SERVICE_ROLE_KEY` | Everything server-side (server-only) |
+| `NEXT_PUBLIC_SITE_URL` | Email links, payment return URLs |
+| `PWD_ID_HASH_KEY`, `PWD_ID_ENC_KEY` | PWD verification — **required in production** |
+| `RATE_LIMIT_SALT` | Hashing caller IPs for rate limits |
+| `PAYMONGO_SECRET_KEY`, `PAYMONGO_WEBHOOK_SECRET`, `PAYMONGO_ENV` | Online payment (without the key, checkout offers cash on delivery only) |
+| `EMAIL_PROVIDER`, `EMAIL_FROM`, `EMAIL_FROM_NAME`, `RESEND_API_KEY` / `BREVO_API_KEY` | Email (sends are skipped, not failed, when unset) |
+| `CHAT_PROVIDER`, `OPENROUTER_*` | Optional LLM chatbot |
+| `NEXT_PUBLIC_CONTACT_EMAIL`, `NEXT_PUBLIC_CONTACT_PHONE`, `NEXT_PUBLIC_FACEBOOK_URL`, `NEXT_PUBLIC_INSTAGRAM_URL` | Shown only when set |
+| `CSP_ENFORCE` | Enforce the Content-Security-Policy (report-only otherwise) |
+| `ENABLE_PAYMENT_SIMULATION` | Dev only: simulate PayMongo webhooks from Admin → Payments |
 
-**Guest browsing (Shopee-style)**: `/buyer/home` and `/buyer/product/[id]`
-use `getSession()` instead of `requireRole()`, so anyone can browse the
-catalog and product details without an account. Only the transaction —
-Add to cart, Buy now, Message seller — requires signing in, at which point
-the user is sent to `/login`. Every other buyer route (cart, checkout,
-orders, wishlist, messages, support) still requires a real buyer session
-via `requireRole(["buyer"])`.
+`npm run check-env` checks the configured services against the real APIs.
 
-Role guards live in `lib/session.ts` (`requireRole`) and resolve the signed-in
-user from Supabase Auth cookies + `im_profiles.role`.
+### Deploying (Vercel)
 
----
-
-## Architecture
-
-```
-app/                 App Router pages + auth callback + static/marketing pages
-middleware.ts        Refreshes Supabase Auth cookies
-components/          UI + interactive client components
-lib/
-  supabase/client.ts   browser client (publishable key, RLS)
-  supabase/server.ts   request-scoped SSR client
-  supabase/admin.ts    SERVER-ONLY service-role client
-  data.ts              server-only read layer
-  actions/*.ts         server mutations (auth, cart, shop, seller, admin, theme,
-                        wishlist, search, newsletter, notifications, messages, chat)
-  chatbot/responder.ts pluggable chatbot responder (mock now; real LLM later)
-  session.ts           Supabase session → profile role guards
-scripts/
-  provision-users.mjs      create/update the production Auth users + profiles
-  seed-demo-products.mjs   optional demo product catalog for the 3 demo sellers
-styles/              global CSS
-supabase/migrations/ 0001 schema · 0002 RLS · 0003 seed · 0004 cart + auth trigger
-                      · 0005/0006 growth-rebuild schema + RLS
-docs/erd.md              mermaid ERD
-docs/REBUILD_PLAN.md     growth-rebuild plan + phase status
-```
-
-### Data flow
-- **Auth**: `@supabase/ssr` cookie sessions; signup stores `name`/`role` in
-  user metadata; a DB trigger creates the matching `im_profiles` row.
-- **Reads**: server components call `lib/data.ts` after `requireRole()`.
-- **Writes**: `"use server"` actions re-check role, then mutate via the
-  service-role client and append audit rows where appropriate.
-- **Cart**: persisted in `im_cart_items` (RLS: own rows only). Checkout reads
-  the DB cart server-side — nothing is trusted from the browser cart state.
+1. Add the variables above for Production and Preview, then redeploy.
+2. Supabase Auth → URL configuration: add the site URL and
+   `https://<domain>/auth/callback` and `https://<domain>/auth/confirm`.
+3. PayMongo → Webhooks: register `https://<domain>/api/webhooks/paymongo` in the
+   same mode (test or live) as `PAYMONGO_ENV` and the secret key.
 
 ---
 
 ## Database
 
-Migrations live in `supabase/migrations/` (project ref `argmtsjutowmiukyexip`).
-All tables use an `im_` prefix. See **[docs/erd.md](docs/erd.md)**.
+Migrations are in `supabase/migrations/`, numbered and applied in order. Never
+edit one that has been applied; add a new one. Each migration from 0013 on has
+a rollback in `supabase/rollback/00xx_down.sql` and tests in `supabase/tests/`.
 
-Tables: `im_profiles`, `im_categories`, `im_products`, `im_product_variants`,
-`im_product_images`, `im_cart_items`, `im_orders`, `im_order_items`,
-`im_product_reviews`, `im_support_tickets`, `im_ticket_responses`,
-`im_consent_logs`, `im_audit_logs`, `im_theme_settings`, `im_ui_prefs`,
-`im_wishlists`, `im_order_status_history`, `im_flash_sales`,
-`im_notifications`, `im_newsletter_subscribers`, `im_conversations`,
-`im_messages`, `im_chat_sessions`, `im_chat_messages`.
+| Migration | What it adds |
+|---|---|
+| 0001–0012 | Schema, RLS, seed, cart and signup trigger, growth features, payments, security hardening, function grants |
+| 0013 | Surface B lockdown: no client writes to `im_` tables with the public key |
+| 0014 | Order state machine enforced in the database; `im_settings` |
+| 0015 | Checkouts: one order per seller |
+| 0016 | Product moderation, pre-computed stats, search and storefront view |
+| 0017 | PWD ID verification (private `pwd-ids` bucket, keyed number hash, decision RPC) |
+| 0018 | PWD discount rules (all off until a legal sign-off) |
+| 0019 | Addresses, review moderation, notification preferences, product views, banners, newsletter tokens, privacy requests, contact inbox, public `product-media` bucket |
+| 0020 | Seller earnings, payouts, manageable categories |
+| 0021 | Featured product windows |
+| 0022 | Accessibility preferences on the account |
+| 0023 | Moving product photos from Postgres to Storage |
+| 0024 | Flash sale rules |
 
-`0003_seed.sql` only seeds categories + theme. `0004_cart_auth.sql` adds the
-cart table/RLS, the `auth.users` → `im_profiles` trigger, and clears legacy
-demo rows. `0005_growth_schema.sql` / `0006_growth_rls.sql` add the
-growth-rebuild tables (wishlist, order tracking, flash sales, notifications,
-newsletter, messaging, chatbot) — see
-**[docs/REBUILD_PLAN.md](docs/REBUILD_PLAN.md)**.
+**Apply 0013–0024 to a development project first**, run the app against it,
+then production. Every page that depends on a newer migration says which one it
+needs instead of failing. After 0019 and 0023, move existing product photos out
+of the database:
 
 ```bash
-supabase db push
-# or run each file in supabase/migrations/ in order against your database
-node --env-file=.env.local scripts/provision-users.mjs
+npm run backfill-product-images                       # dry run: reports what it would move
+BACKFILL_CONFIRM=<project-ref> npm run backfill-product-images -- --apply
 ```
 
-In the Supabase dashboard, enable **Confirm email** under Authentication →
-Providers → Email so new signups must verify before login.
+`docs/erd.md` has the entity diagram; `docs/SYSTEM_DIAGRAMS.md` the flows.
 
 ---
 
-## Security note (service-role key)
+## How it fits together
 
-- `SUPABASE_SERVICE_ROLE_KEY` is **server-only**. It is read exclusively in
-  `lib/supabase/admin.ts` (`import "server-only"`) and the provision script.
-- Never prefix it with `NEXT_PUBLIC_`. Never import the admin client into a
-  Client Component.
-- The browser only receives `NEXT_PUBLIC_SUPABASE_URL` and
-  `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`.
-- `.env.local` is git-ignored; `.env.example` holds placeholders only.
+```
+app/                     pages (async Server Components, force-dynamic)
+  auth/callback, auth/confirm, api/webhooks/paymongo   the only route handlers
+components/              UI; client components only where there is interaction
+lib/
+  data.ts, storefront.ts, admin-content.ts, ...        reads ("server-only"), shaped DTOs
+  actions/*.ts                                         mutations ("use server")
+  pricing/                                             cart → discounts → shipping, one engine
+  orders/                                              state machine and transitions
+  pwd/                                                 PWD verification (crypto, images, data)
+  payments/                                            PayMongo client, webhook application
+  supabase/admin.ts                                    service-role client (server-only)
+  site.ts, settings-spec.ts, nav.ts                    shared pure configuration
+styles/                  tokens, base, layout, components, shopee, landing, responsive
+supabase/                migrations, rollback, tests
+scripts/                 checks, provisioning, backfill, icons
+```
 
----
+- **Every export of a `"use server"` module is a public HTTP endpoint.** Each
+  action checks the caller's role first, returns `{ ok, error }`, never throws,
+  writes the audit log for admin and money actions, and revalidates the pages it
+  changes.
+- **RLS does not run for app traffic.** The app uses the service-role client
+  after its own checks; RLS guards direct access with the publishable key that
+  ships in the browser (Surface B, locked down by 0013).
+- **Images:** product, shop and banner photos go to the public `product-media`
+  bucket through `lib/media.ts` (type checked by magic bytes, EXIF refused, 1 MB);
+  PWD ID photos go to the private `pwd-ids` bucket and are read only through
+  60-second signed links. Before 0019 product photos fall back to data URLs.
+- **States:** every data page has a loading state, an error boundary and a
+  designed empty state; product and shop pages return a real 404.
 
-## Accessibility (WCAG 2.1 AA-aligned)
+## Routes
 
-Skip links, semantic landmarks, `:focus-visible` rings, `aria-live` regions,
-native `<dialog>` modals, keyboard-operable controls, a persisted **High
-contrast** toggle, and `prefers-reduced-motion` support.
+| Area | Routes |
+|---|---|
+| Public | `/home`, `/search`, `/buyer/product/[id]`, `/shop/[sellerId]`, `/login`, `/reset-password`, `/about`, `/faq`, `/contact`, `/privacy`, `/terms`, `/accessibility`, `/newsletter/unsubscribe` |
+| Signed in | `/account` (profile, addresses, notifications, privacy, PWD verification), `/notifications` |
+| Buyer | `/buyer/cart`, `/buyer/checkout`, `/buyer/orders`, `/buyer/orders/[id]`, `/buyer/wishlist`, `/buyer/messages`, `/buyer/support` |
+| Seller | `/seller/dashboard`, `/seller/products`, `/seller/flash-sales`, `/seller/shop`, `/seller/orders` (and packing slips), `/seller/reviews`, `/seller/finance`, `/seller/messages`, `/seller/support` |
+| Admin | `/admin` (overview), `/admin/users`, `/admin/verifications`, `/admin/products`, `/admin/orders`, `/admin/categories`, `/admin/reviews`, `/admin/banners`, `/admin/tickets`, `/admin/reports`, `/admin/payouts`, `/admin/compliance`, `/admin/newsletter`, `/admin/discounts`, `/admin/payments`, `/admin/settings`, `/admin/theme` |
 
----
+Guests can browse and search; adding to the cart or messaging a seller asks
+them to sign in. Admin accounts cannot be created by sign-up.
 
-## Growth rebuild
+## Accessibility
 
-IncluMarket was extended in place (schema, auth, RLS, and the original
-accessibility work were kept as the foundation, not rewritten) with:
+Aiming for WCAG 2.2 AA, tested with a keyboard, NVDA, 24 px text and 320 px
+width. The accessibility button on every page enlarges text (12–24 px root
+size — so layouts use `rem`, never pixel offsets tied to element height), and
+offers high contrast, reduced motion, a large cursor, read-aloud, visual alerts
+and voice commands. Nothing needs dragging; dialogs are native `<dialog>`;
+toasts are announced through live regions. The motion rules (short, eased out,
+nothing pulsing, nothing at all with reduced motion) are in
+`styles/tokens.css`.
 
-- **Wishlist**, **product sorting**, and **search suggestions** (typeahead).
-- **Reviews polish** (aggregate rating + verified-purchase badge) and
-  **featured / recommended product** rails.
-- **Order tracking** — a full status-history timeline, not just the current status.
-- **Notifications** (bell + unread badge) wired into real triggers: low
-  stock, new orders, shipping updates, new reviews, and **flash sales**
-  (seller-triggered, buyer-facing discounted pricing).
-- **Featured PWD sellers** — admin-curated homepage rail with a seller story
-  and a "shop this seller" filter.
-- **Footer static pages** (About/Contact/FAQ/Privacy/Terms/Accessibility
-  Statement) + **newsletter signup**.
-- **Buyer↔seller direct messaging**, separate from the admin support-ticket
-  system.
-- A **customer-service chatbot widget** (bottom-right, site-wide) with a
-  pluggable responder — ships on a rule-based mock, ready for a real LLM
-  provider via one file + an env var, zero UI changes needed.
-- An **accessibility hardening pass** (WCAG 2.2-oriented): sitewide skip
-  link, focus-into-panel on the notification bell and chat widget, and a
-  couple of real pre-existing bugs fixed along the way (a heading-hierarchy
-  violation on the homepage, a missing `aria-haspopup` on the search combobox).
-- **Admin Excel export** (`.xlsx`, one sheet per report or all of them).
+## Security notes
 
-See **[docs/REBUILD_PLAN.md](docs/REBUILD_PLAN.md)** for the full phased
-plan, exact file lists, the conventions every new file follows, and the
-open items that still need real input from you (chatbot API key, real
-social media URLs, legal copy review).
+- `SUPABASE_SERVICE_ROLE_KEY` is read only in `lib/supabase/admin.ts`
+  (`import "server-only"`) and in scripts. Never prefix it with `NEXT_PUBLIC_`.
+- No credentials are stored in this repository; demo accounts come from
+  `SEED_*` variables and the seed script refuses weak passwords and remote sites.
+- Rate limits are stored in Postgres with salted, hashed caller IPs.
+- `scripts/probe-surface-b.mjs` checks what the public key can reach; it runs
+  only with `PROBE_TARGET=dev`.
