@@ -1033,3 +1033,5 @@ a.banners__link:focus-visible { outline: var(--focus-ring); outline-offset: var(
 /* Responsive */
 
 /* Width media queries live in styles/responsive.css. */
+.ticket-reply { display: grid; gap: var(--space-2); justify-items: start; }
+.ticket-reply .field { width: 100%; margin: 0; }

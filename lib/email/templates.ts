@@ -211,6 +211,7 @@ export function renderTemplate(kind: EmailKind, d: TemplateData): RenderedEmail 
     }
 
     case "ticket_reply": {
+      const support = `${url}${String(d.supportPath ?? "/buyer/support")}`;
       return {
         subject: `Reply to your support request — InclusiveMarket`,
         html: shell(
@@ -221,12 +222,12 @@ export function renderTemplate(kind: EmailKind, d: TemplateData): RenderedEmail 
                ${esc(d.message)}</blockquote>` +
             p("You can reply from your support page."),
           "Open support",
-          `${url}/buyer/support`
+          support
         ),
         text:
           `Our support team replied.\n\n` +
           `Re: ${d.subject}\n\n${d.message}\n\n` +
-          `Reply from your support page: ${url}/buyer/support\n`,
+          `Reply from your support page: ${support}\n`,
       };
     }
 

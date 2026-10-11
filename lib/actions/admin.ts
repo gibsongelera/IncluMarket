@@ -6,7 +6,7 @@ import { getSession } from "@/lib/session";
 import { buildReportWorkbook } from "@/lib/reports/excel";
 import { boundedText } from "@/lib/validation/data-url";
 import { queueEmail } from "@/lib/email/send";
-import { createNotification } from "@/lib/notify";
+import { createNotification, emailIfWanted } from "@/lib/notify";
 import { isMissingObject } from "@/lib/db-errors";
 import { requestPasswordResetAction } from "@/lib/actions/auth";
 import { verifiedAmongIfAvailable } from "@/lib/pwd/data";
@@ -188,6 +188,12 @@ export async function setSellerFeatured(
   return { ok: true };
 }
 
+/** Sellers have their own support page in Seller Centre. */
+async function supportPathFor(userId: number): Promise<string> {
+  const { data } = await createAdminClient().from("im_profiles").select("role").eq("id", userId).maybeSingle();
+  return data?.role === "seller" ? "/seller/support" : "/buyer/support";
+}
+
 export async function assignTicket(ticketId: number): Promise<ActionResult> {
   const admin = await requireAdmin();
   if (!admin) return { ok: false, error: "Admin access required." };
@@ -200,7 +206,7 @@ export async function assignTicket(ticketId: number): Promise<ActionResult> {
       updated_at: new Date().toISOString(),
     })
     .eq("id", ticketId);
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: "Could not take the ticket. Please try again." };
   await audit(admin.user_id, "assigned_ticket", `ticket:${ticketId}`);
   revalidatePath("/admin/tickets");
   return { ok: true };
@@ -212,14 +218,29 @@ export async function setTicketStatus(
 ): Promise<ActionResult> {
   const admin = await requireAdmin();
   if (!admin) return { ok: false, error: "Admin access required." };
+  if (!["open", "in_progress", "resolved"].includes(status)) return { ok: false, error: "Unknown status." };
   const db = createAdminClient();
-  const { error } = await db
+  const { data: ticket, error } = await db
     .from("im_support_tickets")
     .update({ ticket_status: status, updated_at: new Date().toISOString() })
-    .eq("id", ticketId);
-  if (error) return { ok: false, error: error.message };
+    .eq("id", ticketId)
+    .select("id, user_id, subject")
+    .maybeSingle();
+  if (error) return { ok: false, error: "Could not update the ticket. Please try again." };
+  if (!ticket) return { ok: false, error: "Ticket not found." };
   await audit(admin.user_id, status === "resolved" ? "resolved_ticket" : "updated_ticket", `ticket:${ticketId}`);
+  if (status === "resolved") {
+    await createNotification({
+      userId: ticket.user_id,
+      type: "message",
+      title: `Support request #${ticket.id} is resolved`,
+      body: `${ticket.subject}. Reply on your support page if you still need help.`,
+      link: await supportPathFor(ticket.user_id),
+    });
+  }
   revalidatePath("/admin/tickets");
+  revalidatePath("/buyer/support");
+  revalidatePath("/seller/support");
   return { ok: true };
 }
 
@@ -229,22 +250,51 @@ export async function addAdminTicketResponse(
 ): Promise<ActionResult> {
   const admin = await requireAdmin();
   if (!admin) return { ok: false, error: "Admin access required." };
-  const clean = String(message || "").trim();
+  const clean = boundedText(message, 4000);
   if (!clean) return { ok: false, error: "Message cannot be empty." };
   const db = createAdminClient();
+  const { data: ticket } = await db
+    .from("im_support_tickets")
+    .select("id, user_id, subject")
+    .eq("id", Number(ticketId))
+    .maybeSingle();
+  if (!ticket) return { ok: false, error: "Ticket not found." };
   const { error } = await db.from("im_ticket_responses").insert({
-    ticket_id: ticketId,
+    ticket_id: ticket.id,
     author_role: "admin",
     author_id: admin.user_id,
     message: clean,
   });
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: "Could not send the reply. Please try again." };
   await db
     .from("im_support_tickets")
     .update({ ticket_status: "in_progress", updated_at: new Date().toISOString() })
-    .eq("id", ticketId);
-  await audit(admin.user_id, "replied_ticket", `ticket:${ticketId}`);
+    .eq("id", ticket.id);
+  await audit(admin.user_id, "replied_ticket", `ticket:${ticket.id}`);
+
+  // The person who asked hears about it, in the app and (if they want) by
+  // email — the ticket_reply template existed but nothing sent it (N-18).
+  const supportPath = await supportPathFor(ticket.user_id);
+  await createNotification({
+    userId: ticket.user_id,
+    type: "message",
+    title: `Support replied: ${ticket.subject}`,
+    body: clean.length > 140 ? `${clean.slice(0, 137)}…` : clean,
+    link: supportPath,
+  });
+  const { data: owner } = await db.from("im_profiles").select("name, email").eq("id", ticket.user_id).maybeSingle();
+  if (owner?.email) {
+    await emailIfWanted(
+      ticket.user_id,
+      "message",
+      "ticket_reply",
+      { email: owner.email, name: owner.name },
+      { subject: ticket.subject, message: clean, supportPath }
+    );
+  }
   revalidatePath("/admin/tickets");
+  revalidatePath("/buyer/support");
+  revalidatePath("/seller/support");
   return { ok: true };
 }
 

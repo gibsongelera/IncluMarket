@@ -16,6 +16,7 @@ import { priceCartForBuyer } from "@/lib/pricing/engine";
 import type { PricedCart, PricedLine } from "@/lib/pricing/core";
 import { failPendingPayment } from "@/lib/payments/stock";
 import { isMissingObject } from "@/lib/db-errors";
+import { rateLimit } from "@/lib/security/rate-limit";
 import type { Priority } from "@/lib/types";
 
 const LOW_STOCK_THRESHOLD = 5;
@@ -503,6 +504,58 @@ export async function addReview(
   }
 
   revalidatePath(`/buyer/product/${productId}`);
+  return { ok: true };
+}
+
+/** Reply on one of your own support requests (N-18). */
+export async function replyToTicket(ticketId: number, message: string): Promise<ActionResult> {
+  const session = await getSession();
+  if (!session) return { ok: false, error: "Please sign in first." };
+  const clean = boundedText(message, 4000);
+  if (!clean) return { ok: false, error: "Write a message first." };
+  const limited = await rateLimit("ticket_reply", `user:${session.user_id}`, { limit: 30, windowSeconds: 3600 });
+  if (!limited.ok) return { ok: false, error: "Too many messages. Please wait a few minutes." };
+
+  const db = createAdminClient();
+  const { data: ticket } = await db
+    .from("im_support_tickets")
+    .select("id, user_id, subject, ticket_status, assigned_to")
+    .eq("id", Number(ticketId))
+    .maybeSingle();
+  if (!ticket || ticket.user_id !== session.user_id) return { ok: false, error: "Support request not found." };
+
+  const { error } = await db.from("im_ticket_responses").insert({
+    ticket_id: ticket.id,
+    author_role: session.role,
+    author_id: session.user_id,
+    message: clean,
+  });
+  if (error) return { ok: false, error: "Could not send your message. Please try again." };
+  await db
+    .from("im_support_tickets")
+    .update({
+      ticket_status: ticket.ticket_status === "resolved" ? "open" : ticket.ticket_status,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", ticket.id);
+  await db.from("im_audit_logs").insert({
+    actor_id: session.user_id,
+    actor_role: session.role,
+    action: "replied_ticket",
+    target: `ticket:${ticket.id}`,
+  });
+  const note = {
+    type: "message" as const,
+    title: `Reply on support request #${ticket.id}`,
+    body: `${session.name}: ${clean.length > 120 ? `${clean.slice(0, 117)}…` : clean}`,
+    link: `/admin/tickets?focus=${ticket.id}`,
+  };
+  // The admin handling it hears; an unassigned request goes to every admin.
+  if (ticket.assigned_to) await createNotification({ userId: ticket.assigned_to, ...note });
+  else await notifyAdmins(note);
+  revalidatePath("/buyer/support");
+  revalidatePath("/seller/support");
+  revalidatePath("/admin/tickets");
   return { ok: true };
 }
 
