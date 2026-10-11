@@ -107,6 +107,9 @@
   background: var(--surface-gray);
   color: var(--text-charcoal);
   text-transform: capitalize;
+  /* Wrap between words if it must, never inside one ("Showi|ng"). */
+  overflow-wrap: normal;
+  word-break: normal;
 }
 .pill--pending    { background: var(--surface-gray-2); color: var(--text-charcoal); border-color: var(--border); }
 .pill--processing { background: var(--brand-blue-100); color: var(--brand-blue); border-color: var(--brand-blue); }
@@ -1171,3 +1174,21 @@ fieldset {
   background: var(--surface-gray);
   border-color: var(--border);
 }
+
+/* --- Admin content pages (C-40) ------------------------------------------ */
+.review-admin-list,
+.inbox-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-3); }
+.review-admin,
+.inbox-item { display: grid; gap: var(--space-1); padding: var(--space-4); }
+.review-admin > p,
+.inbox-item > p { margin: 0; }
+.review-admin__text,
+.inbox-item__text { white-space: pre-line; overflow-wrap: anywhere; }
+.inbox-item__actions { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-2) !important; }
+.banner-admin__thumb { display: block; width: 12rem; max-width: 100%; aspect-ratio: 16 / 6; object-fit: cover; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface-gray-2); }
+.settings-group { display: grid; gap: var(--space-3); }
+.settings-group > h2 { margin: var(--space-4) 0 0; }
+.setting-row { display: grid; gap: var(--space-2); padding: var(--space-4); }
+.setting-row > p { margin: 0; }
+.setting-row__control { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.setting-row__control input { width: 8rem; max-width: 100%; }

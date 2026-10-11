@@ -50,6 +50,8 @@ export default async function ({ q, runSql, asUser, check }) {
   // Banners: internal links only
   check("a banner cannot link off-site",
     (await fails(`insert into im_banners (title, alt_text, image_url, link_url) values ('Sale', 'Sale banner', 'https://x/y.jpg', 'https://evil.example/login')`)) != null);
+  check("a banner cannot use a protocol-relative link",
+    (await fails(`insert into im_banners (title, alt_text, image_url, link_url) values ('Sale', 'Sale banner', 'https://x/y.jpg', '//evil.example/login')`)) != null);
   check("a banner can link inside the shop",
     (await fails(`insert into im_banners (title, alt_text, image_url, link_url) values ('Sale', 'Sale banner', 'https://x/y.jpg', '/search?cat=bags')`)) == null);
 

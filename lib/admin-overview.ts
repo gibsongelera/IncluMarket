@@ -67,7 +67,7 @@ export async function getAdminOverview(): Promise<{ todo: OverviewCount[]; healt
       { key: "refunds", label: "Orders with a refund due", count: refunds, href: "/admin/orders?view=refunds" },
       { key: "returns", label: "Returns waiting over a day", count: returns, href: "/admin/orders?view=returns" },
       { key: "tickets", label: "Open support requests", count: tickets, href: "/admin/tickets" },
-      { key: "privacy", label: "Privacy requests", count: privacy, href: "/admin/compliance" },
+      { key: "privacy", label: "Privacy requests", count: privacy, href: "/admin/compliance#privacy" },
       { key: "contact", label: "Contact messages", count: contact, href: "/admin/compliance#contact" },
     ],
     health: [

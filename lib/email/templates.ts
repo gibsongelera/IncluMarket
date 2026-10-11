@@ -25,7 +25,8 @@ export type EmailKind =
   | "account_status"
   | "pwd_verification"
   | "flash_sale"
-  | "privacy_request";
+  | "privacy_request"
+  | "privacy_response";
 
 export type TemplateData = Record<string, unknown>;
 
@@ -275,6 +276,36 @@ export function renderTemplate(kind: EmailKind, d: TemplateData): RenderedEmail 
           `We received your privacy request #${d.requestId}.\n\n` +
           `You asked for ${what}. We will reply within 15 days (RA 10173).\n\n` +
           `Follow it in your account: ${url}/account/privacy\n`,
+      };
+    }
+
+    case "privacy_response": {
+      const outcome =
+        d.status === "done"
+          ? "We have completed your request."
+          : d.status === "rejected"
+            ? "We could not carry out your request."
+            : "We are working on your request.";
+      return {
+        subject: `Update on your privacy request #${d.requestId} — InclusiveMarket`,
+        html: shell(
+          "Update on your privacy request",
+          p(`Hello${d.name ? ` ${esc(d.name)}` : ""}.`) +
+            p(`${esc(outcome)} Request <strong>#${esc(d.requestId)}</strong>.`) +
+            (d.response
+              ? `<blockquote style="margin:0 0 12px;padding:12px 16px;background:${SURFACE};
+                 border-left:4px solid ${BRAND_DEEP};border-radius:6px;color:${TEXT}">
+                 ${esc(d.response)}</blockquote>`
+              : "") +
+            p("If you disagree with this answer, you may reply through the Contact page or complain to the National Privacy Commission."),
+          "View my requests",
+          `${url}/account/privacy`
+        ),
+        text:
+          `Update on your privacy request #${d.requestId}.\n\n${outcome}\n\n` +
+          (d.response ? `${d.response}\n\n` : "") +
+          `If you disagree, reply through the Contact page or complain to the National Privacy Commission.\n\n` +
+          `Your requests: ${url}/account/privacy\n`,
       };
     }
 

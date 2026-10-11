@@ -1,7 +1,7 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { rateLimit } from "@/lib/security/rate-limit";
-import { getCategories } from "@/lib/data";
+import { getAllCategories } from "@/lib/data";
 import { getStorefrontItems, searchStorefront } from "@/lib/storefront";
 import type { StorefrontItem } from "@/lib/storefront-core";
 
@@ -138,7 +138,7 @@ export async function getHomeRecommendations(profileId: number | null): Promise<
       if (affinity) {
         const [{ items }, categories] = await Promise.all([
           searchStorefront({ category: affinity.category, sort: "top_sales", pageSize: 12 }),
-          getCategories(),
+          getAllCategories(),
         ]);
         const cat = categories.find((c) => c.id === affinity.category);
         const name = cat ? cat.folder || cat.label : affinity.category;

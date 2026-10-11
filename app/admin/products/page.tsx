@@ -1,6 +1,6 @@
 import { requireRole } from "@/lib/session";
 import { AdminProductsClient } from "@/components/AdminProductsClient";
-import { getAllProducts, getCategories, getProfiles } from "@/lib/data";
+import { getAllProducts, getAllCategories, getProfiles } from "@/lib/data";
 
 export const dynamic = "force-dynamic";
 
@@ -8,7 +8,7 @@ export default async function AdminProductsPage() {
   const session = await requireRole(["admin"]);
   const [products, categories, profiles] = await Promise.all([
     getAllProducts(),
-    getCategories(),
+    getAllCategories(),
     getProfiles(),
   ]);
 

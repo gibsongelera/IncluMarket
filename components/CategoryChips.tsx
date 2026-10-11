@@ -3,9 +3,12 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 import {
   faBagShopping,
+  faBook,
   faBowlFood,
   faBoxOpen,
+  faCouch,
   faGem,
+  faMugHot,
   faPalette,
   faScissors,
   faShirt,
@@ -13,7 +16,22 @@ import {
   faStore,
 } from "@fortawesome/free-solid-svg-icons";
 import type { Category } from "@/lib/types";
+import type { CategoryIconKey } from "@/lib/category-icons";
 
+// The icon an admin chose (migration 0020), else the seed category's own.
+const ICON_BY_KEY: Record<CategoryIconKey, IconDefinition> = {
+  "bag-shopping": faBagShopping,
+  shirt: faShirt,
+  scissors: faScissors,
+  "bowl-food": faBowlFood,
+  "mug-hot": faMugHot,
+  gem: faGem,
+  spa: faSpa,
+  palette: faPalette,
+  book: faBook,
+  couch: faCouch,
+  "box-open": faBoxOpen,
+};
 const CAT_ICONS: Record<string, IconDefinition> = {
   bags: faBagShopping,
   apparel: faShirt,
@@ -86,7 +104,7 @@ export function CategoryChips({
               >
                 <span className="chip-emoji" aria-hidden="true">
                   <FontAwesomeIcon
-                    icon={CAT_ICONS[c.id] || faBoxOpen}
+                    icon={ICON_BY_KEY[c.icon as CategoryIconKey] || CAT_ICONS[c.id] || faBoxOpen}
                     style={{ color: active ? undefined : CAT_COLORS[c.id] || "var(--text-muted)" }}
                   />
                 </span>{" "}

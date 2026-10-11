@@ -322,7 +322,7 @@ export async function submitPrivacyRequest(kind: string, details: string): Promi
     type: "account",
     title: `Privacy request #${data.id}: ${kind}`,
     body: `From ${session.name}. Respond within 15 days (RA 10173).`,
-    link: "/admin/compliance",
+    link: "/admin/compliance#privacy",
   });
   await queueEmail("privacy_request", { email: session.email, name: session.name }, { name: session.name, kind, requestId: data.id });
   revalidatePath("/account/privacy");

@@ -202,7 +202,7 @@ export async function getActiveBanners(): Promise<BannerLite[]> {
   return ((data ?? []) as { id: number; title: string; alt_text: string; image_url: string; link_url: string | null; starts_at: string; ends_at: string | null }[])
     .filter((b) => Date.parse(b.starts_at) <= now && (!b.ends_at || Date.parse(b.ends_at) > now))
     // Internal links only (the table enforces it too).
-    .map((b) => ({ id: b.id, title: b.title, alt: b.alt_text, image: b.image_url, href: b.link_url && b.link_url.startsWith("/") ? b.link_url : null }));
+    .map((b) => ({ id: b.id, title: b.title, alt: b.alt_text, image: b.image_url, href: b.link_url && /^\/(?!\/)/.test(b.link_url) ? b.link_url : null }));
 }
 
 export interface StorefrontPage {

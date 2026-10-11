@@ -1,30 +1,37 @@
 import { requireRole } from "@/lib/session";
 import { Chart } from "@/components/Chart";
 import { formatDateTime } from "@/lib/format";
-import {
-  getAuditLogs,
-  getConsentLogs,
-  getOrders,
-  getProfiles,
-} from "@/lib/data";
+import { getAuditLogs, getConsentLogs, getOrders, getProfiles } from "@/lib/data";
+import { getContactMessages, getPrivacyRequestsForAdmin } from "@/lib/admin-content";
+import { ContactInboxClient, PrivacyRequestsClient } from "@/components/AdminInboxClient";
 import { TableWrap } from "@/components/TableWrap";
 
 export const dynamic = "force-dynamic";
+export const metadata = { title: "Privacy and compliance" };
 
 const ORDER_STATUS = ["pending", "processing", "shipped", "delivered", "returned"];
 
+/**
+ * Admin → Compliance: data-subject requests, the contact inbox, consent and
+ * the audit trail. Every figure here is counted from the database; the
+ * "simulated" security tiles it used to show were removed (N-26).
+ */
 export default async function AdminCompliancePage() {
-  const session = await requireRole(["admin"]);
-  const [profiles, consents, audits, orders] = await Promise.all([
+  await requireRole(["admin"]);
+  const [profiles, consents, audits, orders, privacy, contact] = await Promise.all([
     getProfiles(),
     getConsentLogs(),
     getAuditLogs(),
     getOrders(),
+    getPrivacyRequestsForAdmin(),
+    getContactMessages(),
   ]);
 
   const consentedIds = new Set(consents.map((c) => c.user_id));
   const nameById: Record<number, string> = {};
   profiles.forEach((p) => (nameById[p.id] = p.name));
+  const openPrivacy = privacy?.filter((r) => r.status === "open" || r.status === "in_progress").length ?? 0;
+  const newContact = contact?.filter((m) => m.status === "new").length ?? 0;
 
   // Daily activity: last 14 days
   const days = 14;
@@ -50,6 +57,7 @@ export default async function AdminCompliancePage() {
       }
     }
   });
+  const recentEvents = buckets.reduce((n, b) => n + b.value, 0);
 
   const byStatus: Record<string, number> = {};
   ORDER_STATUS.forEach((s) => (byStatus[s] = 0));
@@ -60,28 +68,48 @@ export default async function AdminCompliancePage() {
 
   return (
     <main id="main" tabIndex={-1} className="main--admin">
-      <h1>Ecosystem compliance monitor</h1>
-      <p className="muted">
-        RA 10173 (Data Privacy Act) alignment and audit trail visibility.
-      </p>
+      <h1>Privacy and compliance</h1>
+      <p className="muted">Data Privacy Act (RA 10173): requests, consent and the audit trail.</p>
 
-      <section className="kpis" aria-label="Compliance metrics">
+      <section className="kpis" aria-label="Compliance figures">
         <article className="kpi">
-          <span className="kpi__label">Users with logged consent</span>
-          <strong className="kpi__value">{consentedIds.size}</strong>
+          <span className="kpi__label">Privacy requests open</span>
+          <strong className="kpi__value">{openPrivacy}</strong>
         </article>
         <article className="kpi">
-          <span className="kpi__label">PII fields masked in public views</span>
-          <strong className="kpi__value">{profiles.length}</strong>
+          <span className="kpi__label">New contact messages</span>
+          <strong className="kpi__value">{newContact}</strong>
         </article>
         <article className="kpi">
-          <span className="kpi__label">Password storage (simulated)</span>
-          <strong className="kpi__value">bcrypt cost 12</strong>
+          <span className="kpi__label">Accounts with logged consent</span>
+          <strong className="kpi__value">
+            {consentedIds.size} of {profiles.length}
+          </strong>
         </article>
         <article className="kpi">
-          <span className="kpi__label">Transport (simulated)</span>
-          <strong className="kpi__value">TLS 1.2+</strong>
+          <span className="kpi__label">Audit events, last 14 days</span>
+          <strong className="kpi__value">{recentEvents}</strong>
         </article>
+      </section>
+
+      <section id="privacy" aria-labelledby="privacy-title" tabIndex={-1}>
+        <h2 id="privacy-title">Privacy requests</h2>
+        <p className="muted small">Answer each within 15 days. The requester is told in the app and by email.</p>
+        {privacy === null ? (
+          <p className="notice notice--info">Privacy requests need database migration 0019.</p>
+        ) : (
+          <PrivacyRequestsClient requests={privacy} />
+        )}
+      </section>
+
+      <section id="contact" aria-labelledby="contact-title" tabIndex={-1}>
+        <h2 id="contact-title">Contact messages</h2>
+        <p className="muted small">From the Contact page. Messages are kept for one year.</p>
+        {contact === null ? (
+          <p className="notice notice--info">The contact inbox needs database migration 0019.</p>
+        ) : (
+          <ContactInboxClient messages={contact} />
+        )}
       </section>
 
       <section className="chart-grid">
@@ -139,11 +167,13 @@ export default async function AdminCompliancePage() {
       </section>
 
       <section className="note">
-        <h2>Security note</h2>
+        <h2>How data is protected</h2>
         <p>
-          Authentication uses Supabase Auth with email confirmation for new signups.
-          Passwords are verified by Supabase. AES-256-at-rest and TLS 1.2+ apply at the
-          platform layer for stored data in transit and at rest.
+          Sign-in uses Supabase Auth: passwords are hashed by Supabase and never stored or seen by this application.
+          Pages and data travel over HTTPS. The application reads and writes the database on the server, after its own
+          role checks; row-level security guards any direct access with the public key. PWD ID photos sit in a private
+          bucket, open only through short-lived links for reviewers, and are deleted after the retention period set in
+          Settings.
         </p>
       </section>
     </main>

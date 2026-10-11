@@ -117,6 +117,16 @@ function validPrice(n: unknown): number | null {
   return Number.isFinite(price) && price >= 0 && price <= 1_000_000 ? price : null;
 }
 
+/** A new listing, or a move to another category, needs an open category (C-40). */
+async function categoryIsOpen(db: ReturnType<typeof createAdminClient>, id: string | null): Promise<boolean> {
+  if (!id) return true;
+  const { data, error } = await db.from("im_categories").select("*").eq("id", id).maybeSingle();
+  if (error || !data) return false;
+  return (data as { is_active?: boolean }).is_active !== false;
+}
+
+const CATEGORY_CLOSED = "That category is no longer open for listings. Choose another.";
+
 async function requireSeller() {
   const session = await getSession();
   if (!session || (session.role !== "seller" && session.role !== "admin")) return null;
@@ -136,6 +146,7 @@ export async function createProduct(input: ProductInput): Promise<ActionResult> 
   if (!imageCheck.ok) return { ok: false, error: imageCheck.error };
 
   const db = createAdminClient();
+  if (!(await categoryIsOpen(db, input.category || null))) return { ok: false, error: CATEGORY_CLOSED };
   const { data: product, error } = await db
     .from("im_products")
     .insert({
@@ -238,7 +249,12 @@ export async function updateProduct(
     if (price == null) return { ok: false, error: "Please enter a price of ₱0 or more." };
     patch.base_price = price;
   }
-  if (input.category !== undefined) patch.category = input.category || null;
+  if (input.category !== undefined) {
+    patch.category = input.category || null;
+    if (patch.category !== existing.category && !(await categoryIsOpen(db, patch.category as string | null))) {
+      return { ok: false, error: CATEGORY_CLOSED };
+    }
+  }
   if (input.image !== undefined) {
     patch.image = validateImageToken(input.image, "\u{1F6CD}\u{FE0F}");
   }
@@ -758,7 +774,7 @@ export async function duplicateProduct(productId: number): Promise<ActionResult>
       title: `${String(src.title).slice(0, 190)} (copy)`,
       description: src.description,
       base_price: src.base_price,
-      category: src.category,
+      category: (await categoryIsOpen(db, src.category)) ? src.category : null,
       image: src.image,
       status: "pending",
     })

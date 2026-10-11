@@ -33,6 +33,11 @@ export interface Category {
   id: string;
   label: string;
   folder: string;
+  /** Migration 0020 (order, icon, description, retire); absent before it. */
+  position?: number;
+  icon?: string | null;
+  description?: string | null;
+  is_active?: boolean;
 }
 
 export interface Product {

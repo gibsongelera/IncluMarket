@@ -100,8 +100,21 @@ async function publicOnly(products: Product[]): Promise<Product[]> {
   return products.filter((p) => sellable.has(p.seller_id));
 }
 
+/**
+ * Every category, retired ones included: for naming the category a product
+ * already has. In admin order (migration 0020), then by name.
+ */
+export async function getAllCategories(): Promise<Category[]> {
+  const list = rows<Category>("categories", await db().from("im_categories").select("*"));
+  return list.sort((a, b) => (a.position ?? 0) - (b.position ?? 0) || a.label.localeCompare(b.label));
+}
+
+/**
+ * Categories open for browsing and new listings. A retired category (C-40)
+ * leaves the filters and the seller's list; its products stay where they are.
+ */
 export async function getCategories(): Promise<Category[]> {
-  return rows<Category>("categories", await db().from("im_categories").select("*").order("label"));
+  return (await getAllCategories()).filter((c) => c.is_active !== false);
 }
 
 export async function getApprovedProducts(): Promise<Product[]> {

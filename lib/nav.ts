@@ -60,13 +60,18 @@ export const NAV: Record<NavRole, NavItem[]> = {
     { href: "/admin/verifications", label: "Verifications", icon: "shield", mobile: "more", header: true, section: "People" },
     { href: "/admin/products", label: "Products", icon: "box", mobile: "primary", header: true, section: "Catalog" },
     { href: "/admin/orders", label: "Orders", icon: "truck", mobile: "more", header: true, section: "Catalog" },
+    { href: "/admin/categories", label: "Categories", icon: "grid", mobile: "more", section: "Catalog" },
+    { href: "/admin/reviews", label: "Reviews", icon: "sparkles", mobile: "more", section: "Catalog" },
+    { href: "/admin/banners", label: "Banners", icon: "edit", mobile: "more", section: "Catalog" },
     { href: "/admin/tickets", label: "Tickets", icon: "flag", mobile: "primary", header: true, section: "Support" },
     { href: "/admin/reports", label: "Reports", icon: "chart", mobile: "more", header: true, section: "Insight" },
     { href: "/admin/payouts", label: "Payouts", icon: "download", mobile: "more", header: true, section: "Insight" },
     { href: "/admin/compliance", label: "Compliance", icon: "shield", mobile: "more", header: true, section: "Insight" },
+    { href: "/admin/newsletter", label: "Newsletter", icon: "message-circle", mobile: "more", section: "Insight" },
     { href: "/admin/discounts", label: "Discounts", icon: "sparkles", mobile: "more", header: true, section: "Settings" },
     { href: "/admin/payments", label: "Payments", icon: "download", mobile: "more", header: true, section: "Settings" },
     { href: "/admin/theme", label: "Theme", icon: "sparkles", mobile: "more", header: true, section: "Settings" },
+    { href: "/admin/settings", label: "Settings", icon: "edit", mobile: "more", section: "Settings" },
   ],
 };
 

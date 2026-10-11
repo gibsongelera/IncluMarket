@@ -144,8 +144,9 @@ create table if not exists public.im_banners (
   title      text not null check (length(trim(title)) between 2 and 120),
   alt_text   text not null check (length(trim(alt_text)) between 2 and 200),
   image_url  text not null,
-  -- Internal links only: a banner is never a phishing redirect.
-  link_url   text check (link_url is null or link_url ~ '^/[A-Za-z0-9/_?=&%.-]*$'),
+  -- Internal links only: a banner is never a phishing redirect. A second
+  -- slash would make it protocol-relative (//evil.example), so it is refused.
+  link_url   text check (link_url is null or link_url ~ '^/([A-Za-z0-9_?=&%.-][A-Za-z0-9/_?=&%.-]*)?$'),
   starts_at  timestamptz not null default now(),
   ends_at    timestamptz,
   position   integer not null default 0,

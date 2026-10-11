@@ -254,11 +254,14 @@ export function ProductWizard({
                 <label htmlFor="pw-cat">Category</label>
                 <select id="pw-cat" value={category} onChange={(e) => setCategory(e.target.value)}>
                   <option value="">Choose…</option>
-                  {categories.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.label}
-                    </option>
-                  ))}
+                  {categories
+                    .filter((c) => c.is_active !== false || c.id === category)
+                    .map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.label}
+                        {c.is_active === false ? " (retired)" : ""}
+                      </option>
+                    ))}
                 </select>
               </div>
               <div className="field">

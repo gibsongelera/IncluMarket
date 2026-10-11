@@ -7,7 +7,7 @@ import { SiteFooter } from "@/components/SiteFooter";
 import { ProductDetailClient } from "@/components/ProductDetailClient";
 import {
   getActiveSaleForProduct,
-  getCategories,
+  getAllCategories,
   getDisplayNames,
   getProductById,
   getPublicProductById,
@@ -75,7 +75,7 @@ export default async function ProductPage({
   const [variants, reviews, categories, sale] = await Promise.all([
     getVariantsByProduct(product.id),
     getReviewsLite([product.id]),
-    getCategories(),
+    getAllCategories(),
     getActiveSaleForProduct(product.id),
   ]);
   const [names, sellerVerified, wishlistIds] = await Promise.all([
