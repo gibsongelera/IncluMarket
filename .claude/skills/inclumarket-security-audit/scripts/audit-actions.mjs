@@ -41,7 +41,6 @@ const ALLOWED_UNGUARDED = new Map([
   ["chat.ts:sendChatMessage", "public support chat; rate-limited, ownership-checked per session"],
   ["chat.ts:fetchChatHistory", "public support chat; ownership-checked per session"],
   ["chat.ts:escalateChat", "public support chat; ownership-checked per session"],
-  ["payments.ts:listEnabledPaymentProviders", "checkout needs the method list; narrow projection, no keys"],
   ["auth.ts:loginAction", "authentication entry point; rate-limited"],
   ["auth.ts:signupAction", "authentication entry point; rate-limited"],
   ["auth.ts:resendConfirmationAction", "authentication entry point; rate-limited"],

@@ -64,7 +64,23 @@ function authHeader(): string {
 }
 
 /** Payment methods offered on the hosted page. */
-const PAYMENT_METHOD_TYPES = ["gcash", "paymaya", "grab_pay", "card"];
+export const PAYMENT_METHOD_TYPES = ["gcash", "paymaya", "grab_pay", "card"];
+
+/**
+ * Test or live, from the secret key's prefix — the key itself never leaves
+ * this module. Null when no key is set or the prefix is unrecognised. Should
+ * agree with payMongoMode() (PAYMONGO_ENV), which the webhook check uses.
+ */
+export function payMongoKeyMode(): "test" | "live" | null {
+  const key = process.env.PAYMONGO_SECRET_KEY ?? "";
+  if (key.startsWith("sk_test_")) return "test";
+  if (key.startsWith("sk_live_")) return "live";
+  return null;
+}
+
+export function isPayMongoWebhookConfigured(): boolean {
+  return Boolean(process.env.PAYMONGO_WEBHOOK_SECRET);
+}
 
 export async function createCheckoutSession(
   args: CreateCheckoutArgs

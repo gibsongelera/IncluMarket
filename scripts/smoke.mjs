@@ -45,7 +45,7 @@ const required = [
   "lib/actions/chat.ts",
   "lib/actions/messages.ts",
   "lib/actions/wishlist.ts",
-  "lib/actions/payments.ts",
+  "lib/actions/payments-buyer.ts",
   "lib/email/auth-mail.ts",
   "lib/chatbot/responder.ts",
   "app/layout.tsx",
