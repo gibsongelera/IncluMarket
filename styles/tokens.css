@@ -65,6 +65,9 @@
   /* Extended accents */
   --palette-plum: #6B2357;
   --palette-teal: #0E5C63;
+  /* Shipped pill fill. Fixed, like --palette-teal: no preset and no
+     high-contrast rule sets either. */
+  --palette-teal-100: #E0F0F1;
   --palette-rose: #C41E3A; /* compassion / heart red */
 
   /* Compat aliases */
@@ -288,6 +291,10 @@
   --color-footer: #2A180A;
   /* Warning text, about 11:1 on white. */
   --warning-text: #4D3800;
+  /* Warning graphics too (pill and notice borders). The themed gold is under
+     3:1 on its own tint; this is darker than every preset's warning, so the
+     mode never draws a fainter border than normal does. */
+  --warning: #4D3800;
   --shadow-sm: 0 0 0 1px #000;
   --shadow-md: 0 0 0 2px #000;
   --shadow-lg: 0 0 0 3px #000;

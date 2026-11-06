@@ -117,9 +117,9 @@
   overflow-wrap: normal;
   word-break: normal;
 }
-.pill--pending    { background: var(--surface-gray-2); color: var(--text-charcoal); border-color: var(--border); }
+.pill--pending    { background: var(--warning-100);    color: var(--text-charcoal); border-color: var(--warning); }
 .pill--processing { background: var(--brand-blue-100); color: var(--brand-blue); border-color: var(--brand-blue); }
-.pill--shipped    { background: var(--brand-yellow);   color: var(--text-charcoal); border-color: var(--brand-yellow-800); } /* Guardrail 1 */
+.pill--shipped    { background: var(--palette-teal-100); color: var(--palette-teal); border-color: var(--palette-teal); }
 .pill--delivered  { background: var(--success-100);    color: var(--success); border-color: var(--success); }
 .pill--returned   { background: var(--brand-red-100);  color: var(--brand-red-800); border-color: var(--brand-red); }
 .pill--open       { background: var(--brand-red-100);  color: var(--brand-red-800); border-color: var(--brand-red); }
@@ -138,6 +138,13 @@
 .pill--revoked    { background: var(--brand-red-100);  color: var(--brand-red-800); border-color: var(--brand-red); }
 .pill--expired    { background: var(--surface-gray-2); color: var(--text-charcoal); border-color: var(--text-muted); }
 .pill--suspended  { background: var(--surface-gray-2); color: var(--text-charcoal); border-color: var(--text-muted); }
+/* Payment status (unpaid, pending, paid, failed, refunded; migrations 0010
+   and 0015). Pending reuses .pill--pending. Unpaid is normal for cash on
+   delivery and refunded is settled, so both are neutral, not errors. */
+.pill--paid       { background: var(--success-100);    color: var(--success); border-color: var(--success); }
+.pill--failed     { background: var(--brand-red-100);  color: var(--brand-red-800); border-color: var(--brand-red); }
+.pill--unpaid     { background: var(--surface-gray-2); color: var(--text-charcoal); border-color: var(--text-muted); }
+.pill--refunded   { background: var(--surface-gray-2); color: var(--text-charcoal); border-color: var(--text-muted); }
 
 /* Forms */
 .form { display: grid; gap: var(--space-4); }
