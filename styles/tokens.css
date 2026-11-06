@@ -94,12 +94,28 @@
 
   --success: var(--palette-forest);
   --success-100: var(--palette-forest-100);
+  /* --warning (#B8860B by default, 3.25:1 on white) is for graphics only:
+     dots, chart segments, borders. Warning TEXT uses --warning-text (6.38:1
+     on white). That one is a fixed neutral, not a theme token, so it is not
+     in the presets in lib/theme.ts. */
   --warning: var(--palette-olive);
   --warning-100: var(--palette-olive-100);
+  --warning-text: #7A5A00;
   --danger: var(--brand-red);
   --danger-100: var(--brand-red-100);
   --info: var(--brand-blue);
   --info-100: var(--brand-blue-100);
+
+  /* Chart series. Aliases, so each takes whatever the presets and high
+     contrast set for its source token. Graphics only, each at least 3:1 on
+     white. --chart-6 is for segments only, never text. A chart uses at most
+     four series. */
+  --chart-1: var(--brand-blue);
+  --chart-2: var(--brand-brown);
+  --chart-3: var(--palette-teal);
+  --chart-4: var(--palette-forest);
+  --chart-5: var(--palette-plum);
+  --chart-6: var(--brand-yellow-800);
 
   /* Soft blue→white atmosphere (not purple AI gradient) */
   --bg-rainbow: linear-gradient(
@@ -270,6 +286,8 @@
   --brand-brown-800: #2A180A;
   --brand-brown-100: #FFFFFF;
   --color-footer: #2A180A;
+  /* Warning text, about 11:1 on white. */
+  --warning-text: #4D3800;
   --shadow-sm: 0 0 0 1px #000;
   --shadow-md: 0 0 0 2px #000;
   --shadow-lg: 0 0 0 3px #000;

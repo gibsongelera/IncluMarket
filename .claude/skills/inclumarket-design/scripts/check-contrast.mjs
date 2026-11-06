@@ -78,12 +78,23 @@ const REQUIRED_PAIRS = [
   { fg: "--brand-brown", bg: "--canvas-white", min: 4.5, what: "a price on a card" },
   { fg: "--brand-brown", bg: "--brand-brown-100", min: 4.5, what: "brown text on its tint" },
   { fg: "--danger", bg: "--canvas-white", min: 4.5, what: "an error message" },
+  { fg: "--warning-text", bg: "--canvas-white", min: 4.5, what: "warning text on a card" },
+  { fg: "--warning-text", bg: "--warning-100", min: 4.5, what: "warning text on its tint" },
+  { fg: "--warning-text", bg: "--surface-gray", min: 4.5, what: "warning text on a grey well" },
   // Guardrail 2: white text on dark surfaces.
   { fg: "#FFFFFF", bg: "--brand-blue", min: 4.5, what: "a primary button" },
   { fg: "#FFFFFF", bg: "--brand-brown", min: 4.5, what: "a sale or count badge" },
   { fg: "#FFFFFF", bg: "--danger", min: 4.5, what: "a destructive button" },
   { fg: "--color-nav-text", bg: "--color-nav", min: 4.5, what: "header and sidebar links" },
   { fg: "--color-footer-text", bg: "--color-footer", min: 4.5, what: "footer text" },
+  // Chart series: graphics, 3:1 on the card they are drawn on. --chart-6 is
+  // for segments only, never text.
+  { fg: "--chart-1", bg: "--canvas-white", min: 3, what: "chart series 1 on a card" },
+  { fg: "--chart-2", bg: "--canvas-white", min: 3, what: "chart series 2 on a card" },
+  { fg: "--chart-3", bg: "--canvas-white", min: 3, what: "chart series 3 on a card" },
+  { fg: "--chart-4", bg: "--canvas-white", min: 3, what: "chart series 4 on a card" },
+  { fg: "--chart-5", bg: "--canvas-white", min: 3, what: "chart series 5 on a card" },
+  { fg: "--chart-6", bg: "--canvas-white", min: 3, what: "chart series 6 on a card" },
   // Focus rings, 3:1 against what they are drawn on. The page ring is
   // measured here; each dark surface declares its own ring next to its
   // background, and the rule scan measures it there.

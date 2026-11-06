@@ -746,7 +746,7 @@ a.banners__link:focus-visible { outline: var(--focus-ring); outline-offset: var(
 .variant-btn[disabled] { opacity: .5; cursor: not-allowed; text-decoration: line-through; }
 .stock-note { font-size: .9rem; }
 .stock-note--ok   { color: var(--success); font-weight: 700; }
-.stock-note--low  { color: var(--warning); font-weight: 700; }
+.stock-note--low  { color: var(--warning-text); font-weight: 700; }
 .stock-note--out  { color: var(--text-charcoal); font-weight: 800; }
 
 .qty-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); }
