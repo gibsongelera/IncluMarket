@@ -61,7 +61,10 @@
   color: var(--text-charcoal); /* Guardrail 1 */
   border-color: var(--brand-yellow-800);
 }
-.btn--warning:hover { background: var(--brand-yellow-800); color: var(--text-charcoal); }
+/* Hover darkens the yellow a little instead of switching to --brand-yellow-800:
+   four event presets make that token dark (a star edge), and dark text on it
+   fell to 1.9:1. */
+.btn--warning:hover { background: color-mix(in srgb, var(--brand-yellow) 85%, var(--text-charcoal)); color: var(--text-charcoal); }
 
 .btn--sm { padding: .35rem .75rem; min-height: 32px; font-size: .875rem; }
 .btn--block { width: 100%; }
@@ -867,6 +870,7 @@ fieldset {
   width: min(360px, 90vw);
   background: var(--canvas-white);
   color: var(--text-charcoal);
+  --focus-ring: var(--focus-ring-page); /* light surface inside the dark header */
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-lg);
@@ -921,6 +925,10 @@ fieldset {
   color: #FFFFFF;
   box-shadow: var(--shadow-lg);
   cursor: pointer;
+  /* It floats over any surface, the dark footer included, so its ring is
+     white and drawn inside its own edge (tokens.css focus-ring notes). */
+  --focus-ring: 3px solid #FFFFFF;
+  --focus-ring-offset: -6px;
 }
 .a11y-fab:hover { background: var(--brand-blue-800); }
 .a11y-panel {
@@ -943,6 +951,7 @@ fieldset {
   padding: .7rem .85rem;
   background: var(--brand-blue);
   color: #FFFFFF;
+  --focus-ring: 3px solid #FFFFFF; /* the page ring is this blue */
 }
 .a11y-panel__head .icon-btn { background: transparent; border-color: rgba(255,255,255,.4); color: #FFFFFF; }
 .a11y-tabs {
@@ -1090,6 +1099,9 @@ fieldset {
   box-shadow: var(--shadow-lg);
   cursor: pointer;
   margin-left: auto;
+  /* Floats over any surface: white ring inside its own edge, as .a11y-fab. */
+  --focus-ring: 3px solid #FFFFFF;
+  --focus-ring-offset: -6px;
 }
 .chat-fab:hover { background: var(--brand-blue-800); }
 .chat-panel {
@@ -1114,6 +1126,7 @@ fieldset {
   padding: .7rem .85rem;
   background: var(--brand-blue);
   color: #FFFFFF;
+  --focus-ring: 3px solid #FFFFFF; /* the page ring is this blue */
 }
 .chat-panel__head .icon-btn { background: transparent; border-color: rgba(255,255,255,.4); color: #FFFFFF; }
 .chat-log {

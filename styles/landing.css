@@ -39,6 +39,7 @@
   isolation: isolate;
   min-height: 100vh;
   background: var(--brand-blue-800);
+  --focus-ring: 3px solid #FFFFFF; /* dark surface: see the focus-ring notes in tokens.css */
 }
 
 

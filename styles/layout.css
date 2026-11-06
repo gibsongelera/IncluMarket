@@ -3,6 +3,7 @@
   background: var(--color-nav);
   color: var(--color-nav-text);
   box-shadow: var(--shadow-sm);
+  --focus-ring: var(--focus-ring-nav); /* dark chrome: tokens.css */
 }
 .site-header a { color: var(--color-nav-text); text-decoration: none; }
 .site-header--seller { background: var(--color-nav); }
@@ -29,7 +30,7 @@
   align-items: center;
   justify-content: center;
   width: 32px; height: 32px;
-  background: var(--palette-primary); color: var(--text-charcoal); /* Guardrail 1: dark text on orange */
+  background: var(--palette-primary); color: var(--palette-primary-text); /* dark or white per preset */
   border-radius: var(--radius-sm);
   font-weight: 900;
   font-size: .95rem;
@@ -77,6 +78,7 @@
   padding: .25rem;
   list-style: none;
   background: var(--canvas-white);
+  --focus-ring: var(--focus-ring-page); /* light surface inside the dark header */
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-lg);
@@ -159,7 +161,7 @@
   padding: .35rem 1rem;
 }
 .site-header--seller .user-strip { background: color-mix(in srgb, var(--color-nav) 88%, var(--palette-primary)); }
-.site-header--admin  .user-strip { background: var(--palette-primary-dark); color: #FFFFFF; }
+.site-header--admin  .user-strip { background: var(--palette-primary-dark); color: #FFFFFF; --focus-ring: 3px solid #FFFFFF; }
 
 .user-strip .container { display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; }
 .user-strip__link {
@@ -177,6 +179,7 @@
   color: var(--color-footer-text);
   border-top: 1px solid color-mix(in srgb, var(--color-footer-text) 18%, transparent);
   margin-top: 3rem;
+  --focus-ring: var(--focus-ring-footer); /* dark chrome: tokens.css */
 }
 .footer-row { padding: 1rem; text-align: center; }
 .site-footer a { color: var(--color-footer-text); }

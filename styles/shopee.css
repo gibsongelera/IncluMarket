@@ -48,6 +48,7 @@ button[disabled], .btn[disabled], .variant-btn[disabled] {
 /* Search bar polish */
 .search {
   background: var(--canvas-white);
+  --focus-ring: var(--focus-ring-page); /* light surface inside the dark header */
   border-radius: var(--radius-md);
   padding: 4px 4px 4px 12px;
   border: 2px solid var(--brand-yellow);

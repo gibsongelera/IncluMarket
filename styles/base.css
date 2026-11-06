@@ -103,6 +103,10 @@ hr {
   z-index: 1000;
   border-radius: 0 0 var(--radius-sm) 0;
   text-decoration: none;
+  /* It opens over the dark header, so its ring is white and drawn inside
+     its own edge, on its own blue (tokens.css focus-ring notes). */
+  --focus-ring: 3px solid #FFFFFF;
+  --focus-ring-offset: -5px;
 }
 .skip-link:focus { left: 0; }
 

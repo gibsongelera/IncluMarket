@@ -14,8 +14,9 @@
 
    CONTRAST GUARDRAILS
      1) Dark text on LIGHT and GOLD surfaces.
-        Applies to: --canvas-white, --surface-gray, --brand-yellow,
-        --palette-primary, and every *-100 tint.
+        Applies to: --canvas-white, --surface-gray, --brand-yellow, and every
+        *-100 tint. Text on --palette-primary uses --palette-primary-text,
+        because five event presets make the primary dark enough to need white.
      2) WHITE text on DARK surfaces.
         Applies to: --brand-blue, --brand-blue-800, --brand-brown,
         --brand-brown-800, --brand-red, --success, --color-nav,
@@ -48,6 +49,9 @@
 :root {
   /* DSWD-aligned core palette */
   --palette-primary: #F5C518; /* gold warmth / badges */
+  /* Text on --palette-primary (the brand mark). Dark here; the event presets
+     whose primary is too dark for dark text set it to white (lib/theme.ts). */
+  --palette-primary-text: var(--text-charcoal);
   --palette-primary-dark: #0038A8; /* DSWD blue */
   --palette-deep: #00287A; /* nav / deep blue */
   --palette-olive: #B8860B; /* gold dark */
@@ -127,6 +131,19 @@
 
   --focus-ring: 3px solid var(--brand-blue);
   --focus-ring-offset: 2px;
+  /* The page ring follows --palette-primary-dark (lib/theme.ts): dark enough
+     for links on white, so too dark to see on the header, the footer and the
+     other dark surfaces. Each of those declares a ring in its own text colour
+     in the same rule as its background, and the light surfaces inside the
+     header put the page ring back. check-contrast.mjs measures every rule
+     that sets --focus-ring against that rule's background, at 3:1. It
+     cannot see inheritance: a new light popover inside a dark surface must
+     reset --focus-ring to var(--focus-ring-page) in its own rule. Controls
+     that float over any surface (the skip link, the two floating buttons)
+     draw a white ring inside their own edge instead. */
+  --focus-ring-page: var(--focus-ring);
+  --focus-ring-nav: 3px solid var(--color-nav-text);
+  --focus-ring-footer: 3px solid var(--color-footer-text);
 
   /* --font-nunito / --font-rubik come from next/font (app/fonts.ts) on <html>. */
   --font-body: var(--font-nunito, "Nunito Sans"), system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -243,6 +260,7 @@
   --color-body: #FFFFFF;
   --color-body-bg: #FFFFFF;
   --palette-primary: #B8860B;
+  --palette-primary-text: #000000;
   --palette-primary-dark: #00205B;
   --palette-deep: #00143D;
   --brand-blue: #00205B;
