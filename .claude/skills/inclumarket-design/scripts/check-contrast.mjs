@@ -95,6 +95,11 @@ const REQUIRED_PAIRS = [
   { fg: "--chart-4", bg: "--canvas-white", min: 3, what: "chart series 4 on a card" },
   { fg: "--chart-5", bg: "--canvas-white", min: 3, what: "chart series 5 on a card" },
   { fg: "--chart-6", bg: "--canvas-white", min: 3, what: "chart series 6 on a card" },
+  // Control outlines, 3:1 on the surface the control sits on: form fields
+  // and the controls drawn with them (--border-control).
+  { fg: "--border-control", bg: "--canvas-white", min: 3, what: "a control outline on a card" },
+  { fg: "--border-control", bg: "--color-body", min: 3, what: "a control outline on the page" },
+  { fg: "--border-control", bg: "--surface-gray", min: 3, what: "a control outline on a grey well" },
   // Focus rings, 3:1 against what they are drawn on. The page ring is
   // measured here; each dark surface declares its own ring next to its
   // background, and the rule scan measures it there.

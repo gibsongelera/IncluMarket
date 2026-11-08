@@ -92,6 +92,10 @@
   --text-muted: #5A6169;
   --canvas-white: #FFFFFF;
   --border: #DEE2E6;
+  /* Outlines of form fields and of the controls drawn with them (stepper
+     buttons, colour swatch, upload zone); --border stays for containers,
+     dividers and controls that their words, icon or image identify. */
+  --border-control: #7C838B;
   --surface-gray: #F5F7FA;
   --surface-gray-2: #EEF0F3;
 
@@ -274,6 +278,7 @@
   --text-charcoal: #000000;
   --text-muted: #1A1A1A;
   --border: #000000;
+  --border-control: #000000;
   --surface-gray: #FFFFFF;
   --surface-gray-2: #FFFFFF;
   --color-body: #FFFFFF;

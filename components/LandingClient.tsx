@@ -574,7 +574,7 @@ export function LandingClient({
                         style={{
                           width: "100%",
                           padding: ".7rem .85rem .7rem 2.55rem",
-                          border: "1.5px solid var(--border)",
+                          border: "1.5px solid var(--border-control)",
                           background: "var(--surface-gray)",
                           borderRadius: "var(--radius-md)",
                           fontSize: ".95rem",

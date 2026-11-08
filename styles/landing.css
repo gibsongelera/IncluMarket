@@ -246,19 +246,17 @@
 .input-icon input {
   width: 100%;
   padding: .7rem .85rem .7rem 2.55rem;
-  border: 1.5px solid var(--border);
+  border: 1.5px solid var(--border-control);
   background: var(--surface-gray);
   border-radius: var(--radius-md);
   font-size: .95rem;
   color: var(--text-charcoal);
   transition: border-color var(--dur-1) var(--ease-out), background-color var(--dur-1) var(--ease-out);
 }
-.input-icon input:hover { border-color: #C4C9D0; }
+.input-icon input:hover { border-color: var(--text-charcoal); }
 .input-icon input:focus {
-  outline: none;
   background: var(--canvas-white);
   border-color: var(--brand-blue);
-  box-shadow: 0 0 0 3px rgba(46, 49, 146, .12);
 }
 .input-icon .trailing {
   position: absolute; right: .3rem; top: 50%; transform: translateY(-50%);
