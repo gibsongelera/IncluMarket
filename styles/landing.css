@@ -243,9 +243,20 @@
   color: var(--text-muted);
   pointer-events: none;
 }
-.input-icon input {
+/* The dropdown arrow drawn for .input-icon select. Decorative (aria-hidden),
+   and clicks fall through to the select underneath. */
+.input-icon svg.trailing-icon {
+  position: absolute; right: .85rem; top: 50%; transform: translateY(-50%);
+  color: var(--text-muted);
+  pointer-events: none;
+}
+/* The icons are a fixed 18px (their width attribute) while their offsets are
+   rem, so the side that holds one reserves offset + 18px + a rem gap. A flat
+   rem value over-reserves at the 24px font setting and under-reserves at 12px. */
+.input-icon input,
+.input-icon select {
   width: 100%;
-  padding: .7rem .85rem .7rem 2.55rem;
+  padding: .7rem .85rem .7rem calc(.75rem + 18px + .35rem);
   border: 1.5px solid var(--border-control);
   background: var(--surface-gray);
   border-radius: var(--radius-md);
@@ -253,8 +264,22 @@
   color: var(--text-charcoal);
   transition: border-color var(--dur-1) var(--ease-out), background-color var(--dur-1) var(--ease-out);
 }
-.input-icon input:hover { border-color: var(--text-charcoal); }
-.input-icon input:focus {
+/* appearance: none removes the native arrow, so svg.trailing-icon draws one
+   and padding-right keeps the text clear of it. The font-size restates the
+   iOS no-zoom floor from responsive.css: the inputs get it there (their
+   input[type] selectors tie `.input-icon input` and come later), but a bare
+   `select` loses to this rule, so without it the select stays at .95rem,
+   smaller and shorter than the fields beside it. */
+.input-icon select {
+  appearance: none;
+  padding-right: calc(.85rem + 18px + .25rem);
+  cursor: pointer;
+  font-size: max(1rem, 16px);
+}
+.input-icon input:hover,
+.input-icon select:hover { border-color: var(--text-charcoal); }
+.input-icon input:focus,
+.input-icon select:focus {
   background: var(--canvas-white);
   border-color: var(--brand-blue);
 }
@@ -385,10 +410,14 @@
   .auth-card { border: 0; box-shadow: none; padding: 0; }
 }
 
-/* Row utility used in signup form */
+/* Row utility used in signup form. Two columns only while each can be 13
+   times the fields' font size, so the row stacks at large accessibility font
+   sizes instead of squeezing the fields until their text is cut off. That
+   size is max(1rem, 16px), the floor responsive.css gives the fields: a bare
+   13rem would let columns shrink at the 12px setting while the text did not. */
 .auth-panel .row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 13 * max(1rem, 16px)), 1fr));
   gap: .75rem;
 }
 @media (max-width: 520px) {
