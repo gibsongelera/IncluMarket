@@ -102,7 +102,10 @@
 .price--sale { color: var(--price-color); font-weight: 800; }
 .price--was  { color: var(--text-muted); font-weight: 400; font-size: .875em; }
 
-/* Status pill (order/ticket lifecycles) */
+/* Status pill (order/ticket lifecycles). Colours come from the fixed
+   --status-* tokens (tokens.css), which no theme preset sets, so a status
+   reads the same in every event theme; high contrast still overrides them.
+   Shipped uses --palette-teal, fixed the same way. */
 .pill {
   display: inline-block;
   padding: 2px 10px;
@@ -111,40 +114,40 @@
   font-weight: 700;
   border: 1px solid transparent;
   background: var(--surface-gray);
-  color: var(--text-charcoal);
+  color: var(--status-text);
   text-transform: capitalize;
   /* Wrap between words if it must, never inside one ("Showi|ng"). */
   overflow-wrap: normal;
   word-break: normal;
 }
-.pill--pending    { background: var(--warning-100);    color: var(--text-charcoal); border-color: var(--warning); }
-.pill--processing { background: var(--brand-blue-100); color: var(--brand-blue); border-color: var(--brand-blue); }
+.pill--pending    { background: var(--status-warn-100);  color: var(--status-text); border-color: var(--status-warn); }
+.pill--processing { background: var(--status-info-100);  color: var(--status-info); border-color: var(--status-info); }
 .pill--shipped    { background: var(--palette-teal-100); color: var(--palette-teal); border-color: var(--palette-teal); }
-.pill--delivered  { background: var(--success-100);    color: var(--success); border-color: var(--success); }
-.pill--returned   { background: var(--brand-red-100);  color: var(--brand-red-800); border-color: var(--brand-red); }
-.pill--open       { background: var(--brand-red-100);  color: var(--brand-red-800); border-color: var(--brand-red); }
-.pill--in_progress{ background: var(--brand-blue-100); color: var(--brand-blue); border-color: var(--brand-blue); }
-.pill--resolved   { background: var(--success-100);    color: var(--success); border-color: var(--success); }
-.pill--approved   { background: var(--success-100);    color: var(--success); border-color: var(--success); }
-.pill--flagged    { background: var(--brand-red-100);  color: var(--brand-red-800); border-color: var(--brand-red); }
-.pill--cancelled  { background: var(--surface-gray-2); color: var(--text-charcoal); border-color: var(--text-muted); }
-.pill--return_requested { background: var(--warning-100); color: var(--text-charcoal); border-color: var(--warning); }
-.pill--archived   { background: var(--surface-gray-2); color: var(--text-muted); border-color: var(--border); }
-.pill--active     { background: var(--success-100);    color: var(--success); border-color: var(--success); }
+.pill--delivered  { background: var(--status-ok-100);    color: var(--status-ok); border-color: var(--status-ok); }
+.pill--returned   { background: var(--status-error-100); color: var(--status-error-text); border-color: var(--status-error); }
+.pill--open       { background: var(--status-error-100); color: var(--status-error-text); border-color: var(--status-error); }
+.pill--in_progress{ background: var(--status-info-100);  color: var(--status-info); border-color: var(--status-info); }
+.pill--resolved   { background: var(--status-ok-100);    color: var(--status-ok); border-color: var(--status-ok); }
+.pill--approved   { background: var(--status-ok-100);    color: var(--status-ok); border-color: var(--status-ok); }
+.pill--flagged    { background: var(--status-error-100); color: var(--status-error-text); border-color: var(--status-error); }
+.pill--cancelled  { background: var(--surface-gray-2);   color: var(--status-text); border-color: var(--status-neutral); }
+.pill--return_requested { background: var(--status-warn-100); color: var(--status-text); border-color: var(--status-warn); }
+.pill--archived   { background: var(--surface-gray-2);   color: var(--status-neutral); border-color: var(--border); }
+.pill--active     { background: var(--status-ok-100);    color: var(--status-ok); border-color: var(--status-ok); }
 /* Body copy of ConfirmDialog: a few short paragraphs, evenly spaced. */
 .confirm-dialog__body { display: grid; gap: var(--space-2); }
-.pill--submitted  { background: var(--brand-blue-100); color: var(--brand-blue); border-color: var(--brand-blue); }
-.pill--rejected   { background: var(--brand-red-100);  color: var(--brand-red-800); border-color: var(--brand-red); }
-.pill--revoked    { background: var(--brand-red-100);  color: var(--brand-red-800); border-color: var(--brand-red); }
-.pill--expired    { background: var(--surface-gray-2); color: var(--text-charcoal); border-color: var(--text-muted); }
-.pill--suspended  { background: var(--surface-gray-2); color: var(--text-charcoal); border-color: var(--text-muted); }
+.pill--submitted  { background: var(--status-info-100);  color: var(--status-info); border-color: var(--status-info); }
+.pill--rejected   { background: var(--status-error-100); color: var(--status-error-text); border-color: var(--status-error); }
+.pill--revoked    { background: var(--status-error-100); color: var(--status-error-text); border-color: var(--status-error); }
+.pill--expired    { background: var(--surface-gray-2);   color: var(--status-text); border-color: var(--status-neutral); }
+.pill--suspended  { background: var(--surface-gray-2);   color: var(--status-text); border-color: var(--status-neutral); }
 /* Payment status (unpaid, pending, paid, failed, refunded; migrations 0010
    and 0015). Pending reuses .pill--pending. Unpaid is normal for cash on
    delivery and refunded is settled, so both are neutral, not errors. */
-.pill--paid       { background: var(--success-100);    color: var(--success); border-color: var(--success); }
-.pill--failed     { background: var(--brand-red-100);  color: var(--brand-red-800); border-color: var(--brand-red); }
-.pill--unpaid     { background: var(--surface-gray-2); color: var(--text-charcoal); border-color: var(--text-muted); }
-.pill--refunded   { background: var(--surface-gray-2); color: var(--text-charcoal); border-color: var(--text-muted); }
+.pill--paid       { background: var(--status-ok-100);    color: var(--status-ok); border-color: var(--status-ok); }
+.pill--failed     { background: var(--status-error-100); color: var(--status-error-text); border-color: var(--status-error); }
+.pill--unpaid     { background: var(--surface-gray-2);   color: var(--status-text); border-color: var(--status-neutral); }
+.pill--refunded   { background: var(--surface-gray-2);   color: var(--status-text); border-color: var(--status-neutral); }
 
 /* Forms */
 .form { display: grid; gap: var(--space-4); }

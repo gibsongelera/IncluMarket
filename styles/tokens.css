@@ -113,6 +113,24 @@
   --info: var(--brand-blue);
   --info-100: var(--brand-blue-100);
 
+  /* Status pill colours (.pill--* in components.css). Fixed: these are not
+     in THEME_VAR_KEYS (lib/theme.ts), so no preset sets them and a status
+     reads the same in every event theme. The values are the default
+     theme's. High contrast overrides them below, where it sets the token
+     each one was copied from. check-contrast.mjs fails a .pill-- rule that
+     references a token a preset can set. */
+  --status-text: #212529; /* dark text on warning and neutral fills */
+  --status-neutral: #5A6169; /* neutral borders, archived text */
+  --status-info: #0038A8;
+  --status-info-100: #E8EEF9;
+  --status-ok: #0B5C3B;
+  --status-ok-100: #D8EDE3;
+  --status-warn: #B8860B; /* borders only, like --warning: 3.25:1 on white */
+  --status-warn-100: #FFF4D1;
+  --status-error: #C41E3A;
+  --status-error-text: #8E1529;
+  --status-error-100: #FCE8EC;
+
   /* Chart series. Aliases, so each takes whatever the presets and high
      contrast set for its source token. Graphics only, each at least 3:1 on
      white. --chart-6 is for segments only, never text. A chart uses at most
@@ -296,10 +314,19 @@
   --color-footer: #2A180A;
   /* Warning text, about 11:1 on white. */
   --warning-text: #4D3800;
-  /* Warning graphics too (pill and notice borders). The themed gold is under
-     3:1 on its own tint; this is darker than every preset's warning, so the
-     mode never draws a fainter border than normal does. */
+  /* Warning graphics too (notice borders). The themed gold is under 3:1 on
+     its own tint; this is darker than every preset's warning, so the mode
+     never draws a fainter border than normal does. */
   --warning: #4D3800;
+  /* Status pills: the five whose source token this block sets, each with
+     this block's value for it (--text-charcoal, --text-muted, --brand-blue,
+     --warning, --brand-red). The tints, --status-ok and --status-error-text
+     keep their :root values, as their sources do here. */
+  --status-text: #000000;
+  --status-neutral: #1A1A1A;
+  --status-info: #00205B;
+  --status-warn: #4D3800;
+  --status-error: #8E1529;
   --shadow-sm: 0 0 0 1px #000;
   --shadow-md: 0 0 0 2px #000;
   --shadow-lg: 0 0 0 3px #000;

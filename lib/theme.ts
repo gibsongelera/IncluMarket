@@ -62,7 +62,9 @@ export const THEME_VAR_KEYS = [
 
 /**
  * Shared brand aliases derived from palette tokens.
- * Applied for every preset so buttons, links, badges, and pills follow the theme.
+ * Applied for every preset so buttons, links and badges follow the theme.
+ * Status pills do not: they use fixed tokens from styles/tokens.css, so a
+ * status reads the same in every theme.
  */
 function brandAliases(): Record<string, string> {
   return {

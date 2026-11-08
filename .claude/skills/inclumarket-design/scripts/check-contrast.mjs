@@ -31,6 +31,18 @@
  *   - REQUIRED_PAIRS below, for colours that meet across rules: text on the
  *     page, a link on a card, white on a button, the page focus ring.
  *
+ * It also keeps status pills pinned, so a status reads the same in every
+ * event theme (themed pills made Processing red under Pride and Pending
+ * berry, like Failed, under Women's Month). In a rule whose selector names
+ * `.pill` or a `.pill--` modifier, in any context, a colour (background,
+ * color, border, fill, stroke) that reaches a token a preset can set is an
+ * error, whether it names the token or reaches it through a token defined
+ * in tokens.css. So is `color: inherit`, which takes the themed text colour,
+ * and so is a --status-* token defined anywhere but the token blocks of
+ * tokens.css. A focus outline or shadow may follow the theme. "Can set" is
+ * THEME_VAR_KEYS from lib/theme.ts plus every key a preset resolves to.
+ * High contrast may still override a pill colour.
+ *
  * Zero dependencies: lib/theme.ts is imported directly (Node strips its
  * types). Run:
  *   node .claude/skills/inclumarket-design/scripts/check-contrast.mjs
@@ -378,6 +390,41 @@ if (fs.existsSync(fontsTs)) {
 
 const allDefined = new Set([...baseTokens.keys(), ...themeTokenNames, ...fontVarNames]);
 
+// Token names a preset can set, read from the lib/theme.ts module like the
+// presets above: THEME_VAR_KEYS, plus every key a preset resolves to, so a
+// key added to a preset but not to the list still counts. A missing list
+// would empty the status-pill check without a sound, so it is an error.
+if (!Array.isArray(theme.THEME_VAR_KEYS) || !theme.THEME_VAR_KEYS.length) {
+  note("error", "lib/theme.ts", 0, "THEME_VAR_KEYS is missing or empty, so the status-pill check cannot tell which tokens a preset sets.");
+}
+const presetTokenNames = new Set(theme.THEME_VAR_KEYS ?? []);
+for (const id of Object.keys(theme.THEME_PRESETS)) {
+  for (const name of Object.keys(theme.resolveThemeVars({ theme_preset: id }))) presetTokenNames.add(name);
+}
+
+/**
+ * Where a value reaches a token a preset can set, as chains such as
+ * "--status-ok -> --success". var() is followed the way the cascade resolves
+ * it at the root: a preset outranks the `:root` block of tokens.css, and with
+ * high contrast on, `:root[data-contrast="high"]` outranks the preset.
+ */
+function presetReach(value, highContrast, chain = []) {
+  const out = [];
+  for (const m of value.matchAll(/var\(\s*(--[a-z0-9-]+)/gi)) {
+    const name = m[1];
+    if (chain.includes(name)) continue; // a cycle, which the browser drops
+    const via = [...chain, name];
+    if (highContrast && highContrastTokens.has(name)) {
+      out.push(...presetReach(highContrastTokens.get(name), highContrast, via));
+    } else if (presetTokenNames.has(name)) {
+      out.push(via.join(" -> "));
+    } else if (rootTokens.has(name)) {
+      out.push(...presetReach(rootTokens.get(name), highContrast, via));
+    }
+  }
+  return out;
+}
+
 // ---------------------------------------------------------------------------
 // Measuring a pair in every scenario
 // ---------------------------------------------------------------------------
@@ -461,8 +508,54 @@ function winning(body, re) {
   return value;
 }
 
+/** The line a rule's selector starts on, not the end of whatever came before it. */
+function selectorLine(source, rule) {
+  return source.slice(0, rule.index + Math.max(0, rule[1].search(/\S/))).split("\n").length;
+}
+
+// A selector that styles a pill: `.pill` itself or a `.pill--` modifier, in
+// any context (`.x .pill` included), but not a `.pills` or `.pill-row`.
+const PILL_SELECTOR_RE = /\.pill(?:--[\w-]+)?(?![\w-])/;
+// The declarations that colour a pill. A focus outline or a shadow belongs to
+// the page, not to the status, so it may follow the theme.
+const PILL_COLOUR_RE =
+  /(?<![\w-])(background(?:-color)?|color|border(?:-(?:top|right|bottom|left))?(?:-color)?|fill|stroke)\s*:\s*([^;]+)/gi;
+
+/**
+ * Status pills are pinned (file header): a pill rule's colours may not reach
+ * a token a preset can set, directly or through tokens.css, in the scenarios
+ * the rule applies in, and its text may not inherit the themed page colour.
+ */
+function checkPinnedPill(file, line, selector, body) {
+  pillRules++;
+  const colours = [...body.matchAll(PILL_COLOUR_RE)];
+  const values = colours.map((m) => m[2]).join(" ");
+  const problems = [];
+  if (colours.some((m) => m[1].toLowerCase() === "color" && /^\s*(inherit|currentcolor)\s*(!important)?\s*$/i.test(m[2]))) {
+    problems.push("its color inherits the surrounding text colour, which a preset can set");
+  }
+  const mode = contrastMode(selector);
+  const reach = new Set(mode === "high" ? [] : presetReach(values, false));
+  if (mode !== "normal") {
+    for (const chain of presetReach(values, true)) {
+      if (!reach.has(chain)) reach.add(`${chain} (with high contrast on)`);
+    }
+  }
+  if (reach.size) {
+    problems.push(`it references ${[...reach].join(", ")}, which a theme preset can set (THEME_VAR_KEYS, lib/theme.ts)`);
+  }
+  if (!problems.length) return;
+  note(
+    "error",
+    file,
+    line,
+    `${selector}: ${problems.join("; ")}. An event theme would recolour this status. Status pills take the fixed --status-* tokens in tokens.css; add a new one there, never in a preset.`
+  );
+}
+
 let rulePairs = 0;
 let ringPairs = 0;
+let pillRules = 0;
 const unmeasured = [];
 
 for (const file of cssFiles) {
@@ -498,15 +591,28 @@ for (const file of cssFiles) {
   for (const rule of source.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
     const selector = rule[1].trim().replace(/\s+/g, " ");
     const body = rule[2];
+
+    // --status-* tokens are defined once, in the token blocks of tokens.css,
+    // so a scoped redefinition cannot hand the pills inside it a themed colour.
+    if (/(?<![\w-])--status-[a-z0-9-]+\s*:/i.test(body) && !(file === "tokens.css" && ROOT_ONLY_RE.test(selector))) {
+      note(
+        "error",
+        rel,
+        selectorLine(source, rule),
+        `${selector} defines a --status-* token. They live only in the :root and high-contrast blocks of tokens.css, so a status reads the same everywhere.`
+      );
+    }
+
     if (selector.startsWith("@") || ROOT_ONLY_RE.test(selector)) continue;
+
+    if (PILL_SELECTOR_RE.test(selector)) checkPinnedPill(rel, selectorLine(source, rule), selector, body);
 
     const bg = winning(body, BACKGROUND_RE);
     const fg = winning(body, COLOR_RE);
     const ring = winning(body, FOCUS_RING_RE);
     if (!ring && !(fg && bg)) continue;
 
-    // The selector's own line, not the end of whatever came before it.
-    const lineNo = source.slice(0, rule.index + Math.max(0, rule[1].search(/\S/))).split("\n").length;
+    const lineNo = selectorLine(source, rule);
     const mode = contrastMode(selector);
 
     if (ring && !bg) {
@@ -622,7 +728,8 @@ for (const file of [...walk(path.join(ROOT, "app")), ...walk(path.join(ROOT, "co
 const presetCount = scenarios.length / 2;
 const scope =
   `${scenarios.length} scenarios (${presetCount} presets, high contrast off and on), ` +
-  `${rulePairs} rule pairs, ${ringPairs} focus rings, ${REQUIRED_PAIRS.length} required pairs` +
+  `${rulePairs} rule pairs, ${ringPairs} focus rings, ${REQUIRED_PAIRS.length} required pairs, ` +
+  `${pillRules} pill rules checked for theme tokens` +
   (unmeasured.length ? ` (${unmeasured.length} more could not be measured; --table lists them)` : "");
 
 if (SHOW_TABLE) {
