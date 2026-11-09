@@ -216,7 +216,7 @@
 .breakdown-row[aria-pressed="true"] { border-color: var(--brand-blue); background: var(--brand-blue-100); font-weight: 700; }
 .breakdown-row:disabled { color: var(--text-muted); cursor: default; }
 .breakdown-row__bar { height: .5rem; border-radius: 999px; background: var(--surface-gray-2); overflow: hidden; }
-.breakdown-row__bar > span { display: block; height: 100%; background: var(--star-edge); }
+.breakdown-row__bar > span { display: block; height: 100%; background: var(--star-bar); }
 .breakdown-row__count { text-align: right; font-variant-numeric: tabular-nums; }
 .reviews__list { display: grid; gap: var(--space-3); align-content: start; }
 .reviews__list > p { margin: 0; }
@@ -644,6 +644,7 @@ fieldset {
 /* Star input (radio group) */
 .star-input {
   display: inline-flex;
+  flex-wrap: wrap; /* five 2.75rem targets and the value pass 320px at 24px text */
   align-items: center;
   gap: 0.1em;
   font-size: 1.75rem;
@@ -652,6 +653,10 @@ fieldset {
 .star-input button {
   background: none;
   border: 0;
+  /* Buttons do not inherit the font: without this each star (1em) took the
+     browser's 13.33px, ignoring the 1.75rem above and the 12-24px
+     accessibility scale. */
+  font: inherit;
   /* 44x44 minimum, in rem so it grows with the font scale rather than
      staying frozen while the star inside it gets bigger. */
   min-width: 2.75rem;
@@ -661,13 +666,27 @@ fieldset {
   justify-content: center;
   padding: 0;
   cursor: pointer;
-  color: var(--star-empty);
+  /* An unselected star is drawn like the display's empty star (.stars
+     .star--empty): a white fill inside the --star-edge outline set on the svg
+     below. Filled with --border (the former --star-empty), the five targets
+     measured 1.3:1 on the white dialog and barely showed; under high contrast
+     they were solid black, darker than the chosen ones. */
+  /* Explicit literal rather than a background token: this is an SVG fill, but
+     the background-only rule exists because that distinction is easy to get
+     wrong, and the checker is right to flag it. */
+  color: #FFFFFF;
   line-height: 1;
 }
 
+/* The edge goes on every star, chosen or not, as in .stars: it gives the
+   white ones their shape and keeps the gold ones from looking thickened.
+   paint-order draws the stroke first so the fill covers its inner half. */
 .star-input button svg {
   height: 1em;
   width: 1em;
+  stroke: var(--star-edge);
+  stroke-width: 28px; /* SVG user units (viewBox is 576x512) */
+  paint-order: stroke fill;
 }
 
 .star-input button[aria-checked="true"],
@@ -675,16 +694,20 @@ fieldset {
   color: var(--star-filled);
 }
 
-.star-input button.is-active svg {
-  stroke: var(--star-edge);
-  stroke-width: 28px;
-  paint-order: stroke fill;
-}
-
 .star-input button:focus-visible {
   outline: var(--focus-ring);
   outline-offset: var(--focus-ring-offset);
   border-radius: var(--radius-sm);
+}
+
+/* The chosen value in words after the stars (StarInput), so "chosen" does
+   not rest on the gold fill alone. */
+.star-input__value {
+  margin-left: var(--space-2);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-charcoal);
+  white-space: nowrap;
 }
 
 /* Modal (native <dialog>) */
@@ -1078,10 +1101,14 @@ fieldset {
   animation: visual-alert-flash 2.2s ease;
   pointer-events: none;
 }
-.visual-alert--info { background: color-mix(in srgb, var(--brand-blue) 92%, #000); }
-.visual-alert--success { background: color-mix(in srgb, var(--palette-forest) 92%, #000); }
-.visual-alert--warn { background: color-mix(in srgb, var(--brand-yellow-800) 92%, #000); }
-.visual-alert--error { background: color-mix(in srgb, var(--brand-red) 92%, #000); }
+/* Each tone restates the white text of .visual-alert: check-contrast.mjs
+   pairs a colour with a background only within one rule, so without it no
+   tone was measured. The gold tone takes a quarter black, not 8%: white on
+   the default gold at 92% measured 3.79:1. */
+.visual-alert--info { color: #FFFFFF; background: color-mix(in srgb, var(--brand-blue) 92%, #000); }
+.visual-alert--success { color: #FFFFFF; background: color-mix(in srgb, var(--palette-forest) 92%, #000); }
+.visual-alert--warn { color: #FFFFFF; background: color-mix(in srgb, var(--brand-yellow-800) 75%, #000); }
+.visual-alert--error { color: #FFFFFF; background: color-mix(in srgb, var(--brand-red) 92%, #000); }
 @keyframes visual-alert-flash {
   0% { opacity: 0; }
   12% { opacity: 1; }

@@ -274,7 +274,12 @@
      only channel. */
   --star-filled: rgb(255, 212, 59);
   --star-edge: var(--brand-yellow-800);
-  --star-empty: var(--border);
+  /* Fill of the rating-breakdown bar (.breakdown-row__bar). The edge itself
+     is 2.85:1 on the --surface-gray-2 track under the presets that keep the
+     default gold, below the 3:1 a graphic needs; a quarter black takes it to
+     4.68:1. An alias, so it follows --star-edge into every preset and into
+     high contrast. check-contrast.mjs requires 3:1 on the track. */
+  --star-bar: color-mix(in srgb, var(--star-edge) 75%, #000);
 
   /* Inline-SVG icon stroke weight. components/Icon.tsx sets stroke-width as a
      presentation ATTRIBUTE, which CSS always outranks, so this is the single
@@ -337,7 +342,6 @@
      contrast, rather than relying on the edge. */
   --star-filled: #8A6000;
   --star-edge: #000000;
-  --star-empty: #000000;
 }
 
 /* Font size set precisely by accessibility toolbar (12–24px) */

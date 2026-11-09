@@ -10,7 +10,7 @@ import { faStar } from "@fortawesome/free-solid-svg-icons";
  * `byPrefixAndName.fas['star']` is the Pro/Kit form and resolves to the same
  * glyph.
  *
- * Colour comes from --star-filled / --star-empty rather than an inline style,
+ * Colour comes from --star-filled and --star-edge rather than an inline style,
  * so the high-contrast mode can swap it. The bright gold is only 1.43:1 on
  * white, under the 3:1 WCAG 1.4.11 minimum for a meaningful graphic, so
  * .stars gives the filled star a thin darker edge — see styles/components.css.

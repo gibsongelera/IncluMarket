@@ -10,8 +10,11 @@ import { faStar } from "@fortawesome/free-solid-svg-icons";
  * the same thing whether you are reading a rating or setting one.
  *
  * The glyph is decorative here: each button already carries its own label
- * ("3 stars"), and the group is a radiogroup, so the state is conveyed
- * without relying on the colour of the icon.
+ * ("3 stars") and the group is a radiogroup, so screen readers get the
+ * state from the radios. Sighted users get it from the "3 of 5" after the
+ * stars: chosen and unchosen stars differ only by fill (gold on white is
+ * 1.43:1), which WCAG 1.4.1 and 1.4.11 do not accept as the only cue, and
+ * Windows forced colours paints all five alike.
  */
 export function StarInput({
   value,
@@ -47,6 +50,10 @@ export function StarInput({
           <FontAwesomeIcon icon={faStar} aria-hidden="true" />
         </button>
       ))}
+      {/* Hidden from screen readers: the checked radio already says it. */}
+      <span className="star-input__value" aria-hidden="true">
+        {value >= 1 ? `${value} of 5` : "Not rated"}
+      </span>
     </div>
   );
 }

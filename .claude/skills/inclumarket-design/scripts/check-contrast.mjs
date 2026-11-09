@@ -107,6 +107,10 @@ const REQUIRED_PAIRS = [
   { fg: "--chart-4", bg: "--canvas-white", min: 3, what: "chart series 4 on a card" },
   { fg: "--chart-5", bg: "--canvas-white", min: 3, what: "chart series 5 on a card" },
   { fg: "--chart-6", bg: "--canvas-white", min: 3, what: "chart series 6 on a card" },
+  // Rating stars: graphics, 3:1. The edge outlines every star, gold or
+  // white, on the card it sits on; --star-bar fills the breakdown bar.
+  { fg: "--star-edge", bg: "--canvas-white", min: 3, what: "star shapes on a card" },
+  { fg: "--star-bar", bg: "--surface-gray-2", min: 3, what: "the rating bar on its track" },
   // Control outlines, 3:1 on the surface the control sits on: form fields
   // and the controls drawn with them (--border-control).
   { fg: "--border-control", bg: "--canvas-white", min: 3, what: "a control outline on a card" },
