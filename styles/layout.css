@@ -926,6 +926,27 @@ a.banners__link:focus-visible { outline: var(--focus-ring); outline-offset: var(
   border-left-color: var(--brand-blue);
   color: var(--brand-blue-800);
 }
+/* A queue count on a link (ConsoleNav `badges`): a nav-coloured pill on the
+   light md row; the dark lg sidebar inverts it (responsive.css). Its hidden
+   " waiting" completes the link's name: "Verifications 3 waiting".
+   position: relative holds that absolute .sr-only text inside the md row's
+   scroller; without it the text escaped and widened the page. */
+.console-nav__badge {
+  position: relative;
+  flex-shrink: 0;
+  margin-left: auto;
+  min-width: 1.5rem;
+  padding: 0 var(--space-2);
+  border-radius: 999px;
+  font-size: .875rem; /* the small-print minimum (01 §3.2) */
+  font-weight: 800;
+  line-height: 1.5rem;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  background: var(--color-nav);
+  color: var(--color-nav-text);
+}
 .page-head { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; }
 .kpis {
   display: grid;

@@ -879,11 +879,20 @@ h3 {
   }
 }
 
-/* --- Seller Centre / Admin sidebar (lg) ------------------------------- */
+/* --- Seller Centre / Admin sidebar (lg): dark (01 §2.5) ---------------
+   The nav tokens, so every preset and high contrast cover it. Hover and the
+   current page mix 8% and 14% of the text colour into the nav (#143985 and
+   #24468D on the default preset); the current page adds a 3px bar, weight
+   800 and aria-current. Section labels keep the full text colour: dimmed
+   text is not checked across presets. 16rem, at most a quarter of the
+   viewport: 256px at 1024px with 24px text, where a long label wraps
+   (hyphenated where the browser can) instead of running out of the
+   sidebar. */
 @media (min-width: 1024px) {
   .console-nav__title,
   .console-nav__section {
     display: block;
+    color: var(--color-nav-text);
   }
   .console-nav__group + .console-nav__group {
     margin-top: var(--space-4);
@@ -896,23 +905,53 @@ h3 {
     white-space: normal;
     border-left: 3px solid transparent;
     border-bottom: 0;
+    color: var(--color-nav-text);
+  }
+  /* base.css lets an svg shrink (max-width: 100%), so a long label
+     squeezed the icon; it keeps its size and the label wraps instead. */
+  .console-nav__icon {
+    flex-shrink: 0;
+  }
+  .console-nav__link:hover {
+    background: color-mix(in srgb, var(--color-nav-text) 8%, var(--color-nav));
+    color: var(--color-nav-text);
   }
   .console-nav__link.is-current {
-    border-left-color: var(--brand-blue);
+    background: color-mix(in srgb, var(--color-nav-text) 14%, var(--color-nav));
+    color: var(--color-nav-text);
+    border-left-color: var(--color-nav-text);
+    font-weight: 800;
+  }
+  /* Inverted on the dark sidebar: a light pill with nav-coloured digits. */
+  .console-nav__badge {
+    background: var(--color-nav-text);
+    color: var(--color-nav);
   }
   .console {
-    grid-template-columns: 14rem minmax(0, 1fr);
+    grid-template-columns: min(16rem, 25vw) minmax(0, 1fr);
     align-items: start;
   }
   .console-nav {
     display: block;
-    overflow-x: visible;
+    overflow-wrap: anywhere;
+    hyphens: auto; /* html lang="en"; overflow-wrap is the fallback */
     position: sticky;
     top: calc(var(--header-total) + var(--space-4));
+    /* Taller than the window (17 admin links pass 1,000px even at 16px
+       text), the sticky sidebar kept its lower links off screen while they
+       had focus. It scrolls on its own instead, ends above the accessibility
+       button (--fab-clearance), and scroll-padding keeps a focused link's
+       ring inside it. */
+    max-height: calc(100vh - var(--header-total) - var(--space-4) - var(--fab-clearance));
+    overflow: auto;
+    scroll-padding-block: var(--space-3);
+    scrollbar-color: var(--color-nav-text) var(--color-nav);
     margin-top: 1.5rem;
     padding: var(--space-3);
-    background: var(--canvas-white);
-    border: 1px solid var(--border);
+    background: var(--color-nav);
+    color: var(--color-nav-text);
+    --focus-ring: var(--focus-ring-nav); /* dark surface: tokens.css focus-ring notes */
+    border: 1px solid var(--color-nav);
     border-radius: var(--radius-md);
   }
 }

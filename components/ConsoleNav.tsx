@@ -9,8 +9,18 @@ import { isCurrent, navSections, type NavRole } from "@/lib/nav";
  * Seller Centre / Admin sidebar, shown from 1024px (lg) up. Below that the
  * header links (md) and the phone tab bar take over — the same items, from
  * lib/nav.ts. The current page is marked with aria-current, not colour alone.
+ *
+ * `badges` puts a count on an item, keyed by its href:
+ * `{ "/admin/verifications": 3 }` draws a pill and names the link
+ * "Verifications 3 waiting". A missing key, 0 or less draws nothing.
  */
-export function ConsoleNav({ variant }: { variant: Extract<NavRole, "seller" | "admin"> }) {
+export function ConsoleNav({
+  variant,
+  badges,
+}: {
+  variant: Extract<NavRole, "seller" | "admin">;
+  badges?: Partial<Record<string, number>>;
+}) {
   const pathname = usePathname() || "";
   const label = variant === "admin" ? "Admin console" : "Seller Centre";
   return (
@@ -22,6 +32,7 @@ export function ConsoleNav({ variant }: { variant: Extract<NavRole, "seller" | "
           <ul>
             {group.items.map((item) => {
               const current = isCurrent(pathname, item);
+              const count = badges?.[item.href] ?? 0;
               return (
                 <li key={item.href}>
                   <Link
@@ -29,10 +40,21 @@ export function ConsoleNav({ variant }: { variant: Extract<NavRole, "seller" | "
                     className={`console-nav__link${current ? " is-current" : ""}`}
                     aria-current={current ? "page" : undefined}
                   >
-                    <span aria-hidden="true">
+                    <span className="console-nav__icon" aria-hidden="true">
                       <Icon name={item.icon} size={18} />
                     </span>
                     {item.label}
+                    {count > 0 ? (
+                      <>
+                        {/* The space keeps "Verifications 3 waiting" apart in
+                            the link's name; it collapses on screen. */}
+                        {" "}
+                        <span className="console-nav__badge">
+                          {count}
+                          <span className="sr-only"> waiting</span>
+                        </span>
+                      </>
+                    ) : null}
                   </Link>
                 </li>
               );
