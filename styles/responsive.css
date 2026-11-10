@@ -175,6 +175,16 @@ body {
     padding: var(--space-3);
   }
 
+  /* components.css gives a table row a 3rem minimum and right-aligns
+     figures. A card is a block, where that height would be fixed, and its
+     figures read under their label like every other value. */
+  .data-table--cards tbody tr {
+    height: auto;
+  }
+  .data-table--cards .num {
+    text-align: left;
+  }
+
   .data-table--cards td {
     display: grid;
     grid-template-columns: minmax(6rem, 40%) 1fr;
@@ -574,8 +584,90 @@ textarea {
   max-width: var(--measure);
 }
 
-/* The KPI row is in layout.css and the cards in components.css; only their
-   phone sizes are here (Dashboards: seller and admin, below). */
+/* --- Console content: container queries (01 §5, D-06) --------------------
+   .console__content is the `console` query container (layout.css). These
+   query its width, not the window's, and in rem, so the sidebar and the
+   24px text setting both leave fewer columns. Every container query in the
+   project lives in this file, like the width media queries. Widths below
+   are in rem of console content; at 16px text the content is the window
+   minus 2rem below lg, and minus the sidebar and gap (19.5rem) from lg.
+
+   KPI row: one column; two from 35rem (a 592px window at 16px text); from
+   58rem every card in one row, in equal columns: four as quarters, two as
+   halves, never 3 + 1. Measured in Rubik 800 at --step-4, with --space-4
+   padding and gap:
+     - 58rem is where a quarter holds a money() figure with centavos up to
+       ₱99,999.99 (6.06em); ₱128,430 (5.08em, a KpiCard figure) fits from
+       50rem. The content beside the sidebar at 1280px is 60.5rem, so 1280px
+       gets four across. "Four at lg" would not fit: at 1024px it is 44.5rem,
+       a quarter of 10.4rem against the 11.5rem that ₱128,430 needs. In a
+       quarter, ₱128,430.00 runs into the tile's padding but stays inside its
+       border; a seven-figure sum with centavos would cross it, so a KPI card
+       shows whole pesos (₱128,430, as in 01 §6.1).
+     - 35rem: a half then holds ₱1,284,300.50 (7.75em) at any text size. At
+       29rem a half held ₱12,345.67, and a seven-figure balance crossed the
+       tile's border at 768px with 24px text.
+     - A row of five or more (the finance balance) goes three to a row
+       instead: even at the widest console (70.5rem) a fifth does not hold
+       ₱24,780.00.
+   Below 15rem (a phone with 22-24px text) the tile keeps the old phone
+   sizes, --space-3 and --step-2, so ₱1,284,300.50 still fits at 320px. */
+.console__content .kpis {
+  grid-template-columns: minmax(0, 1fr);
+}
+@container console (width < 15rem) {
+  .console__content .kpi {
+    padding: var(--space-3);
+  }
+  .console__content .kpi__value {
+    font-size: var(--step-2);
+  }
+}
+/* Table cards (section 3) put each label beside its value. Below 18rem of
+   console content (a phone with 20-24px text) that left the value about
+   76px at 320px, so ₱1,250.00 overflowed and the table scrolled sideways
+   (1.4.10). The label goes above its value instead; at 18rem a value line
+   holds ₱1,284,300.50 at 24px text. */
+@container console (width < 18rem) {
+  .console__content .data-table--cards td {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-1);
+  }
+}
+@container console (min-width: 35rem) {
+  .console__content .kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+/* .dash-grid: 12 columns from the same 58rem, where a 4-column span is
+   18.7rem, room for a donut and its legend. */
+@container console (min-width: 58rem) {
+  .console__content .kpis:not(:has(> :nth-child(5))) {
+    grid-template-columns: none;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
+  }
+  .console__content .kpis:has(> :nth-child(5)) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .dash-grid {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+  }
+  .dash-grid > *,
+  .dash-grid > .span-12 {
+    grid-column: 1 / -1;
+  }
+  .dash-grid > .span-8 {
+    grid-column: span 8;
+  }
+  .dash-grid > .span-6 {
+    grid-column: span 6;
+  }
+  .dash-grid > .span-4 {
+    grid-column: span 4;
+  }
+}
 
 h1 {
   font-size: var(--step-4);
@@ -603,6 +695,18 @@ h3 {
   width: 100%;
   height: auto;
   display: block;
+}
+
+/* Two charts side by side once the console content holds two cards of about
+   20rem (a donut beside its legend, a line chart with readable labels); one
+   column below (layout.css). In rem of console content, like the KPI row,
+   so the 24px text setting stacks them on a laptop too: at 768px with 24px
+   text two cards were 14rem each. This was two columns with a max-width:
+   900px undo in the legacy block. */
+@container console (min-width: 40rem) {
+  .chart-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .chart-data-table {
@@ -641,6 +745,22 @@ h3 {
   }
 }
 
+/* The Seller Centre and admin console are wider than the storefront:
+   --console-max (90rem) instead of --container-max (01 §5). After the rule
+   above, which it overrides at every width. */
+.console {
+  max-width: var(--console-max);
+}
+/* On a console page the header and footer rows follow, so their edges line
+   up with the sidebar and the content. Not by header variant: /account,
+   /search and the static pages show the seller and admin headers above a
+   storefront-width page. A separate rule, so a browser without :has()
+   still widens the console. */
+.site-header:has(~ .console) .container,
+.console ~ .site-footer .container {
+  max-width: var(--console-max);
+}
+
 /* ---------------------------------------------------------------------------
    10. Legacy breakpoints, relocated
    These two blocks were the only width media queries serving the entire
@@ -653,7 +773,6 @@ h3 {
   .filters { position: static; }
   .product-detail { grid-template-columns: 1fr; }
   .checkout-grid { grid-template-columns: 1fr; }
-  .chart-grid { grid-template-columns: 1fr; }
   .support-grid { grid-template-columns: 1fr; }
   .ticket-workspace { grid-template-columns: 1fr; }
   .hero { grid-template-columns: 1fr; }
@@ -1142,18 +1261,9 @@ h3 {
 
 /* --- Dashboards: seller and admin --------------------------------------- */
 @media (max-width: 767px) {
-  /* Two KPI tiles per row still reads as a dashboard. One per row reads as a
-     list and buries the charts three screens down. */
-  .kpis {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: var(--space-2);
-  }
-  .kpi {
-    padding: var(--space-3);
-  }
-  .kpi__value {
-    font-size: var(--step-2);
-  }
+  /* The KPI row is sized by the console content, not the window (section 7,
+     container queries). The two tiles per row that were here spilled a
+     seller's money figure out of its tile at 320px. */
 
   .page-head {
     gap: var(--space-2);
@@ -1170,13 +1280,18 @@ h3 {
     flex: 1 1 auto;
   }
 
-  /* Tabs scroll sideways instead of wrapping into three cramped rows. */
+  /* Tabs scroll sideways instead of wrapping into three cramped rows. A
+     scroller clips whatever lies outside its box, the tabs' focus ring
+     included (the strip in a chart card has no padding at all), so the ring
+     is drawn inside each tab, on its own light fill, as the skip link's is
+     (base.css). */
   .tabs {
     flex-wrap: nowrap;
     overflow-x: auto;
     scrollbar-width: none;
     margin-inline: calc(var(--space-3) * -1);
     padding-inline: var(--space-3);
+    --focus-ring-offset: -5px;
   }
   .tabs::-webkit-scrollbar {
     display: none;

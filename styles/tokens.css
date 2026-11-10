@@ -245,6 +245,10 @@
   --z-toast: 100;
 
   --container-max: 1200px;
+  /* The Seller Centre and admin console (01 §5): a dashboard beside the 16rem
+     sidebar is not squeezed into the storefront's 1200px. rem, so it widens
+     with the 12-24px text setting. Applied in responsive.css (section 9). */
+  --console-max: 90rem;
   --header-h: 64px;
   /* Real rendered header height, including the user strip. Set from JS on mount,
      on resize, and on every accessibility font change — a hardcoded offset is

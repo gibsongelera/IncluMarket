@@ -10,6 +10,21 @@ export function money(n: number | string | null | undefined): string {
   return PHP.format(Number(n) || 0);
 }
 
+/**
+ * Whole pesos for a dashboard figure: "₱128,430" (01 §6.1). A KPI tile in a
+ * row of four has room for the figure, not its centavos; lists, receipts
+ * and balances keep money(). Both digit limits are set: some runtimes throw
+ * when only the maximum is below the currency's default of two.
+ */
+export function moneyWhole(n: number | string | null | undefined): string {
+  return (Number(n) || 0).toLocaleString("en-PH", {
+    style: "currency",
+    currency: "PHP",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  });
+}
+
 export function formatDate(iso: string | null | undefined): string {
   if (!iso) return "";
   try {

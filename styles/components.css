@@ -292,8 +292,9 @@
    One family for every dashboard figure: the <article class="kpi"> tiles and
    components/KpiCard.tsx, where the whole card is a link. .kpi--queue is a
    "Needs attention" tile, which takes over from .overview-tile. Flat: 1px
-   border, no shadow (01 §4). The row (.kpis) is in layout.css; the phone
-   sizes are in responsive.css. */
+   border, no shadow (01 §4). The row (.kpis) is in layout.css; inside the
+   console its columns, and the tighter tile of a very narrow console, are
+   container queries in responsive.css. */
 .kpi {
   display: flex;
   flex-direction: column;
@@ -315,8 +316,13 @@
   /* Neutral, not brand blue: a saturated hue at 30px across a row of tiles is
      what makes a dashboard tiring. Colour is reserved for status meaning. */
   color: var(--text-charcoal);
+  /* The display face with even digits (01 §6.1). Rubik is wider than the
+     body face (₱128,430.00 is 6.7em at weight 800), which is what the
+     console's container-sized row in responsive.css allows for. */
+  font-family: var(--font-display);
   font-size: var(--step-4);
   font-weight: 800;
+  font-variant-numeric: tabular-nums;
   line-height: 1.1;
 }
 /* The card as a link keeps the page focus ring (base.css). */
@@ -324,14 +330,6 @@ a.kpi {
   min-height: 100%; /* fills its list item, so a row of tiles lines up */
   color: inherit;
   text-decoration: none;
-}
-/* The figure in the display face with even digits (01 §6.1). Only on the
-   linked card for now: the face is wider, and in the two-per-row phone
-   tiles a seller's money figure would spill its tile at 320px. It moves to
-   .kpi__value when the row is sized by its container. */
-a.kpi .kpi__value {
-  font-family: var(--font-display);
-  font-variant-numeric: tabular-nums;
 }
 a.kpi:hover { border-color: var(--brand-blue); }
 /* Label left, icon right. The label grows and wraps; only when its longest
@@ -642,25 +640,85 @@ fieldset {
 
 /* Tables */
 .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--canvas-white); }
+/* One table look (01 §6.3). Below md a .data-table--cards table becomes a
+   stack of cards (responsive.css section 3), which resets the row height and
+   the right-aligned figures. */
 .data-table { width: 100%; border-collapse: collapse; min-width: 720px; }
 .data-table th,
 .data-table td {
-  padding: .7rem .8rem;
+  padding: var(--space-3);
   border-bottom: 1px solid var(--border);
   text-align: left;
   vertical-align: middle;
 }
+/* Header row: .875rem 700 muted on the grey, sentence case. Both colours in
+   this rule, so check-contrast.mjs measures the pair in every preset. */
 .data-table thead th {
   background: var(--surface-gray);
-  color: var(--text-charcoal);
+  color: var(--text-muted);
+  font-size: .875rem;
   font-weight: 700;
   position: sticky;
   top: 0;
 }
+/* A table row grows with its content; height on a row is its minimum. */
+.data-table tbody tr { height: 3rem; }
 .data-table tbody tr:hover { background: var(--surface-gray); }
-.data-table tbody tr:nth-child(even) { background: rgba(248, 249, 250, .55); }
+/* Stripes from the tokens, half the grey: lighter than the hover, and white
+   (no stripe) in high contrast, where the grey is white. */
+.data-table tbody tr:nth-child(even) { background: color-mix(in srgb, var(--surface-gray) 50%, var(--canvas-white)); }
 .data-table tbody tr:nth-child(even):hover { background: var(--surface-gray); }
 .data-table td .btn { margin-right: .25rem; }
+/* Money and counts: right-aligned, even digits, header included. */
+.data-table .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Identity cell (01 §6.3): an initials avatar, the name and a muted second
+   line. The block goes inside the <td> (a flex <td> is no longer a table
+   cell):
+     <td><div class="cell-identity">
+       <span class="avatar" aria-hidden="true">MS</span>
+       <span class="cell-identity__text">
+         <span class="cell-identity__name">Maria Santos</span>
+         <span class="cell-identity__meta">Zamboanga City</span>
+       </span></div></td>
+   The avatar is aria-hidden: the name beside it says the same. Where the
+   cell is too narrow for both (a card at 320px with 24px text) the name
+   wraps under the avatar instead of overflowing. */
+.cell-identity {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+}
+.cell-identity__text {
+  display: grid;
+  flex: 1 1 6rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.cell-identity__name { font-weight: 600; }
+.cell-identity__meta {
+  color: var(--text-muted);
+  font-size: .875rem;
+}
+/* Initials avatar: both colours in this rule, so the checker measures the
+   pair (11.38:1 on the default preset). */
+.avatar {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  background: var(--brand-blue-100);
+  color: var(--brand-blue-800);
+  font-size: .875rem;
+  font-weight: 700;
+  line-height: 1;
+}
 
 /* Tabs */
 .tabs { display: flex; gap: .25rem; flex-wrap: wrap; border-bottom: 1px solid var(--border); margin: 0 0 1rem; }

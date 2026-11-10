@@ -1,7 +1,7 @@
 import { requireRole } from "@/lib/session";
 import { Chart } from "@/components/Chart";
 import { Pill } from "@/components/Pill";
-import { money, formatDate, shortName } from "@/lib/format";
+import { money, moneyWhole, formatDate, shortName } from "@/lib/format";
 import {
   getDisplayNames,
   getOrderItemsForProducts,
@@ -154,7 +154,9 @@ export default async function SellerDashboardPage() {
       <section className="kpis" aria-label="Key metrics">
         <article className="kpi">
           <span className="kpi__label">Monthly revenue</span>
-          <strong className="kpi__value">{money(revenue30)}</strong>
+          {/* Whole pesos: a quarter of the row has room for ₱1,284,301 but
+              not its centavos (responsive.css, the KPI row). */}
+          <strong className="kpi__value">{moneyWhole(revenue30)}</strong>
         </article>
         <article className="kpi">
           <span className="kpi__label">Orders (30d)</span>

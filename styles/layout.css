@@ -886,9 +886,18 @@ a.banners__link:focus-visible { outline: var(--focus-ring); outline-offset: var(
 .main--seller, .main--admin { padding-top: 1.5rem; padding-bottom: 2rem; display: grid; gap: 1.25rem; }
 
 /* Seller Centre / Admin shell: one column, plus a left sidebar from lg up
-   (responsive.css). The phone tab bar and header links cover smaller screens. */
+   (responsive.css). The phone tab bar and header links cover smaller screens.
+   The content column is the `console` query container: the KPI row and
+   .dash-grid are sized by its width, in rem (container queries in
+   responsive.css), so they react to the sidebar and to the 24px text setting
+   as well as to the window. inline-size containment ignores the column's
+   content when sizing it, which a minmax(0, 1fr) track does anyway. Nothing
+   position: fixed renders inside it (toasts, the floating buttons, the
+   visual alert, the tab bar, the commit bars and the header search all sit
+   outside the console), and dialogs open with showModal() in the top
+   layer. */
 .console { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-5); }
-.console__content { min-width: 0; }
+.console__content { min-width: 0; container: console / inline-size; }
 .console-nav { display: none; }
 .console-nav__title {
   margin: 0 0 var(--space-3);
@@ -948,22 +957,104 @@ a.banners__link:focus-visible { outline: var(--focus-ring); outline-offset: var(
   color: var(--color-nav-text);
 }
 .page-head { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; }
-/* The KPI row. The cards are in components.css; two per row on phones in
-   responsive.css. */
+
+/* Section header (01 §6.4): the h2 on the left, a "View all" link on the
+   right; the link drops under the title when the two do not fit. The caller
+   names the link for what it lists ("View all deals", the extra words
+   visually hidden) and hides its arrow (aria-hidden). */
+.section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-1) var(--space-4);
+  margin-bottom: var(--space-3);
+}
+.section-head > h2 {
+  margin: 0;
+  font-size: var(--step-3);
+  font-weight: 800;
+}
+.section-head__link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: 2.75rem; /* the 44px target, in rem so it grows with the text */
+  color: var(--brand-blue);
+  font-weight: 600;
+}
+.section-head__link:hover { color: var(--brand-blue-800); }
+.section-head__link svg { width: 1em; height: 1em; }
+
+/* The KPI row. The cards are in components.css. Inside the console the row
+   is sized by the content column (container queries in responsive.css:
+   one column, two, then every card in one row). This auto-fit grid is the
+   fallback anywhere else: 15rem holds an 11-character figure such as
+   ₱128,430.00 at --step-4, and min() keeps a single column inside a window
+   narrower than that. */
 .kpis {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(15rem, 100%), 1fr));
   gap: var(--space-4);
 }
 
-.chart-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+/* Dashboard grid (01 §5): one column, and 12 from 58rem of console content
+   (responsive.css), where a card spans 8 + 4, 6 + 6 or 12. A child without
+   a span class takes the whole row. */
+.dash-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-4);
+}
+
+/* Charts side by side from 40rem of console content (a container query in
+   responsive.css); one column below. */
+.chart-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-4); }
 .chart-card {
   background: var(--canvas-white);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  padding: 1rem;
+  padding: var(--space-4);
 }
-.chart-card h2 { font-size: 1rem; margin-bottom: .5rem; }
+/* Card title (01 §3.2): Rubik 700 at --step-1. Still an h2 or h3 in the
+   outline. */
+.chart-card h2,
+.chart-card__title {
+  margin: 0 0 var(--space-2);
+  font-family: var(--font-display);
+  font-size: var(--step-1);
+  font-weight: 700;
+  line-height: 1.2;
+}
+/* Header (01 §6.2): title and subtitle on the left, a slot on the right for
+   components/Tabs.tsx when the chart switches series. The tabs wrap under
+   the title when the card is too narrow for both. Body: the Chart. Footer:
+   its "View as table" text alternative (.chart-data-table). */
+.chart-card__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+  margin-bottom: var(--space-3);
+}
+.chart-card__head > :first-child { flex: 1 1 auto; }
+.chart-card__head h2,
+.chart-card__head .chart-card__title { margin: 0; }
+.chart-card__subtitle {
+  margin: var(--space-1) 0 0;
+  color: var(--text-muted);
+  font-size: .875rem;
+}
+/* The tab strip in the head is a control in the corner of the card, not a
+   divider above a panel: no rule under it and no margin. The phone rule in
+   responsive.css bleeds a page-level strip to the screen edge; the card's
+   strip stays inside the card. */
+.chart-card__head .tabs {
+  margin: 0;
+  padding-inline: 0;
+  border-bottom: 0;
+}
 .chart-card canvas { width: 100%; height: auto; }
 
 /* Filter bar */

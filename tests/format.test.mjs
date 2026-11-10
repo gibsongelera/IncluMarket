@@ -5,7 +5,15 @@
 // "server-only" and supabase are not resolvable outside Next.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { maskEmail, initials } from "../lib/format.ts";
+import { maskEmail, initials, moneyWhole } from "../lib/format.ts";
+
+test("moneyWhole rounds to whole pesos for a KPI tile", () => {
+  assert.equal(moneyWhole(128430.4), "₱128,430");
+  assert.equal(moneyWhole("1284300.50"), "₱1,284,301");
+  assert.equal(moneyWhole(0), "₱0");
+  assert.equal(moneyWhole(null), "₱0");
+  assert.equal(moneyWhole("not a number"), "₱0");
+});
 
 test("maskEmail keeps first/last letter and the TLD", () => {
   assert.equal(maskEmail("juana@mail.ph"), "j***a@m***.ph");
