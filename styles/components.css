@@ -288,6 +288,98 @@
 .overview-tile__count { font-size: var(--step-2); font-variant-numeric: tabular-nums; color: var(--brand-blue); }
 .overview-tile__label { font-weight: 700; }
 
+/* --- KPI card (01 §6.1, D-06) ---------------------------------------------
+   One family for every dashboard figure: the <article class="kpi"> tiles and
+   components/KpiCard.tsx, where the whole card is a link. .kpi--queue is a
+   "Needs attention" tile, which takes over from .overview-tile. Flat: 1px
+   border, no shadow (01 §4). The row (.kpis) is in layout.css; the phone
+   sizes are in responsive.css. */
+.kpi {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  justify-content: space-between;
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--canvas-white);
+  box-shadow: none;
+}
+.kpi__label {
+  display: block;
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+.kpi__value {
+  /* Neutral, not brand blue: a saturated hue at 30px across a row of tiles is
+     what makes a dashboard tiring. Colour is reserved for status meaning. */
+  color: var(--text-charcoal);
+  font-size: var(--step-4);
+  font-weight: 800;
+  line-height: 1.1;
+}
+/* The card as a link keeps the page focus ring (base.css). */
+a.kpi {
+  min-height: 100%; /* fills its list item, so a row of tiles lines up */
+  color: inherit;
+  text-decoration: none;
+}
+/* The figure in the display face with even digits (01 §6.1). Only on the
+   linked card for now: the face is wider, and in the two-per-row phone
+   tiles a seller's money figure would spill its tile at 320px. It moves to
+   .kpi__value when the row is sized by its container. */
+a.kpi .kpi__value {
+  font-family: var(--font-display);
+  font-variant-numeric: tabular-nums;
+}
+a.kpi:hover { border-color: var(--brand-blue); }
+/* Label left, icon right. The label grows and wraps; only when its longest
+   word and the icon cannot share a line does the icon drop below it. */
+.kpi__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+.kpi__head > .kpi__label { flex: 1 1 0; }
+.kpi__icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 2.5rem;
+  height: 2.5rem;
+  margin-left: auto;
+  border-radius: var(--radius-sm);
+}
+.kpi__icon svg { width: 1.25rem; height: 1.25rem; }
+/* Each tint and its icon colour in one rule, so check-contrast.mjs measures
+   the pair in every preset. */
+.kpi__icon--blue { background: var(--brand-blue-100); color: var(--brand-blue-800); }
+.kpi__icon--brown { background: var(--brand-brown-100); color: var(--brand-brown-800); }
+.kpi__icon--teal { background: var(--palette-teal-100); color: var(--palette-teal); }
+.kpi__icon--ok { background: var(--status-ok-100); color: var(--status-ok); }
+.kpi__icon--warn { background: var(--status-warn-100); color: var(--warning-text); }
+/* Arrow and words, coloured by good or bad news rather than up or down. The
+   fixed status tokens, so a trend reads the same in every event theme. The
+   icon sits on the first line when the words wrap: a 1em icon in a 1.5em
+   line, a quarter em down. */
+.kpi__trend {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-1);
+  font-size: 0.875rem;
+  font-weight: 700;
+  line-height: 1.5;
+}
+.kpi__trend svg { width: 1em; height: 1em; margin-top: 0.25em; }
+.kpi__trend--good { color: var(--status-ok); }
+.kpi__trend--bad { color: var(--status-error-text); }
+.kpi__trend--neutral { color: var(--text-muted); }
+/* Work is waiting: the brown bar, kept through the hover border. */
+.kpi--queue.is-waiting,
+a.kpi--queue.is-waiting:hover { border-left: 4px solid var(--brand-brown); }
+
 /* --- Seller Centre to-dos and setup (C-31) -------------------------------- */
 .shop-settings { max-width: 44rem; }
 .shop-image { display: grid; gap: var(--space-2); }

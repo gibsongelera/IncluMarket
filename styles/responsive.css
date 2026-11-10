@@ -551,8 +551,8 @@ textarea {
   margin-top: var(--space-6);
 }
 
+/* .kpi is flat in components.css. */
 .card,
-.kpi,
 .chart-card {
   box-shadow: none;
   border: 1px solid var(--border);
@@ -574,36 +574,8 @@ textarea {
   max-width: var(--measure);
 }
 
-.kpis {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: var(--space-4);
-}
-
-.kpi {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  justify-content: space-between;
-  padding: var(--space-4);
-  border-radius: var(--radius-md);
-  background: var(--canvas-white);
-}
-
-.kpi__label {
-  color: var(--text-muted);
-  font-size: 0.875rem;
-  font-weight: 600;
-}
-
-.kpi__value {
-  /* Neutral, not brand blue: a saturated hue at 30px across a row of tiles is
-     what makes a dashboard tiring. Colour is reserved for status meaning. */
-  color: var(--text-charcoal);
-  font-size: var(--step-4);
-  font-weight: 800;
-  line-height: 1.1;
-}
+/* The KPI row is in layout.css and the cards in components.css; only their
+   phone sizes are here (Dashboards: seller and admin, below). */
 
 h1 {
   font-size: var(--step-4);
@@ -1181,9 +1153,6 @@ h3 {
   }
   .kpi__value {
     font-size: var(--step-2);
-  }
-  .kpi__label {
-    font-size: 0.75rem;
   }
 
   .page-head {

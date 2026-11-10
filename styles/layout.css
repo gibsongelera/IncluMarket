@@ -948,19 +948,13 @@ a.banners__link:focus-visible { outline: var(--focus-ring); outline-offset: var(
   color: var(--color-nav-text);
 }
 .page-head { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; }
+/* The KPI row. The cards are in components.css; two per row on phones in
+   responsive.css. */
 .kpis {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: .75rem;
+  gap: var(--space-4);
 }
-.kpi {
-  background: var(--canvas-white);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  padding: 1rem;
-}
-.kpi__label { color: var(--text-muted); font-size: .85rem; display: block; }
-.kpi__value { font-size: var(--step-4); font-weight: 800; color: var(--brand-blue); }
 
 .chart-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
 .chart-card {

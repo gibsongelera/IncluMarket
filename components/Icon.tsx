@@ -167,6 +167,41 @@ const ICONS: Record<string, React.ReactNode> = {
       <path d="M9 20l3-6 3 6" />
     </>
   ),
+  // KPI cards (01 §6.1): the trend arrows and the tile icons. Drawn for this
+  // set, not taken from Lucide or Apex.
+  "arrow-up": (
+    <>
+      <path d="M12 19.5V5" />
+      <path d="M6.5 10.5L12 5l5.5 5.5" />
+    </>
+  ),
+  "arrow-down": (
+    <>
+      <path d="M12 4.5V19" />
+      <path d="M6.5 13.5L12 19l5.5-5.5" />
+    </>
+  ),
+  wallet: (
+    <>
+      <path d="M6 6.5l9.5-3.2 1.4 3.2" />
+      <rect x="3" y="6.5" width="18" height="13.5" rx="2" />
+      <path d="M21 11h-3.5a2.25 2.25 0 0 0 0 4.5H21" />
+    </>
+  ),
+  receipt: (
+    <>
+      <path d="M6 3h12v18l-2-1.5-2 1.5-2-1.5-2 1.5-2-1.5-2 1.5z" />
+      <path d="M9 8h6" />
+      <path d="M9 11.5h6" />
+      <path d="M9 15h3.5" />
+    </>
+  ),
+  undo: (
+    <>
+      <path d="M8.5 4.5L4 9l4.5 4.5" />
+      <path d="M4 9h11a5 5 0 0 1 0 10h-4" />
+    </>
+  ),
 };
 
 export function Icon({

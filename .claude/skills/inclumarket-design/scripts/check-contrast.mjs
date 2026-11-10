@@ -93,6 +93,10 @@ const REQUIRED_PAIRS = [
   { fg: "--warning-text", bg: "--canvas-white", min: 4.5, what: "warning text on a card" },
   { fg: "--warning-text", bg: "--warning-100", min: 4.5, what: "warning text on its tint" },
   { fg: "--warning-text", bg: "--surface-gray", min: 4.5, what: "warning text on a grey well" },
+  // KPI trend lines (.kpi__trend--good, --bad) sit on the card's white, which
+  // another rule paints. The neutral one is --text-muted, required above.
+  { fg: "--status-ok", bg: "--canvas-white", min: 4.5, what: "a good trend on a KPI card" },
+  { fg: "--status-error-text", bg: "--canvas-white", min: 4.5, what: "a bad trend on a KPI card" },
   // Guardrail 2: white text on dark surfaces.
   { fg: "#FFFFFF", bg: "--brand-blue", min: 4.5, what: "a primary button" },
   { fg: "#FFFFFF", bg: "--brand-brown", min: 4.5, what: "a sale or count badge" },
