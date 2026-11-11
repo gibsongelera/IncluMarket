@@ -111,6 +111,16 @@ const REQUIRED_PAIRS = [
   { fg: "--chart-4", bg: "--canvas-white", min: 3, what: "chart series 4 on a card" },
   { fg: "--chart-5", bg: "--canvas-white", min: 3, what: "chart series 5 on a card" },
   { fg: "--chart-6", bg: "--canvas-white", min: 3, what: "chart series 6 on a card" },
+  // Order-status donut segments and their legend swatches (STATUS_TOKENS in
+  // lib/charts.ts): graphics on the card's white, 3:1. The canvas and the
+  // inline swatch colour are not CSS rules, so no rule pair measures them.
+  // Delivered (--status-ok) is required at 4.5:1 above, as KPI trend text.
+  { fg: "--status-warn", bg: "--canvas-white", min: 3, what: "a pending donut segment on a card" },
+  { fg: "--status-info", bg: "--canvas-white", min: 3, what: "a processing donut segment on a card" },
+  { fg: "--palette-teal", bg: "--canvas-white", min: 3, what: "a shipped donut segment on a card" },
+  { fg: "--palette-plum", bg: "--canvas-white", min: 3, what: "a return-requested donut segment on a card" },
+  { fg: "--status-error", bg: "--canvas-white", min: 3, what: "a returned donut segment on a card" },
+  { fg: "--status-neutral", bg: "--canvas-white", min: 3, what: "a cancelled or unknown-status donut segment on a card" },
   // Rating stars: graphics, 3:1. The edge outlines every star, gold or
   // white, on the card it sits on; --star-bar fills the breakdown bar.
   { fg: "--star-edge", bg: "--canvas-white", min: 3, what: "star shapes on a card" },

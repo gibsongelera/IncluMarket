@@ -377,6 +377,129 @@ a.kpi:hover { border-color: var(--brand-blue); }
 /* Work is waiting: the brown bar, kept through the hover border. */
 .kpi--queue.is-waiting,
 a.kpi--queue.is-waiting:hover { border-left: 4px solid var(--brand-brown); }
+/* The sparkline slot (01 §6.1): a 3rem strip that keeps to the bottom of a
+   card stretched by its row. The canvas fills it; components/Sparkline.tsx
+   draws to the box's size. aria-hidden: the card's .sr-only summary after it
+   carries the words. */
+.kpi__spark { display: block; height: 3rem; margin-top: auto; }
+.sparkline { display: block; width: 100%; height: 100%; }
+
+/* --- Charts (01 §2.4, §6.2, D-07): components/Chart.tsx, lib/charts.ts ----
+   CSS sizes each canvas and the draw follows the box, so no width is ever
+   set inline and a chart follows its card when the card grows or shrinks.
+   The card itself (.chart-card, .chart-grid) is in layout.css. */
+.chart__canvas { display: block; width: 100%; }
+/* Line and bar: 5:2, never under 10rem, so four rows of ticks keep their
+   room at the 24px text setting on a phone. Horizontal bars (--rows) take
+   the height their rows need, set by the draw. */
+.chart__canvas--plot { aspect-ratio: 5 / 2; min-height: 10rem; }
+
+/* Donut: the ring beside its legend when the card holds both (12rem each,
+   plus the gap), the legend under the ring on a narrower card. flex-wrap,
+   so no query. */
+.chart-donut {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4) var(--space-5);
+}
+.chart-donut__ring {
+  position: relative;
+  flex: none;
+  width: min(100%, 12rem);
+  aspect-ratio: 1;
+}
+/* Two classes, to outrank `.chart-card canvas { height: auto }` (layout.css
+   and responsive.css load later). */
+.chart-donut__ring .chart-donut__canvas { display: block; width: 100%; height: 100%; }
+/* The total, as HTML over the hole, so it is real text and grows with the
+   text setting. The hole is 62% of the ring (DONUT_HOLE in lib/charts.ts),
+   so the box covers just the hole (19% in from each side) and touch
+   exploration still reaches the canvas and its name on the ring; the side
+   padding, a share of the ring too, keeps two short lines inside it. */
+.chart-donut__total {
+  position: absolute;
+  inset: 19%;
+  margin: 0;
+  display: grid;
+  place-content: center;
+  padding-inline: 4%;
+  text-align: center;
+  line-height: 1.15;
+}
+.chart-donut__count {
+  color: var(--text-charcoal);
+  font-family: var(--font-display);
+  font-size: var(--step-3);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.chart-donut__unit { color: var(--text-muted); font-size: .875rem; }
+
+/* The legend (01 §2.4): a swatch, the status word, the count and the share,
+   all real text that wraps. A swatch's colour is set inline from
+   lib/charts.ts segmentColor, the same value the canvas draws, and stays so
+   under forced colours (the canvas is never recoloured). It is aria-hidden:
+   the words carry the status. */
+.chart-legend {
+  flex: 1 1 12rem;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: var(--space-2);
+  font-size: .875rem;
+}
+.chart-legend__item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+.chart-legend__swatch {
+  align-self: start;
+  width: .75rem;
+  height: .75rem;
+  margin-top: calc((1lh - .75rem) / 2);
+  border-radius: var(--radius-xs);
+  forced-color-adjust: none;
+}
+.chart-legend__label { color: var(--text-charcoal); overflow-wrap: anywhere; }
+.chart-legend__value {
+  color: var(--text-charcoal);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.chart-legend__share { color: var(--text-muted); font-weight: 400; }
+/* Two or more lines: a row of names, each after a sample of its stroke. */
+.chart-legend--series {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  margin-top: var(--space-3);
+}
+.chart-legend--series .chart-legend__item { display: flex; align-items: center; }
+.chart-legend__line { flex: none; width: 1.5rem; height: .75rem; }
+/* The data table's figures line up on the right, digit for digit. */
+.chart-data-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+/* Forced colours (Windows High Contrast): a canvas is never recoloured, so
+   on a dark theme its lines, labels and segments would sit on black at about
+   2:1. Each chart keeps the white it is drawn for: the donut's ring rather
+   than its canvas, so the total inside keeps its charcoal too
+   (forced-color-adjust is inherited). Swatches get an outline in the
+   theme's text colour so they stand off any background. */
+@media (forced-colors: active) {
+  .chart__canvas,
+  .chart-donut__ring {
+    forced-color-adjust: none;
+    background: var(--canvas-white);
+  }
+  .chart-donut__ring { border-radius: 50%; }
+  .chart-legend__swatch { outline: 1px solid CanvasText; }
+}
 
 /* --- Seller Centre to-dos and setup (C-31) -------------------------------- */
 .shop-settings { max-width: 44rem; }

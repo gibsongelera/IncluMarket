@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Icon } from "./Icon";
+import { Sparkline } from "./Sparkline";
 import { kpiTrend, type KpiGood } from "@/lib/kpi";
 
 /** The icon tile: a -100 tint with the icon in its role colour (01 §6.1). */
@@ -16,6 +17,12 @@ export interface KpiCardProps {
   tone?: KpiIconTone;
   /** The raw figures; lib/kpi.ts words and colours the change. */
   trend?: { current: number | null; previous: number | null; good: KpiGood; period?: string };
+  /**
+   * A sparkline of the figure's recent values, with its words: the summary
+   * (lib/kpi.ts rangeSummary, "Daily sales, lowest ₱0, highest ₱6,000") is
+   * what a screen reader gets, since the line itself is hidden from it.
+   */
+  spark?: { values: readonly (number | null | undefined)[]; summary: string };
   /** A "Needs attention" tile: a brown bar while its count is above 0. */
   queue?: boolean;
 }
@@ -26,10 +33,12 @@ const TREND_ICON = { up: "arrow-up", down: "arrow-down", flat: "minus", new: "sp
  * One KPI card (01 §6.1, ADR-02). The whole card is a link to the list
  * behind the number, and a link is named by its text, so every part of it
  * is plain words: the label, the value and the trend ("up 18.2% vs previous
- * 30 days"). The icons and the "—" of a missing figure are hidden from
- * screen readers. A server component:
- * nothing on it is interactive. The spaces between the parts keep the words
- * apart in the link's name; a flex container does not render them.
+ * 30 days") and the sparkline's summary. The icons, the sparkline and the
+ * "—" of a missing figure are hidden from screen readers, and nothing under
+ * aria-hidden can take focus. A server component: nothing on it is
+ * interactive (Sparkline is a client component only to draw). The spaces
+ * between the parts keep the words apart in the link's name; a flex
+ * container does not render them.
  */
 export function KpiCard({
   label,
@@ -38,6 +47,7 @@ export function KpiCard({
   icon,
   tone = "blue",
   trend,
+  spark,
   queue = false,
 }: KpiCardProps) {
   const unavailable = value === null;
@@ -69,6 +79,16 @@ export function KpiCard({
             <Icon name={TREND_ICON[t.kind]} />
             {t.words}
           </span>
+        </>
+      ) : null}
+      {spark && !unavailable ? (
+        <>
+          <span className="kpi__spark" aria-hidden="true">
+            <Sparkline values={spark.values} />
+          </span>{" "}
+          {/* The full stop keeps the summary apart from the trend's words in
+              the link's name ("…30 days. Daily sales, lowest …"). */}
+          <span className="sr-only">{`. ${spark.summary}`}</span>
         </>
       ) : null}
     </Link>

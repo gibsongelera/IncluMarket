@@ -9,7 +9,17 @@ import { TableWrap } from "@/components/TableWrap";
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Privacy and compliance" };
 
-const ORDER_STATUS = ["pending", "processing", "shipped", "delivered", "returned"];
+/** Every order status, in the order the dashboards list them (03 §4); an unknown one follows. */
+const ORDER_STATUS = ["pending", "processing", "shipped", "delivered", "cancelled", "return_requested", "returned"];
+
+/**
+ * A status in the words its pill shows (components/Pill.tsx: underscores as
+ * spaces), first letter capitalised as the pill's CSS does: "Return requested".
+ */
+function statusWords(status: string): string {
+  const words = status.replace(/_/g, " ");
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
 
 /**
  * Admin → Compliance: data-subject requests, the contact inbox, consent and
@@ -59,10 +69,10 @@ export default async function AdminCompliancePage() {
   });
   const recentEvents = buckets.reduce((n, b) => n + b.value, 0);
 
-  const byStatus: Record<string, number> = {};
-  ORDER_STATUS.forEach((s) => (byStatus[s] = 0));
-  orders.forEach((o) => (byStatus[o.order_status] = (byStatus[o.order_status] || 0) + 1));
-  const pieData = Object.keys(byStatus).map((k) => ({ label: k, value: byStatus[k] }));
+  // Every order by its current status, zeros kept, for the donut and its table.
+  const byStatus = new Map<string, number>(ORDER_STATUS.map((s) => [s, 0]));
+  orders.forEach((o) => byStatus.set(o.order_status, (byStatus.get(o.order_status) ?? 0) + 1));
+  const statusData = [...byStatus].map(([status, value]) => ({ label: statusWords(status), value, status }));
 
   const rows = audits.slice(0, 40);
 
@@ -114,16 +124,36 @@ export default async function AdminCompliancePage() {
 
       <section className="chart-grid">
         <article className="chart-card">
-          <h2>Daily activity (last 14 days)</h2>
+          <div className="chart-card__head">
+            <div>
+              <h2>Daily activity (last 14 days)</h2>
+              <p className="chart-card__subtitle">Audit events per day</p>
+            </div>
+          </div>
           <Chart
             kind="line"
             ariaLabel="Daily activity chart"
+            labelHeading="Day"
+            valueLabel="Events"
             data={[{ points: buckets.map((b) => ({ label: b.label, value: b.value })) }]}
           />
         </article>
         <article className="chart-card">
-          <h2>Orders by status</h2>
-          <Chart kind="pie" ariaLabel="Orders by status chart" data={pieData} />
+          <div className="chart-card__head">
+            <div>
+              <h2>Orders by status</h2>
+              <p className="chart-card__subtitle">Every order, by where it is now</p>
+            </div>
+          </div>
+          <Chart
+            kind="donut"
+            ariaLabel="Orders by status chart"
+            labelHeading="Status"
+            valueLabel="Orders"
+            unit={["order", "orders"]}
+            empty="No orders yet."
+            data={statusData}
+          />
         </article>
       </section>
 
