@@ -1618,3 +1618,170 @@ fieldset {
 @keyframes icon-swap-in {
   from { opacity: 0; transform: scale(0.9); }
 }
+
+/* --- List toolbar and pagination (P2-05, 03 §6, ADR-05) -------------------
+   The bands above and under an admin list (components/ListToolbar.tsx,
+   components/Pagination.tsx): plain links and a GET form. These are the
+   narrowest layouts; the pager's wider ones are container queries in
+   responsive.css. Every link and control is at least max(2.75rem, 44px):
+   2.75rem alone is 33px at the 12px text setting. */
+.list-toolbar { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-3); margin-bottom: var(--space-4); }
+.list-toolbar > .tabs { margin-bottom: 0; }
+.list-toolbar .tab { display: inline-flex; align-items: center; gap: var(--space-2); min-height: max(2.75rem, 44px); }
+/* The count: a white pill with a border on the page and on a hovered tab;
+   the current tab's in its tint. Text and fill in one rule each. */
+.list-toolbar .tab__count {
+  min-width: 1.5rem;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--canvas-white);
+  color: var(--text-charcoal);
+  font-size: .875rem;
+  font-weight: 700;
+  line-height: 1.5rem;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.list-toolbar .tab--active .tab__count {
+  border-color: var(--brand-blue-100);
+  background: var(--brand-blue-100);
+  color: var(--brand-blue-800);
+}
+/* Search on the left, Export on the right at the field's foot; Export drops
+   under the search when both do not fit. */
+.list-toolbar__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-3) var(--space-4);
+}
+.list-toolbar__search {
+  flex: 1 1 20rem;
+  min-width: 0;
+  max-width: 40rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-2);
+  margin: 0;
+}
+.list-toolbar__search > label { font-weight: 600; color: var(--text-charcoal); }
+/* The field, Search and Clear search; the button wraps under the field
+   before the field gets narrower than 12rem. */
+.list-toolbar__field { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); min-width: 0; }
+.list-toolbar__field > input { flex: 1 1 12rem; min-width: 0; }
+.list-toolbar__field > .btn,
+.list-toolbar__export { flex: none; }
+.list-toolbar__field .icon,
+.list-toolbar__export .icon { width: 1.25rem; height: 1.25rem; }
+.list-toolbar__clear {
+  display: inline-flex;
+  align-items: center;
+  min-height: max(2.75rem, 44px);
+  padding-inline: var(--space-1);
+  color: var(--brand-blue);
+  font-weight: 600;
+}
+.list-toolbar__clear:hover { color: var(--brand-blue-800); }
+.list-toolbar__count {
+  margin: 0;
+  color: var(--text-muted);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+/* Pagination. Narrowest: "Showing …", then "Page 3 of 20" on its own line
+   over Previous and Next at either end, then the page size; the numbered
+   pages are hidden until the console content is 32rem (responsive.css). */
+.pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3) var(--space-5);
+  margin-top: var(--space-4);
+}
+.pagination__summary { margin: 0; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.pagination__nav { flex: 1 1 100%; min-width: 0; }
+.pagination__pages {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.pagination__num,
+.pagination__gap { display: none; }
+.pagination__status {
+  order: -1;
+  flex: 1 1 100%;
+  min-width: 0;
+  text-align: center;
+  font-weight: 600;
+  color: var(--text-charcoal);
+  font-variant-numeric: tabular-nums;
+}
+/* A page, Previous, Next or a page size. position: relative holds the
+   absolute .sr-only words ("Page 4", "50 per page") inside the link. */
+.pagination__link {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: max(2.75rem, 44px);
+  min-height: max(2.75rem, 44px);
+  padding: 0 var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--canvas-white);
+  color: var(--brand-blue);
+  font-weight: 600;
+  text-decoration: none;
+  font-variant-numeric: tabular-nums;
+}
+.pagination__link[href]:hover { background: var(--brand-blue-100); color: var(--brand-blue-800); }
+.pagination__step { padding-inline: var(--space-3); }
+/* The current page or size: a fill, heavier type and aria-current, not the
+   colour alone; in forced colours it is plain text among links. */
+.pagination__link[aria-current] {
+  border-color: var(--brand-blue);
+  background: var(--brand-blue);
+  color: #FFFFFF;
+  font-weight: 800;
+}
+/* Previous on page 1, Next on the last: no href, so not focusable. */
+.pagination__link[aria-disabled="true"] {
+  background: var(--surface-gray);
+  color: var(--text-muted);
+  cursor: default;
+}
+.pagination__gap { min-width: 1.5rem; text-align: center; color: var(--text-muted); }
+.pagination__per {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+  margin: 0;
+}
+.pagination__choices { display: inline-flex; align-items: center; gap: var(--space-1); }
+.pagination__dot { color: var(--text-muted); }
+/* Forced colours drop the fill, so the current page and an unavailable step
+   would be plain text in a box, told apart by weight alone: the current
+   page takes the system highlight, an unavailable step the disabled grey. */
+@media (forced-colors: active) {
+  .pagination__link[aria-current] {
+    forced-color-adjust: none;
+    border-color: Highlight;
+    background: Highlight;
+    color: HighlightText;
+  }
+  .pagination__link[aria-disabled="true"] {
+    border-color: GrayText;
+    color: GrayText;
+  }
+}

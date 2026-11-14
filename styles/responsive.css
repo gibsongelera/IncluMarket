@@ -695,6 +695,45 @@ textarea {
   }
 }
 
+/* List pagination (components/Pagination.tsx, P2-05). Its base layout in
+   components.css is the narrowest: "Page 3 of 20" on its own line over
+   Previous and Next. Widths in rem of console content, measured in Nunito
+   Sans 600 with the 2.75rem targets and --space-2 gaps:
+     - 18rem (a 320px phone at 16px text): "Page 3 of 20" goes between
+       Previous (about 5.6rem) and Next (3.6rem); the row is about 17rem.
+       It does not wrap there: a longer "Page 120 of 400" wraps its own
+       words instead, so nothing can push the row wider than the content.
+       At 320px with 24px text the content is 11.3rem, under this.
+     - 32rem: the numbers. The widest row, Previous 1 … 99 100 101 … 400
+       Next, is about 30rem; a row with four-digit pages wraps rather than
+       scroll. Below 32rem (a phone, or 768px with 24px text) the numbers
+       give way to "Page 3 of 20". */
+@container console (min-width: 18rem) {
+  .pagination__pages {
+    flex-wrap: nowrap;
+  }
+  .pagination__status {
+    order: 0;
+    flex: 0 1 auto;
+  }
+}
+@container console (min-width: 32rem) {
+  .pagination__nav {
+    flex: 0 1 auto;
+  }
+  .pagination__pages {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+  .pagination__num,
+  .pagination__gap {
+    display: block;
+  }
+  .pagination__status {
+    display: none;
+  }
+}
+
 h1 {
   font-size: var(--step-4);
 }
@@ -1328,8 +1367,11 @@ h3 {
   }
   /* A chart card's strip of two or three tabs wraps instead: scrolling, it
      showed half of "Orders" on the overview's sales card at 320px with
-     24px text, behind a hidden scrollbar. The ring stays inside each tab. */
-  .chart-card__head .tabs {
+     24px text, behind a hidden scrollbar. The ring stays inside each tab.
+     An admin list's status tabs too: five tabs with counts ran off the
+     screen behind the same hidden scrollbar (1.4.10). */
+  .chart-card__head .tabs,
+  .list-toolbar > .tabs {
     flex-wrap: wrap;
     overflow-x: visible;
   }
