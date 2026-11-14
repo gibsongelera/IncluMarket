@@ -5,7 +5,7 @@
 // "server-only" and supabase are not resolvable outside Next.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { maskEmail, initials, moneyWhole } from "../lib/format.ts";
+import { formatDate, formatDateTime, initials, maskEmail, moneyWhole } from "../lib/format.ts";
 
 test("moneyWhole rounds to whole pesos for a KPI tile", () => {
   assert.equal(moneyWhole(128430.4), "₱128,430");
@@ -38,4 +38,11 @@ test("delivery addresses: valid input is cleaned, problems name the field", () =
   assert.equal(cleanAddress({ recipient: "Maria", phone: "12345", line1: "x street", city: "Zambo" }).field, "phone");
   assert.equal(cleanAddress({ recipient: "Maria", phone: "+639171234567", line1: "x street", city: "Zambo", postalCode: "70" }).field, "postalCode");
   assert.equal(cleanPhone("(0917) 123-4567"), "09171234567");
+});
+
+test("dates are Manila dates, wherever the code runs", () => {
+  // 23:30 UTC on the 9th is 07:30 on the 10th in Manila.
+  assert.match(formatDate("2026-11-09T23:30:00Z"), /10/);
+  assert.match(formatDateTime("2026-11-09T23:30:00Z"), /07:30/);
+  assert.equal(formatDate(null), "");
 });

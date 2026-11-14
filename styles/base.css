@@ -41,6 +41,7 @@ h1, h2, h3, h4 {
  */
 main > h1,
 .page-head > h1,
+.page-head__text > h1,
 .page-head > h2,
 #feed-title,
 .category-strip > h2 {

@@ -37,6 +37,35 @@ export function ListSkeleton({ label = "Loading…", rows = 6 }: { label?: strin
   );
 }
 
+/**
+ * A dashboard (app/admin/loading.tsx for the overview): the page head, a
+ * row of KPI tiles and `rows` rows of an 8 + 4 card pair. The blocks sit in
+ * the page's own grids, .kpis and .dash-grid, so they take the columns the
+ * page will at every console width (container queries in responsive.css),
+ * and every height is in rem, so nothing shifts sideways at 320px.
+ */
+export function DashboardSkeleton({ label = "Loading…", tiles = 4, rows = 2 }: { label?: string; tiles?: number; rows?: number }) {
+  return (
+    <div className="skeleton skeleton--dashboard" role="status" aria-live="polite">
+      <Status label={label} />
+      <div className="skeleton__head" aria-hidden="true">
+        <div className="skeleton__block skeleton__line skeleton__line--title" />
+        <div className="skeleton__block skeleton__line skeleton__line--short" />
+      </div>
+      <div className="kpis" aria-hidden="true">
+        {Array.from({ length: tiles }, (_, i) => (
+          <div key={i} className="skeleton__block skeleton__tile" />
+        ))}
+      </div>
+      <div className="dash-grid" aria-hidden="true">
+        {Array.from({ length: rows * 2 }, (_, i) => (
+          <div key={i} className={`skeleton__block skeleton__panel ${i % 2 ? "span-4" : "span-8"}`} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function DetailSkeleton({ label = "Loading product…" }: { label?: string }) {
   return (
     <div className="skeleton" role="status" aria-live="polite">

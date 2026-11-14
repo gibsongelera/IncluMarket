@@ -25,10 +25,19 @@ export function moneyWhole(n: number | string | null | undefined): string {
   });
 }
 
+/**
+ * Dates and times are shown in Manila time wherever the code runs. Without a
+ * time zone they followed the machine: the UTC server put an order placed at
+ * 07:00 in Manila on the day before, and a client component formatting the
+ * same value in the browser could disagree with the server-rendered text.
+ */
+const MANILA = "Asia/Manila";
+
 export function formatDate(iso: string | null | undefined): string {
   if (!iso) return "";
   try {
     return new Date(iso).toLocaleDateString("en-PH", {
+      timeZone: MANILA,
       year: "numeric",
       month: "short",
       day: "2-digit",
@@ -42,6 +51,7 @@ export function formatDateTime(iso: string | null | undefined): string {
   if (!iso) return "";
   try {
     return new Date(iso).toLocaleString("en-PH", {
+      timeZone: MANILA,
       year: "numeric",
       month: "short",
       day: "2-digit",

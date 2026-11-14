@@ -149,6 +149,18 @@ body {
   }
 }
 
+/* A table in a dashboard card (the admin overview) fits its card instead:
+   a span-8 card holds about 38rem of table at 1280px and under 45rem at
+   the widest console, so 720px (45rem) scrolled it sideways at every
+   desktop width. Its text wraps (td breaks anywhere, section 1); its
+   figures stay whole. */
+.chart-card .data-table {
+  min-width: 0;
+}
+.chart-card .data-table .num {
+  white-space: nowrap;
+}
+
 @media (max-width: 767px) {
   .data-table--cards,
   .data-table--cards tbody,
@@ -224,6 +236,20 @@ body {
   .data-table--cards .row-actions .btn {
     flex: 1 1 auto;
     min-height: 44px;
+  }
+
+  /* In a dashboard card the rows are divided by a rule, not each drawn as
+     a card inside the card (01 §9). No stripes there: a grey band hugging
+     the text, with no padding beside it, read as a mistake. */
+  .chart-card .data-table--cards tbody tr {
+    margin-bottom: 0;
+    padding: var(--space-3) 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+  .chart-card .data-table--cards tbody tr + tr {
+    border-top: 1px solid var(--border);
   }
 }
 
@@ -1299,6 +1325,13 @@ h3 {
   .tab {
     flex: 0 0 auto;
     min-height: 44px;
+  }
+  /* A chart card's strip of two or three tabs wraps instead: scrolling, it
+     showed half of "Orders" on the overview's sales card at 320px with
+     24px text, behind a hidden scrollbar. The ring stays inside each tab. */
+  .chart-card__head .tabs {
+    flex-wrap: wrap;
+    overflow-x: visible;
   }
 
   /* The ticket workspace is a two-pane layout; on a phone each pane gets the

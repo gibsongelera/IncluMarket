@@ -280,13 +280,39 @@
 
 .finance-earnings { margin-top: var(--space-5); }
 
-/* --- Admin overview (C-37) ----------------------------------------------- */
-.overview-grid { list-style: none; margin: var(--space-3) 0 var(--space-5); padding: 0; display: grid; gap: var(--space-3); grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); }
-.overview-tile { display: grid; gap: var(--space-1); padding: var(--space-4); border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--canvas-white); color: var(--text-charcoal); text-decoration: none; min-height: 100%; }
-.overview-tile:hover { border-color: var(--brand-blue); }
-.overview-tile--attention { border-left: 4px solid var(--brand-brown); }
-.overview-tile__count { font-size: var(--step-2); font-variant-numeric: tabular-nums; color: var(--brand-blue); }
-.overview-tile__label { font-weight: 700; }
+/* --- Admin overview: "The shop" (C-37, 03 §2) ----------------------------
+   The four health counts in their card, a link row each: the icon tile
+   (.kpi__icon, aria-hidden), the label and the count. Rows, not KPI cards,
+   which inside the card would be cards in a card (01 §9); "Needs attention"
+   and the figures are KPI cards. The count drops under the label when the
+   card is too narrow for both (a phone with 24px text). The old tile grid's
+   13rem minimum made /admin 336px wide at 320px with 24px text. */
+.health-list { list-style: none; margin: 0; padding: 0; }
+.health-list > li + li { border-top: 1px solid var(--border); }
+a.health-list__link {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  min-height: 3rem;
+  padding-block: var(--space-3);
+  color: var(--text-charcoal);
+  text-decoration: none;
+}
+a.health-list__link:hover .health-list__label { text-decoration: underline; }
+.health-list__link .kpi__icon { margin-left: 0; }
+/* 5rem: at 320px with 24px text the icon and the label still share the
+   first line (7rem left the icon alone on it); the count wraps instead. */
+.health-list__label { flex: 1 1 5rem; font-weight: 600; }
+.health-list__count {
+  margin-left: auto;
+  font-family: var(--font-display);
+  font-size: var(--step-3);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+.health-list__note { flex-basis: 100%; }
 
 /* --- KPI card (01 §6.1, D-06) ---------------------------------------------
    One family for every dashboard figure: the <article class="kpi"> tiles and
@@ -801,6 +827,10 @@ fieldset {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
+/* A short code that stays whole, such as an order number ("#1024"): a
+   table cell breaks anywhere (responsive.css, so a long title cannot widen
+   the table), which also let a squeezed column cut "#10|24". */
+.data-table .cell-code { white-space: nowrap; }
 
 /* Identity cell (01 §6.3): an initials avatar, the name and a muted second
    line. The block goes inside the <td> (a flex <td> is no longer a table
@@ -830,6 +860,17 @@ fieldset {
 .cell-identity__meta {
   color: var(--text-muted);
   font-size: .875rem;
+}
+/* A product photo in the avatar's place (the overview's top products):
+   2.5rem, square, cut to fit, alt="" beside the title it shows. */
+.cell-identity__thumb {
+  flex: none;
+  width: 2.5rem;
+  height: 2.5rem;
+  object-fit: cover;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-gray);
 }
 /* Initials avatar: both colours in this rule, so the checker measures the
    pair (11.38:1 on the default preset). */
@@ -1115,6 +1156,13 @@ fieldset {
 .skeleton__row { height: 3.5rem; }
 .skeleton__media { aspect-ratio: 1 / 1; border-radius: var(--radius-md); }
 .skeleton__split { display: grid; gap: var(--space-5); }
+/* The dashboard skeleton (components/Skeleton.tsx DashboardSkeleton): its
+   tiles and panels sit in .kpis and .dash-grid, so the page's columns place
+   them; only their heights are here, in rem. */
+.skeleton--dashboard { gap: var(--space-6); }
+.skeleton__head { display: grid; gap: var(--space-2); }
+.skeleton__tile { height: 8rem; border-radius: var(--radius-md); }
+.skeleton__panel { height: 16rem; border-radius: var(--radius-md); }
 
 /* Inline sort control (buyer home feed head) */
 .sort-field {

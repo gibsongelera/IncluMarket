@@ -957,6 +957,12 @@ a.banners__link:focus-visible { outline: var(--focus-ring); outline-offset: var(
   color: var(--color-nav-text);
 }
 .page-head { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; }
+/* A head with a line under its title (the admin overview): the title and
+   the line grow together and the action keeps its size, dropping under
+   them when both do not fit (one column on phones, responsive.css). */
+.page-head__text { flex: 1 1 15rem; }
+.page-head__text > h1 { margin: 0; }
+.page-head__text > p { margin: var(--space-1) 0 0; }
 
 /* Section header (01 §6.4): the h2 on the left, a "View all" link on the
    right; the link drops under the title when the two do not fit. The caller
@@ -996,7 +1002,14 @@ a.banners__link:focus-visible { outline: var(--focus-ring); outline-offset: var(
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(15rem, 100%), 1fr));
   gap: var(--space-4);
+  /* A list of KpiCard links (<ul role="list">) as well as a section. */
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
+/* A line under the row, such as the overview's "These figures cover the
+   newest 20,000 orders". */
+.kpis-note { margin: var(--space-3) 0 0; }
 
 /* Dashboard grid (01 §5): one column, and 12 from 58rem of console content
    (responsive.css), where a card spans 8 + 4, 6 + 6 or 12. A child without
@@ -1066,6 +1079,10 @@ a.banners__link:focus-visible { outline: var(--focus-ring); outline-offset: var(
   margin-bottom: 0;
 }
 .chart-card canvas { width: 100%; height: auto; }
+/* A table in a card (the overview's top products and recent orders): the
+   card is its frame, so TableWrap's region drops its own border and keeps
+   its focus ring. Its width and phone rows are in responsive.css. */
+.chart-card .table-wrap { border: 0; border-radius: 0; }
 
 /* Filter bar */
 .filter-bar {

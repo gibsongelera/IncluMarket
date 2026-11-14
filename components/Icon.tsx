@@ -202,6 +202,19 @@ const ICONS: Record<string, React.ReactNode> = {
       <path d="M4 9h11a5 5 0 0 1 0 10h-4" />
     </>
   ),
+  // Admin overview (03 §2): the "View all" arrow and the privacy queue.
+  "arrow-right": (
+    <>
+      <path d="M4.5 12H19" />
+      <path d="M13.5 6.5L19 12l-5.5 5.5" />
+    </>
+  ),
+  lock: (
+    <>
+      <rect x="5" y="10.5" width="14" height="10" rx="2" />
+      <path d="M8 10.5V7.5a4 4 0 0 1 8 0v3" />
+    </>
+  ),
 };
 
 export function Icon({
