@@ -17,9 +17,14 @@
  *      email, phone, disability_type, assistive_needs, pwd_id_url,
  *      id_number*. (Shipping fields an order's own seller needs are named
  *      shipping_* and are not matched.)
- *   3. It must not import an admin-only module (lib/admin-analytics.ts,
- *      lib/admin-overview.ts): they count and name across every user, and
- *      check no role themselves.
+ *   3. No file outside app/admin/ may import an admin-only module
+ *      (lib/admin-analytics.ts, lib/admin-overview.ts): they count and name
+ *      across every user. Their readers check the admin role themselves,
+ *      but getAdminOverview()'s health counts start beside that check, and
+ *      a component, layout or "use server" module that imports them is one
+ *      careless call from showing them to anyone. This rule reads every
+ *      .ts/.tsx file under app/ (outside app/admin/), components/ and lib/
+ *      (except the two modules), and middleware.ts, not only pages.
  *
  * A line can opt out with a trailing `// props-ok: <reason>`, or in JSX a
  * block comment starting `props-ok: <reason>`. The reason is printed, so
@@ -49,7 +54,9 @@ const UNSCOPED = [
 const FIELD = "(?:email|phone|disability_type|assistive_needs|pwd_id_url|id_number\\w*)";
 const SENSITIVE = new RegExp(`(?:\\b${FIELD}\\s*:|\\.\\s*${FIELD}\\b)`);
 const IMPORT_FROM_DATA = /import\s*\{([^}]*)\}\s*from\s*["']@\/lib\/data["']/g;
-const ADMIN_ONLY = /from\s*["']@\/lib\/(admin-analytics|admin-overview)["']/;
+// The alias or a relative path ("./admin-overview", "../../lib/admin-overview").
+const ADMIN_ONLY = /from\s*["'](?:@\/lib\/|\.\.?\/(?:[\w.-]+\/)*)(admin-analytics|admin-overview)["']/;
+const ADMIN_ONLY_SELF = new Set(["lib/admin-analytics.ts", "lib/admin-overview.ts"]);
 
 function walk(dir, out = []) {
   for (const name of readdirSync(dir)) {
@@ -82,12 +89,6 @@ for (const file of walk(APP)) {
     }
   }
 
-  // Rule 3 — admin-only modules
-  src.split(/\r?\n/).forEach((text, i) => {
-    const m = text.match(ADMIN_ONLY);
-    if (m) findings.push(`${rel}:${i + 1}  imports lib/${m[1]} — admin only; import it from app/admin/ pages`);
-  });
-
   // Rule 2 — sensitive fields
   src.split(/\r?\n/).forEach((text, i) => {
     const code = text.replace(/\/\/.*$/, "").replace(/\/\*.*?\*\//g, "");
@@ -98,7 +99,37 @@ for (const file of walk(APP)) {
   });
 }
 
-console.log("check-page-props: non-admin pages");
+// Rule 3 — admin-only modules, imported only under app/admin/. Every source
+// file, not only pages: a layout or a component passes data on just the same.
+function walkSource(dir, out = []) {
+  for (const name of readdirSync(dir)) {
+    const p = join(dir, name);
+    if (statSync(p).isDirectory()) {
+      if (name !== "node_modules" && !name.startsWith(".")) walkSource(p, out);
+    } else if (/\.(ts|tsx)$/.test(name)) out.push(p);
+  }
+  return out;
+}
+
+const sources = [...walkSource(APP), ...walkSource(join(ROOT, "components")), ...walkSource(join(ROOT, "lib"))];
+const middleware = join(ROOT, "middleware.ts");
+try {
+  if (statSync(middleware).isFile()) sources.push(middleware);
+} catch {
+  // no middleware.ts
+}
+for (const file of sources) {
+  const rel = relative(ROOT, file).split(sep).join("/");
+  if (rel.startsWith("app/admin/") || ADMIN_ONLY_SELF.has(rel)) continue;
+  readFileSync(file, "utf8")
+    .split(/\r?\n/)
+    .forEach((text, i) => {
+      const m = text.match(ADMIN_ONLY);
+      if (m) findings.push(`${rel}:${i + 1}  imports lib/${m[1]} — admin only; import it under app/admin/`);
+    });
+}
+
+console.log("check-page-props: non-admin pages; admin-only imports in every file");
 if (allowed.length) {
   console.log("\n  Allowed by an explicit props-ok comment:");
   for (const a of allowed) console.log("    " + a);
