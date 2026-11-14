@@ -1055,6 +1055,16 @@ a.banners__link:focus-visible { outline: var(--focus-ring); outline-offset: var(
   padding-inline: 0;
   border-bottom: 0;
 }
+/* With no rule under the strip, the selected tab's white fill sat on the
+   white card and its outline was 1.3:1, so only blue bold text marked it.
+   A 3px brand-blue underline instead, taken from its bottom padding so the
+   tab keeps its height; a border, not a shadow, so forced colours keep it. */
+.chart-card__head .tab--active {
+  border-color: transparent;
+  border-bottom: 3px solid var(--brand-blue);
+  padding-bottom: calc(.55rem - 3px);
+  margin-bottom: 0;
+}
 .chart-card canvas { width: 100%; height: auto; }
 
 /* Filter bar */

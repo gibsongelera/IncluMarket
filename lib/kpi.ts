@@ -43,9 +43,12 @@ function roundOneDecimal(x: number): number {
 
 /**
  * The trend of a figure against the period before: "up 18.2% vs previous 30
- * days". The tone follows `good`: with good "down", a falling return rate is
- * good news. The card always shows the words and an arrow, never the colour
- * alone.
+ * days (better)". The tone follows `good`: with good "down", a falling return
+ * rate is good news. The card always shows the words and an arrow, never the
+ * colour alone, and the words end in "(better)" or "(worse)": the arrow and
+ * "up"/"down" give the direction, so without them good or bad news was told
+ * by the colour alone (1.4.1), and a falling return rate in green read as bad
+ * to anyone who cannot tell green from red.
  *
  * - current or previous null, undefined, NaN or infinite: none.
  * - previous 0: flat when current is 0 too, otherwise "New".
@@ -70,11 +73,12 @@ export function kpiTrend(
   const pct = roundOneDecimal(((current - previous) * 100) / Math.abs(previous));
   if (pct === 0) return flat;
   const kind: "up" | "down" = pct > 0 ? "up" : "down";
+  const tone: "good" | "bad" = kind === good ? "good" : "bad";
   return {
     kind,
-    tone: kind === good ? "good" : "bad",
+    tone,
     pct,
-    words: `${kind} ${Math.abs(pct).toLocaleString("en-PH", ONE_DECIMAL)}% vs ${period}`,
+    words: `${kind} ${Math.abs(pct).toLocaleString("en-PH", ONE_DECIMAL)}% vs ${period} (${tone === "good" ? "better" : "worse"})`,
   };
 }
 

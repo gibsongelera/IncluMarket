@@ -51,7 +51,10 @@ export function ConsoleNav({
                         {" "}
                         <span className="console-nav__badge">
                           {count}
-                          <span className="sr-only"> waiting</span>
+                          {/* A no-break space: .sr-only is absolutely
+                              positioned, so a plain leading space collapses
+                              and the name read "3waiting" (as in Chart.tsx). */}
+                          <span className="sr-only">{" waiting"}</span>
                         </span>
                       </>
                     ) : null}

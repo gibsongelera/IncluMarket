@@ -485,6 +485,10 @@ a.kpi--queue.is-waiting:hover { border-left: 4px solid var(--brand-brown); }
 .chart-legend__line { flex: none; width: 1.5rem; height: .75rem; }
 /* The data table's figures line up on the right, digit for digit. */
 .chart-data-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+/* The table scrolls inside its card instead of widening the page: at 320px
+   with 24px text "Return requested | Orders | Share" needed 344px. Focusable
+   and named in Chart.tsx, like TableWrap, so the scroll works by keyboard. */
+.chart-data-table__scroll { overflow-x: auto; }
 /* Forced colours (Windows High Contrast): a canvas is never recoloured, so
    on a dark theme its lines, labels and segments would sit on black at about
    2:1. Each chart keeps the white it is drawn for: the donut's ring rather
@@ -958,7 +962,11 @@ fieldset {
   height: 1em;
   width: 1em;
   stroke: var(--star-edge);
-  stroke-width: 28px; /* SVG user units (viewBox is 576x512) */
+  /* SVG user units (viewBox is 576x512). Twice the display stars' 28: the
+     fill covers the stroke's inner half, so 28 left about 0.7px of edge on a
+     28px star, too thin to hold its 3:1 once antialiased (1.4.11); 56 leaves
+     about 1.4px, and grows with the text size. */
+  stroke-width: 56px;
   paint-order: stroke fill;
 }
 

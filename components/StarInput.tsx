@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faStar } from "@fortawesome/free-solid-svg-icons";
 
@@ -15,6 +16,10 @@ import { faStar } from "@fortawesome/free-solid-svg-icons";
  * stars: chosen and unchosen stars differ only by fill (gold on white is
  * 1.43:1), which WCAG 1.4.1 and 1.4.11 do not accept as the only cue, and
  * Windows forced colours paints all five alike.
+ *
+ * The arrow keys move focus with the choice, as in a native radio group:
+ * the rating used to change while focus stayed on the old star, so a screen
+ * reader announced nothing and the next Tab left from the wrong place.
  */
 export function StarInput({
   value,
@@ -23,11 +28,23 @@ export function StarInput({
   value: number;
   onChange: (n: number) => void;
 }) {
+  const refs = useRef<(HTMLButtonElement | null)[]>([]);
+
+  function choose(n: number) {
+    onChange(n);
+    // Focusable at once: tabIndex -1 still takes focus from a script, and the
+    // render that follows makes it the group's one tab stop.
+    refs.current[n - 1]?.focus();
+  }
+
   return (
     <div className="star-input" role="radiogroup" aria-label="Rating from 1 to 5">
       {[1, 2, 3, 4, 5].map((n) => (
         <button
           key={n}
+          ref={(el) => {
+            refs.current[n - 1] = el;
+          }}
           type="button"
           role="radio"
           aria-checked={n === value}
@@ -39,11 +56,11 @@ export function StarInput({
           onKeyDown={(e) => {
             if (e.key === "ArrowRight" || e.key === "ArrowUp") {
               e.preventDefault();
-              onChange(Math.min(5, value + 1));
+              choose(Math.min(5, value + 1));
             }
             if (e.key === "ArrowLeft" || e.key === "ArrowDown") {
               e.preventDefault();
-              onChange(Math.max(1, value - 1));
+              choose(Math.max(1, value - 1));
             }
           }}
         >

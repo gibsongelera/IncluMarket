@@ -39,7 +39,7 @@ earlier ones without `!important`; that is the mechanism, not an accident.
 | `layout.css` | Page shells: header, footer, buyer feed, cart, checkout, the console (sidebar, `.console__content`, `.section-head`, `.dash-grid`, `.chart-grid`, `.chart-card`). |
 | `shopee.css` | Shopee-pattern additions: density, category strip, sticky cart bar. |
 | `landing.css` | Landing and auth pages only. |
-| `responsive.css` | **Every width media query and container query in the project.** Imported last. |
+| `responsive.css` | **Every width media query and container query**, except four older width queries that `landing.css` still keeps for its own pages. Imported last. |
 
 **Rule:** a new width media query or container query goes in `responsive.css`,
 nowhere else. See the `inclumarket-responsive` skill.
@@ -127,6 +127,7 @@ the sticky filter panel was wrong at 16px and badly wrong at 24px. Use `rem`,
 | Radius | `--radius-xs/sm/md/lg` | |
 | Measure | `--measure` (68ch) | Cap on body copy. Admin text used to run the full 1200px. |
 | Depth | `--z-sticky-bar` 20, `--z-header` 40, `--z-fab` 60, `--z-alert` 80, `--z-toast` 100 | Never write a bare z-index. |
+| Floating buttons | `--fab-size` (56px), `--fab-clearance` (size + 2 × `--space-3`) | Room the floating buttons need; keep sticky bars and the sidebar's foot clear of it. |
 
 ## Tokens the dashboards added
 
@@ -140,7 +141,6 @@ the sticky filter panel was wrong at 16px and badly wrong at 24px. Use `rem`,
 | `--chart-1` … `--chart-6` | brand blue, brown, teal, forest, plum, yellow-800 | Lines take the first four in order, at most four per chart; segments with no status take all six. Each is 3:1 on a card; `--chart-6` is never text. |
 | `--focus-ring-nav` | 3px solid `--color-nav-text` | The ring on the dark sidebar. |
 | `--console-max` | `90rem` | The Seller Centre and admin console width, and the header and footer on console pages. Storefront pages keep `--container-max`. |
-| `--fab-size`, `--fab-clearance` | 56px, size + 2 × `--space-3` | Room the floating buttons need; keep sticky bars and the sidebar's foot clear of it. |
 
 ## Component conventions
 
@@ -227,7 +227,8 @@ dash pattern per line (`SERIES_DASHES`).
 - **KPI card:** white, 1px border, no shadow; label .875rem 600 muted; value
   Rubik 800 `--step-4` in `--text-charcoal` (not brand blue: a saturated hue
   at that size across a row is tiring), even digits, whole pesos; the trend
-  is an icon plus words, coloured by good or bad (`--status-ok`,
+  is an icon plus words ending "(better)" or "(worse)", so colour is never
+  the only cue, coloured by good or bad (`--status-ok`,
   `--status-error-text`, `--text-muted`); the icon tile is 2.5rem, tint and
   role colour in one rule; `.kpi--queue.is-waiting` has the 4px brown bar; a
   sparkline sits in the 3rem `.kpi__spark` slot at the foot.

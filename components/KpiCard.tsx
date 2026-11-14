@@ -33,7 +33,7 @@ const TREND_ICON = { up: "arrow-up", down: "arrow-down", flat: "minus", new: "sp
  * One KPI card (01 §6.1, ADR-02). The whole card is a link to the list
  * behind the number, and a link is named by its text, so every part of it
  * is plain words: the label, the value and the trend ("up 18.2% vs previous
- * 30 days") and the sparkline's summary. The icons, the sparkline and the
+ * 30 days (better)") and the sparkline's summary. The icons, the sparkline and the
  * "—" of a missing figure are hidden from screen readers, and nothing under
  * aria-hidden can take focus. A server component: nothing on it is
  * interactive (Sparkline is a client component only to draw). The spaces

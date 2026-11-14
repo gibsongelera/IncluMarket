@@ -176,31 +176,35 @@ export function Chart({
 
       <details className="chart-data-table">
         <summary>View as table</summary>
-        <table>
-          <caption className="sr-only">{ariaLabel}</caption>
-          <thead>
-            <tr>
-              <th scope="col">{labelHeading}</th>
-              {heads.map((h, i) => (
-                <th key={`${h}-${i}`} scope="col" className="num">
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r, i) => (
-              <tr key={`${r.label}-${i}`}>
-                <th scope="row">{r.label}</th>
-                {r.cells.map((c, j) => (
-                  <td key={j} className="num">
-                    {c}
-                  </td>
+        {/* Scrolls inside the card on a narrow screen with large text, so it
+            is focusable and named, as TableWrap's region is (2.1.1). */}
+        <div className="chart-data-table__scroll" role="region" aria-label={`${ariaLabel}, table`} tabIndex={0}>
+          <table>
+            <caption className="sr-only">{ariaLabel}</caption>
+            <thead>
+              <tr>
+                <th scope="col">{labelHeading}</th>
+                {heads.map((h, i) => (
+                  <th key={`${h}-${i}`} scope="col" className="num">
+                    {h}
+                  </th>
                 ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {rows.map((r, i) => (
+                <tr key={`${r.label}-${i}`}>
+                  <th scope="row">{r.label}</th>
+                  {r.cells.map((c, j) => (
+                    <td key={j} className="num">
+                      {c}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </details>
     </>
   );
