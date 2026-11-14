@@ -104,6 +104,17 @@ export function shortName(name: string | null | undefined): string {
   return parts.length === 1 ? parts[0] : `${parts[0]} ${parts[parts.length - 1].charAt(0)}.`;
 }
 
+/**
+ * A status in the words its pill shows (components/Pill.tsx: underscores as
+ * spaces), with the first letter capitalised as the pill's CSS does:
+ * "return_requested" → "Return requested". For legends, tables and labels
+ * that sit outside a pill.
+ */
+export function statusLabel(status: string | null | undefined): string {
+  const words = String(status ?? "").replace(/_/g, " ").trim();
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
 export function initials(name: string): string {
   return name
     .split(/\s+/)

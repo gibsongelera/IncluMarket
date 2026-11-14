@@ -17,6 +17,9 @@
  *      email, phone, disability_type, assistive_needs, pwd_id_url,
  *      id_number*. (Shipping fields an order's own seller needs are named
  *      shipping_* and are not matched.)
+ *   3. It must not import an admin-only module (lib/admin-analytics.ts,
+ *      lib/admin-overview.ts): they count and name across every user, and
+ *      check no role themselves.
  *
  * A line can opt out with a trailing `// props-ok: <reason>`, or in JSX a
  * block comment starting `props-ok: <reason>`. The reason is printed, so
@@ -46,6 +49,7 @@ const UNSCOPED = [
 const FIELD = "(?:email|phone|disability_type|assistive_needs|pwd_id_url|id_number\\w*)";
 const SENSITIVE = new RegExp(`(?:\\b${FIELD}\\s*:|\\.\\s*${FIELD}\\b)`);
 const IMPORT_FROM_DATA = /import\s*\{([^}]*)\}\s*from\s*["']@\/lib\/data["']/g;
+const ADMIN_ONLY = /from\s*["']@\/lib\/(admin-analytics|admin-overview)["']/;
 
 function walk(dir, out = []) {
   for (const name of readdirSync(dir)) {
@@ -78,6 +82,12 @@ for (const file of walk(APP)) {
     }
   }
 
+  // Rule 3 — admin-only modules
+  src.split(/\r?\n/).forEach((text, i) => {
+    const m = text.match(ADMIN_ONLY);
+    if (m) findings.push(`${rel}:${i + 1}  imports lib/${m[1]} — admin only; import it from app/admin/ pages`);
+  });
+
   // Rule 2 — sensitive fields
   src.split(/\r?\n/).forEach((text, i) => {
     const code = text.replace(/\/\/.*$/, "").replace(/\/\*.*?\*\//g, "");
@@ -99,4 +109,4 @@ if (findings.length) {
   console.log(`\n  ${findings.length} finding(s).`);
   process.exit(1);
 }
-console.log("  Clean — no unscoped readers, no sensitive fields in page code.");
+console.log("  Clean — no unscoped readers, no admin-only modules, no sensitive fields in page code.");

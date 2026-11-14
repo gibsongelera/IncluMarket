@@ -1,6 +1,6 @@
 import { requireRole } from "@/lib/session";
 import { Chart } from "@/components/Chart";
-import { formatDateTime } from "@/lib/format";
+import { formatDateTime, statusLabel } from "@/lib/format";
 import { getAuditLogs, getConsentLogs, getOrders, getProfiles } from "@/lib/data";
 import { getContactMessages, getPrivacyRequestsForAdmin } from "@/lib/admin-content";
 import { ContactInboxClient, PrivacyRequestsClient } from "@/components/AdminInboxClient";
@@ -11,15 +11,6 @@ export const metadata = { title: "Privacy and compliance" };
 
 /** Every order status, in the order the dashboards list them (03 §4); an unknown one follows. */
 const ORDER_STATUS = ["pending", "processing", "shipped", "delivered", "cancelled", "return_requested", "returned"];
-
-/**
- * A status in the words its pill shows (components/Pill.tsx: underscores as
- * spaces), first letter capitalised as the pill's CSS does: "Return requested".
- */
-function statusWords(status: string): string {
-  const words = status.replace(/_/g, " ");
-  return words.charAt(0).toUpperCase() + words.slice(1);
-}
 
 /**
  * Admin → Compliance: data-subject requests, the contact inbox, consent and
@@ -72,7 +63,7 @@ export default async function AdminCompliancePage() {
   // Every order by its current status, zeros kept, for the donut and its table.
   const byStatus = new Map<string, number>(ORDER_STATUS.map((s) => [s, 0]));
   orders.forEach((o) => byStatus.set(o.order_status, (byStatus.get(o.order_status) ?? 0) + 1));
-  const statusData = [...byStatus].map(([status, value]) => ({ label: statusWords(status), value, status }));
+  const statusData = [...byStatus].map(([status, value]) => ({ label: statusLabel(status), value, status }));
 
   const rows = audits.slice(0, 40);
 
