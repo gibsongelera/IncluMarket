@@ -1785,3 +1785,68 @@ fieldset {
     color: GrayText;
   }
 }
+
+/* --- Row actions (P2-06, ADR-04, 03 §6, 01 §6.3) --------------------------
+   components/RowActions.tsx: an "Actions" disclosure in a list row that
+   shows the row's own buttons under it. The panel is in the flow, never
+   floating: TableWrap scrolls sideways (overflow-x: auto), which would clip
+   a popover on the last rows, so the row grows instead. The button and each
+   item are at least max(2.75rem, 44px) tall: 2.75rem alone is 33px at the
+   12px text setting. white-space: normal undoes the nowrap of the older
+   inline .row-actions cell, so a long label wraps at 320px with 24px text.
+   In a phone card the action cell (empty header) is full width, and so is
+   the panel. */
+.row-menu {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: start;
+  gap: var(--space-2);
+  min-width: 0;
+  white-space: normal;
+}
+/* position: relative holds the .sr-only "for order #123" inside the button. */
+.row-menu__toggle {
+  position: relative;
+  min-height: max(2.75rem, 44px);
+}
+.row-menu__toggle .icon { width: 1.25rem; height: 1.25rem; }
+/* Open: the tint, and the chevron turned up; aria-expanded says it in words.
+   Text and fill in one rule, so check-contrast.mjs measures the pair. */
+.row-menu__toggle[aria-expanded="true"] {
+  background: var(--brand-blue-100);
+  color: var(--brand-blue-800);
+  /* A doubled border (an inset ring, so nothing moves) tells open from a
+     hover, which shares the tint. Forced colours drop the ring; there the
+     turned chevron and the shown panel carry the state. */
+  border-color: var(--brand-blue-800);
+  box-shadow: inset 0 0 0 1px var(--brand-blue-800);
+}
+.row-menu__toggle[aria-expanded="true"] .icon { rotate: 180deg; }
+/* The turn is animated only with no motion preference; otherwise (and with
+   the toolbar's reduce-motion switch) the chevron flips at once. */
+@media (prefers-reduced-motion: no-preference) {
+  .row-menu__toggle .icon { transition: rotate var(--dur-1) var(--ease-out); }
+}
+.row-menu__panel {
+  justify-self: stretch;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+/* display: flex above would otherwise beat the browser's [hidden] rule. */
+.row-menu__panel[hidden] { display: none; }
+/* Items stack at full width, label at the start, wrapping anywhere rather
+   than widening the card. The items must be the buttons and links
+   themselves: a wrapper (a <form>, a <span>) would take these rules
+   instead of the control inside it. */
+.row-menu__panel > * {
+  min-width: 0;
+  min-height: max(2.75rem, 44px);
+  justify-content: flex-start;
+  text-align: start;
+  overflow-wrap: anywhere;
+}
+/* .data-table td .btn spaces inline buttons with a right margin; the menu
+   has its own gap. */
+.data-table td .row-menu .btn { margin: 0; }

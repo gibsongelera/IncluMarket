@@ -215,6 +215,8 @@ const ICONS: Record<string, React.ReactNode> = {
       <path d="M8 10.5V7.5a4 4 0 0 1 8 0v3" />
     </>
   ),
+  // Row actions (ADR-04): the disclosure's chevron, turned up when open.
+  "chevron-down": <path d="M6 9l6 6 6-6" />,
 };
 
 export function Icon({

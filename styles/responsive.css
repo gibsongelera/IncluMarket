@@ -237,6 +237,11 @@ body {
     flex: 1 1 auto;
     min-height: 44px;
   }
+  /* A row with a single action: RowActions (P2-06) renders that one
+     button bare in the empty-headed action cell, with no menu around it. */
+  .data-table--cards td[data-label=""] > .btn {
+    min-height: max(2.75rem, 44px);
+  }
 
   /* In a dashboard card the rows are divided by a rule, not each drawn as
      a card inside the card (01 §9). No stripes there: a grey band hugging
