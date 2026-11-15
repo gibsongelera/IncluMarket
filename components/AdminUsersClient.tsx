@@ -3,7 +3,7 @@
 import { useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { formatDate, maskEmail } from "@/lib/format";
+import { formatDate, initials, maskEmail } from "@/lib/format";
 import { toast } from "@/lib/toast";
 import {
   anonymizeUser,
@@ -22,6 +22,8 @@ import type { AdminUserRow } from "@/lib/admin-list-types";
 import type { Role } from "@/lib/types";
 import { TableWrap } from "./TableWrap";
 import { DeepLinkFocus } from "./DeepLinkFocus";
+import { RowActions } from "./RowActions";
+import { useRowFocus } from "./useRowFocus";
 
 type UserRow = AdminUserRow;
 
@@ -45,9 +47,12 @@ function hasHistory(u: UserRow): boolean {
 }
 
 /**
- * Admin → Users: one page of accounts (the page filters, searches and pages
- * on the server; the toolbar and notes come in as children, under the head),
- * with the governance actions and their dialogs.
+ * Admin → Users (P2-09, P2-10, 03 §6): one page of accounts (the page
+ * filters, searches and pages on the server; the toolbar and notes come in as
+ * children, under the head). Each row: the identity cell (initials, name,
+ * #id and the masked email, never the full address), the role select, the
+ * status with the PWD verification in words, the homepage feature in words,
+ * and the governance actions in the row's Actions, each opening its dialog.
  */
 export function AdminUsersClient({
   users,
@@ -72,6 +77,12 @@ export function AdminUsersClient({
 
   const [pending, setPending] = useState<Pending | null>(null);
   const [pendingError, setPendingError] = useState<string | null>(null);
+
+  // Where focus goes when an action takes the row off this tab once
+  // router.refresh() lands: a delete, an anonymise (the name changes, and
+  // with it the row's place by name), a role change on a role tab, a
+  // suspend or restore on a status tab, an edit that changes the role.
+  const focus = useRowFocus(users);
 
   // form state
   const [fName, setFName] = useState("");
@@ -125,9 +136,12 @@ export function AdminUsersClient({
       assistive_needs: fNeeds || null,
     };
     setBusy(true);
+    // Before the await: the refreshed rows can land before it resolves.
+    if (editing) focus.mark(editing.id);
     const res = editing ? await updateUser(editing.id, input) : await createUser(input, fConsent);
     setBusy(false);
     if (!res.ok) {
+      focus.clear();
       setErr(res.error || "Could not save user.");
       return;
     }
@@ -143,6 +157,8 @@ export function AdminUsersClient({
     if (!pending) return;
     const u = pending.user;
     setBusy(true);
+    // Before the await: the refreshed rows can land before it resolves.
+    focus.mark(u.id);
     let res: { ok: boolean; error?: string };
     let done = "";
     switch (pending.kind) {
@@ -175,6 +191,9 @@ export function AdminUsersClient({
     }
     setBusy(false);
     if (!res.ok) {
+      // A refusal (deleteUser: "Could not check this account's orders and
+      // products…") shows in the dialog, which stays open.
+      focus.clear();
       setPendingError(res.error || "That did not work. Please try again.");
       return;
     }
@@ -286,10 +305,17 @@ export function AdminUsersClient({
 
       {children}
 
+      {/* DeepLinkFocus stays on an empty list too: it moves focus to the
+          page's "not in this list" note when ?focus= names an account that
+          is not here. */}
       <DeepLinkFocus />
       {users.length === 0 ? (
         <div className="empty">
-          <p tabIndex={-1}>{empty.text}</p>
+          {/* Focus lands on the sentence after an action empties the list:
+              it says why, which the link alone would skip. */}
+          <p ref={focus.emptyRef} tabIndex={-1}>
+            {empty.text}
+          </p>
           {empty.href && empty.action ? (
             <Link className="btn btn--outline" href={empty.href}>
               {empty.action}
@@ -301,32 +327,63 @@ export function AdminUsersClient({
         <table className="data-table data-table--cards" aria-label="Accounts by name">
           <thead>
             <tr>
-              <th scope="col">Name</th>
-              <th scope="col">Email (masked)</th>
+              <th scope="col">Account</th>
               <th scope="col">Role</th>
               <th scope="col">Status</th>
               <th scope="col">Featured</th>
               <th scope="col">Joined</th>
-              <th scope="col">Actions</th>
+              <th scope="col">
+                <span className="sr-only">Actions</span>
+              </th>
             </tr>
           </thead>
           <tbody id="user-rows">
             {users.map((u) => {
               const isSelf = u.id === currentAdminId;
               const suspended = u.account_status === "suspended";
+              const history = hasHistory(u);
               return (
                 <tr key={u.id} data-row-id={u.id}>
                   <td>
-                    <strong>{u.name}</strong>
-                    {isSelf ? <span className="badge badge--yellow"> You</span> : null}
-                  </td>
-                  <td title="Email masked for PII protection (RA 10173)">
-                    <code>{maskEmail(u.email)}</code>
+                    <div className="cell-identity">
+                      <span className="avatar" aria-hidden="true">
+                        {initials(u.name)}
+                      </span>
+                      <span className="cell-identity__text">
+                        <span className="cell-identity__name">
+                          {u.name}
+                          {isSelf ? (
+                            <>
+                              {" "}
+                              <span className="badge badge--yellow">
+                                {/* Read as "Admin Account (your account)", not "Admin Account You". */}
+                                <span aria-hidden="true">You</span>
+                                <span className="sr-only">(your account)</span>
+                              </span>
+                            </>
+                          ) : null}
+                        </span>
+                        {/* The masked email only (RA 10173): never the full
+                            address, as in the details dialog. */}
+                        <span className="cell-identity__meta">
+                          <span className="cell-code">#{u.id}</span>
+                          {u.email ? (
+                            <>
+                              {" · "}
+                              <span title="Email masked for PII protection (RA 10173)">
+                                <span className="sr-only">Masked email{" "}</span>
+                                {maskEmail(u.email)}
+                              </span>
+                            </>
+                          ) : null}
+                        </span>
+                      </span>
+                    </div>
                   </td>
                   <td>
                     <select
                       className="role-sel"
-                      aria-label={`Change role for ${u.name}`}
+                      aria-label={`Change role for ${u.name || "account"} #${u.id}`}
                       value={u.role}
                       disabled={isSelf}
                       onChange={(e) => ask({ kind: "role", user: u, next: e.target.value as Role })}
@@ -340,52 +397,65 @@ export function AdminUsersClient({
                   </td>
                   <td>
                     <Pill status={u.account_status} />
+                    {u.role !== "admin" && u.verified !== null ? (
+                      <div className="small muted">{u.verified ? "Verified PWD" : "Not verified"}</div>
+                    ) : null}
                   </td>
                   <td>
                     {u.role === "seller" ? (
-                      <button
-                        type="button"
-                        className="icon-btn"
-                        aria-pressed={u.is_featured_seller}
-                        aria-label={
-                          u.is_featured_seller
-                            ? `Remove ${u.name} from featured PWD sellers`
-                            : `Feature ${u.name} as a PWD seller`
-                        }
-                        onClick={() => ask({ kind: "feature", user: u })}
-                      >
-                        <Icon name="sparkles" size={16} />
-                      </button>
+                      u.is_featured_seller ? (
+                        <strong className="small">Featured</strong>
+                      ) : (
+                        <span className="muted small">Not featured</span>
+                      )
                     ) : (
-                      <span className="muted small">—</span>
+                      <span className="muted small">Not a seller</span>
                     )}
                   </td>
                   <td>{formatDate(u.created_at)}</td>
-                  <td className="row-actions">
-                    <button type="button" className="btn btn--ghost btn--sm" onClick={() => openDetails(u)}>
-                      Details
-                    </button>{" "}
-                    <button type="button" className="btn btn--ghost btn--sm" onClick={() => openEdit(u)}>
-                      Edit
-                    </button>{" "}
-                    {isSelf ? null : (
-                      <>
+                  <td className="cell-actions">
+                    <RowActions label={`${u.name || "account"} #${u.id}`}>
+                      {/* A button keyed by what it does: an action that keeps
+                          the row here (Suspend on All) replaces it, so
+                          RowActions moves focus to the toggle instead of
+                          leaving it on a button that now does the opposite. */}
+                      <button type="button" className="btn btn--ghost btn--sm" onClick={() => openDetails(u)}>
+                        Details
+                      </button>
+                      <button type="button" className="btn btn--ghost btn--sm" onClick={() => openEdit(u)}>
+                        Edit…
+                      </button>
+                      {u.role === "seller" ? (
                         <button
+                          key={u.is_featured_seller ? "unfeature" : "feature"}
+                          type="button"
+                          className="btn btn--ghost btn--sm"
+                          onClick={() => ask({ kind: "feature", user: u })}
+                        >
+                          {u.is_featured_seller ? "Stop featuring…" : "Feature as PWD seller…"}
+                        </button>
+                      ) : null}
+                      {isSelf ? null : (
+                        <button
+                          key={suspended ? "restore" : "suspend"}
                           type="button"
                           className="btn btn--ghost btn--sm"
                           onClick={() => ask({ kind: suspended ? "restore" : "suspend", user: u })}
                         >
-                          {suspended ? "Restore" : "Suspend"}
-                        </button>{" "}
+                          {suspended ? "Restore…" : "Suspend…"}
+                        </button>
+                      )}
+                      {isSelf ? null : (
                         <button
+                          key={history ? "anonymize" : "delete"}
                           type="button"
                           className="btn btn--danger btn--sm"
-                          onClick={() => ask({ kind: hasHistory(u) ? "anonymize" : "delete", user: u })}
+                          onClick={() => ask({ kind: history ? "anonymize" : "delete", user: u })}
                         >
-                          {hasHistory(u) ? "Anonymise" : "Delete"}
+                          {history ? "Anonymise…" : "Delete…"}
                         </button>
-                      </>
-                    )}
+                      )}
+                    </RowActions>
                   </td>
                 </tr>
               );

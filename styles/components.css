@@ -866,6 +866,16 @@ fieldset {
   overflow-wrap: normal;
 }
 
+/* A control in a row's own cell (Admin → Users: the role select): the row
+   menu's target, max(2.75rem, 44px). The global select floor (responsive.css)
+   is a fixed 44px, which does not grow with the text; 2.75rem alone is 33px
+   at the 12px setting. Its width stays the cell's, so a phone card at 320px
+   with 24px text holds it. */
+.data-table .role-sel {
+  min-height: max(2.75rem, 44px);
+  max-width: 100%;
+}
+
 /* Identity cell (01 §6.3): an initials avatar, the name and a muted second
    line. The block goes inside the <td> (a flex <td> is no longer a table
    cell):
@@ -1851,8 +1861,10 @@ fieldset {
   min-width: 0;
   white-space: normal;
 }
-/* position: relative holds the .sr-only "for order #123" inside the button. */
-.row-menu__toggle {
+/* position: relative holds the .sr-only "for order #123" inside the button.
+   Two classes, so the height beats responsive.css's later .btn--sm (36px
+   from 768px up), which would otherwise win on file order. */
+.row-menu > .row-menu__toggle {
   position: relative;
   min-height: max(2.75rem, 44px);
 }
@@ -1887,7 +1899,7 @@ fieldset {
    than widening the card. The items must be the buttons and links
    themselves: a wrapper (a <form>, a <span>) would take these rules
    instead of the control inside it. */
-.row-menu__panel > * {
+.row-menu > .row-menu__panel > * {
   min-width: 0;
   min-height: max(2.75rem, 44px);
   justify-content: flex-start;
