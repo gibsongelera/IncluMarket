@@ -1,5 +1,5 @@
 import { requireRole } from "@/lib/session";
-import { listHref, parseListParams, type ListParams, type RawParams } from "@/lib/list-params";
+import { listHref, missingHint, parseListParams, type ListParams, type RawParams } from "@/lib/list-params";
 import { ORDER_VIEWS, getAdminOrderList, orderView, type OrderView } from "@/lib/admin-lists";
 import { AdminOrdersClient, type OrdersEmpty } from "@/components/AdminOrdersClient";
 import { ListToolbar } from "@/components/ListToolbar";
@@ -82,7 +82,7 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
             // lands (DeepLinkFocus moves it to data-focus-missing), not only
             // in a muted line a screen reader would never reach.
             <p className="notice notice--warning" tabIndex={-1} data-focus-missing>
-              Order #{params.focus} is not in this list. Try the Recent tab or clear the search.
+              Order #{params.focus} is not in this list.{missingHint(view !== "all", Boolean(params.q), "Recent")}
             </p>
           ) : null}
           {list.degraded ? <p>Refunds and shops need database update 0014/0015.</p> : null}

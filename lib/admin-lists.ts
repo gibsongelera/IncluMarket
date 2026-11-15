@@ -1,10 +1,20 @@
 import "server-only";
 import { requireRole } from "@/lib/session";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { DataUnavailableError, getDisplayNames } from "@/lib/data";
+import { DataUnavailableError, getAllCategories, getDisplayNames } from "@/lib/data";
 import { isMissingObject } from "@/lib/db-errors";
 import { pageCount, pageOf, pageRange, searchId, searchPattern, type ListParams } from "@/lib/list-params";
-import { ORDER_VIEWS, type AdminOrderList, type AdminOrderRow, type OrderView } from "@/lib/admin-list-types";
+import {
+  ORDER_VIEWS,
+  PRODUCT_TABS,
+  type AdminOrderList,
+  type AdminOrderRow,
+  type AdminProductList,
+  type AdminProductRow,
+  type OrderView,
+  type ProductTab,
+} from "@/lib/admin-list-types";
+import type { Product } from "@/lib/types";
 
 /**
  * Admin lists, one page at a time (ADR-05, 03 §6): the rows of the page the
@@ -46,12 +56,18 @@ const isId = (n: unknown): n is number => typeof n === "number" && Number.isInte
 
 /**
  * Profile ids whose name, or shop name (0019), matches the pattern, newest
- * first; `capped` when more matched than are kept.
+ * first; `capped` when more matched than are kept. `role` keeps one kind of
+ * account (the products list searches sellers: buyers' names would only
+ * fill the cap).
  */
-async function peopleMatching(db: Db, pattern: string): Promise<{ ids: number[]; capped: boolean }> {
-  const byName = await db.from("im_profiles").select("id").ilike("name", pattern).order("id", { ascending: false }).limit(NAME_MATCHES + 1);
+async function peopleMatching(db: Db, pattern: string, role?: "seller"): Promise<{ ids: number[]; capped: boolean }> {
+  const by = (col: "name" | "shop_name") => {
+    const q = db.from("im_profiles").select("id").ilike(col, pattern);
+    return (role ? q.eq("role", role) : q).order("id", { ascending: false }).limit(NAME_MATCHES + 1);
+  };
+  const byName = await by("name");
   if (byName.error) fail("people search", byName.error);
-  const byShop = await db.from("im_profiles").select("id").ilike("shop_name", pattern).order("id", { ascending: false }).limit(NAME_MATCHES + 1);
+  const byShop = await by("shop_name");
   if (byShop.error && !isMissingObject(byShop.error)) fail("shop search", byShop.error);
   const a = ((byName.data ?? []) as { id: number }[]).map((r) => r.id);
   const b = byShop.error ? [] : ((byShop.data ?? []) as { id: number }[]).map((r) => r.id);
@@ -78,8 +94,8 @@ async function shopNames(db: Db, ids: readonly number[]): Promise<Record<number,
 
 // The tabs and row shapes live in lib/admin-list-types.ts, so the list
 // components can use them without importing this module.
-export { ORDER_VIEWS, orderView } from "@/lib/admin-list-types";
-export type { AdminOrderList, AdminOrderRow, OrderView } from "@/lib/admin-list-types";
+export { ORDER_VIEWS, PRODUCT_TABS, orderView, productTab } from "@/lib/admin-list-types";
+export type { AdminOrderList, AdminOrderRow, AdminProductList, AdminProductRow, OrderView, ProductTab } from "@/lib/admin-list-types";
 
 const ORDER_COLUMNS = "id, created_at, buyer_id, seller_id, total_amount, payment_provider, payment_status, order_status, refund_due, return_reason, cancel_reason";
 const ORDER_COLUMNS_BASE = "id, created_at, buyer_id, total_amount, payment_provider, payment_status, order_status";
@@ -234,4 +250,160 @@ export async function getAdminOrderList(params: ListParams, view: OrderView): Pr
   }));
 
   return { rows, total, page, counts, capped, focusMissing, degraded: legacy };
+}
+
+// ---------------------------------------------------------------------------
+// Products (P2-08)
+// ---------------------------------------------------------------------------
+
+const EXCERPT = 90;
+const PHOTOS = 3;
+
+/** Product ids whose title matches, newest first; `capped` when more matched than are kept. */
+async function titlesMatching(db: Db, pattern: string): Promise<{ ids: number[]; capped: boolean }> {
+  const res = await db.from("im_products").select("id").ilike("title", pattern).order("id", { ascending: false }).limit(NAME_MATCHES + 1);
+  if (res.error) fail("product search", res.error);
+  const ids = ((res.data ?? []) as { id: number }[]).map((r) => r.id).filter(isId);
+  return { ids: ids.slice(0, NAME_MATCHES), capped: ids.length > NAME_MATCHES };
+}
+
+/**
+ * The first photos of each listing, in their order, and how many it has
+ * (a reviewer judges the count; the other photos stay on the server).
+ */
+async function firstPhotos(db: Db, ids: readonly number[]): Promise<Record<number, { urls: string[]; count: number }>> {
+  if (!ids.length) return {};
+  const res = await db.from("im_product_images").select("product_id, url, position").in("product_id", [...ids]).order("position");
+  if (res.error) fail("product photos", res.error);
+  const map: Record<number, { urls: string[]; count: number }> = {};
+  for (const r of (res.data ?? []) as { product_id: number; url: string }[]) {
+    const entry = (map[r.product_id] ||= { urls: [], count: 0 });
+    entry.count++;
+    if (entry.urls.length < PHOTOS) entry.urls.push(r.url);
+  }
+  return map;
+}
+
+type ProductRead = Product & { moderation_reason?: string | null };
+
+/**
+ * Admin → Products, one page: the tab's listings, newest first, searched by
+ * listing number, by title, or by the seller's or shop's name.
+ */
+export async function getAdminProductList(params: ListParams, tab: ProductTab): Promise<AdminProductList> {
+  await requireRole(["admin"]);
+  const db = createAdminClient();
+
+  // The search, as ids: the typed number, the titles that match and the
+  // sellers whose name or shop matches. Up to 401 ids reach the URL (each
+  // up to 7 digits, as for orders, each comma sent as %2C: about 4 KB,
+  // inside a proxy's 8 KB). Text that matches nothing lists nothing.
+  const id = params.q ? searchId(params.q) : null;
+  const pattern = params.q ? searchPattern(params.q) : null;
+  const none = { ids: [] as number[], capped: false };
+  const [titles, people] = await Promise.all([
+    pattern ? titlesMatching(db, pattern) : Promise.resolve(none),
+    pattern ? peopleMatching(db, pattern, "seller") : Promise.resolve(none),
+  ]);
+  const capped = titles.capped || people.capped;
+
+  let searchOr: string | null = null;
+  if (params.q) {
+    const ids = [...new Set([...(id ? [id] : []), ...titles.ids])];
+    const terms: string[] = [];
+    if (ids.length) terms.push(`id.in.(${ids.join(",")})`);
+    if (people.ids.length) terms.push(`seller_id.in.(${people.ids.join(",")})`);
+    searchOr = terms.length ? terms.join(",") : null;
+  }
+  const nothing = Boolean(params.q) && !searchOr;
+
+  const scoped = (q: Sel, t: ProductTab): Sel => {
+    const viewed = t === "all" ? q : q.eq("status", t);
+    return searchOr ? viewed.or(searchOr) : viewed;
+  };
+
+  const countOf = async (t: ProductTab): Promise<number> => {
+    if (nothing) return 0;
+    const { count, error } = await scoped(db.from("im_products").select("id", { count: "exact", head: true }), t);
+    if (error) fail("product counts", error);
+    return count ?? 0;
+  };
+
+  // Where ?focus= sits in this tab and search (as for orders).
+  const focusIndex = async (): Promise<number | null> => {
+    if (!params.focus || nothing) return null;
+    const hit = await scoped(db.from("im_products").select("id, created_at"), tab).eq("id", params.focus).maybeSingle();
+    if (hit.error) fail("product", hit.error);
+    const row = hit.data as { id: number; created_at: string } | null;
+    if (!row) return null;
+    const before = async (f: (q: Sel) => Sel) => {
+      const { count, error } = await f(scoped(db.from("im_products").select("id", { count: "exact", head: true }), tab));
+      if (error) fail("product position", error);
+      return count ?? 0;
+    };
+    const [newer, sameTime] = await Promise.all([
+      before((q) => q.gt("created_at", row.created_at)),
+      before((q) => q.eq("created_at", row.created_at).gt("id", row.id)),
+    ]);
+    return newer + sameTime;
+  };
+
+  const tabs = PRODUCT_TABS.map((t) => t.value);
+  const [countList, index] = await Promise.all([Promise.all(tabs.map(countOf)), focusIndex()]);
+  const counts = Object.fromEntries(tabs.map((t, i) => [t, countList[i]])) as Record<ProductTab, number>;
+  const total = counts[tab];
+
+  const lastPage = pageCount(total, params.perPage);
+  const page = index !== null ? pageOf(index, params.perPage) : Math.min(params.page, lastPage);
+  const focusMissing = Boolean(params.focus) && index === null;
+
+  const noGaps = { featureWindow: false, moderationReason: false };
+  if (nothing || total === 0) return { rows: [], total, page: 1, counts, capped, focusMissing, degraded: noGaps };
+
+  // select("*") reads whichever of the 0016/0021 columns this database has;
+  // only the fields below leave this module.
+  const { from, to } = pageRange(page, params.perPage);
+  const res = await scoped(db.from("im_products").select("*"), tab)
+    .order("created_at", { ascending: false })
+    .order("id", { ascending: false })
+    .range(from, to);
+  if (res.error) fail("products", res.error);
+  const list = (res.data ?? []) as unknown as ProductRead[];
+  // select("*") returns the columns this database has: a missing one is a
+  // migration it lacks (0021 the feature window, 0016 the reason).
+  const first = (list[0] ?? {}) as unknown as Record<string, unknown>;
+  const degraded = list.length
+    ? { featureWindow: !("featured_position" in first), moderationReason: !("moderation_reason" in first) }
+    : noGaps;
+
+  const [photos, shops, categories] = await Promise.all([
+    firstPhotos(db, list.map((p) => p.id)),
+    shopNames(db, list.map((p) => p.seller_id)),
+    getAllCategories(),
+  ]);
+  const label = new Map(categories.map((c) => [c.id, c.label]));
+
+  const rows: AdminProductRow[] = list.map((p) => {
+    const text = (p.description ?? "").trim();
+    return {
+      id: p.id,
+      title: p.title,
+      image: p.image,
+      base_price: Number(p.base_price) || 0,
+      status: p.status,
+      is_featured: Boolean(p.is_featured),
+      created_at: p.created_at,
+      excerpt: text.length > EXCERPT ? `${text.slice(0, EXCERPT)}…` : text,
+      images: photos[p.id]?.urls ?? [],
+      photoCount: photos[p.id]?.count ?? 0,
+      sellerName: shops[p.seller_id] || `Seller #${p.seller_id}`,
+      categoryLabel: (p.category && label.get(p.category)) || p.category || "Uncategorized",
+      moderationReason: p.moderation_reason ?? null,
+      featured_position: p.featured_position ?? null,
+      featured_from: p.featured_from ?? null,
+      featured_until: p.featured_until ?? null,
+    };
+  });
+
+  return { rows, total, page, counts, capped, focusMissing, degraded };
 }

@@ -6,6 +6,8 @@
  * data and types only: nothing here reads the database.
  */
 
+import type { Product } from "@/lib/types";
+
 // ---------------------------------------------------------------------------
 // Orders (P2-07)
 // ---------------------------------------------------------------------------
@@ -52,4 +54,65 @@ export interface AdminOrderList {
   focusMissing: boolean;
   /** A migration this database lacks hides a column or a view (0014 refunds and reasons, 0015 shops). */
   degraded: boolean;
+}
+
+// ---------------------------------------------------------------------------
+// Products (P2-08)
+// ---------------------------------------------------------------------------
+
+export const PRODUCT_TABS = [
+  { value: "pending", label: "Pending" },
+  { value: "approved", label: "Approved" },
+  { value: "flagged", label: "Flagged" },
+  { value: "all", label: "All" },
+] as const;
+export type ProductTab = (typeof PRODUCT_TABS)[number]["value"];
+
+/**
+ * ?status=, the review queue by default (the sidebar badge and the to-do
+ * tile link there). An archived listing (0016) has no tab of its own and
+ * shows under All, so a search result that links to one lands there.
+ */
+export function productTab(raw: string | undefined): ProductTab {
+  if (raw === "archived") return "all";
+  return PRODUCT_TABS.find((t) => t.value === raw)?.value ?? "pending";
+}
+
+/** One listing as the review queue shows it: no seller contact details, no full description. */
+export type AdminProductRow = Pick<Product, "id" | "title" | "image" | "base_price" | "status" | "is_featured" | "created_at"> & {
+  /** The description's first 90 characters, with "…" when there is more. */
+  excerpt: string;
+  /** Up to three photos, in their order. */
+  images: string[];
+  /** How many photos the listing has (images holds the first three). */
+  photoCount: number;
+  /** The shop's name, or the seller's own before they set one. */
+  sellerName: string;
+  categoryLabel: string;
+  /** Why it was sent back (0016); null when it was not, or before 0016. */
+  moderationReason: string | null;
+  /** The homepage feature's place and window (0021); null before it. */
+  featured_position: number | null;
+  featured_from: string | null;
+  featured_until: string | null;
+};
+
+export interface AdminProductList {
+  rows: AdminProductRow[];
+  /** Listings in the current tab with the search applied. */
+  total: number;
+  /** The page shown: the one asked for, clamped to the last, or the one holding ?focus=. */
+  page: number;
+  /** Each tab's count with the search applied. */
+  counts: Record<ProductTab, number>;
+  /** A title or name search matched more than are searched; the page says to narrow it. */
+  capped: boolean;
+  /** ?focus= named a listing that is not in this tab and search. */
+  focusMissing: boolean;
+  /**
+   * This database lacks 0021 (the feature's place and window) or 0016 (the
+   * reason a listing was sent back): the page says which update it needs,
+   * since a feature saved now keeps no window.
+   */
+  degraded: { featureWindow: boolean; moderationReason: boolean };
 }

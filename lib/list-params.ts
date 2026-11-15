@@ -167,3 +167,15 @@ export function listHref(
   const s = query.toString();
   return s ? `${path}?${s}` : path;
 }
+
+/**
+ * The second sentence of a list's "#<id> is not in this list" note, the way
+ * to the missing record: " Try the All tab.", " Try clearing the search.",
+ * both, or "" when the list is already the widest tab with no search.
+ */
+export function missingHint(otherTab: boolean, searched: boolean, widest: string): string {
+  if (otherTab && searched) return ` Try the ${widest} tab or clear the search.`;
+  if (otherTab) return ` Try the ${widest} tab.`;
+  if (searched) return " Try clearing the search.";
+  return "";
+}

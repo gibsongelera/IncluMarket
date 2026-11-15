@@ -182,6 +182,10 @@
 .notice--success { background: var(--success-100); border-color: var(--success); }
 .notice--danger  { background: var(--danger-100);  border-color: var(--danger); }
 .notice > :last-child { margin-bottom: 0; }
+/* A short warning in a table cell or a card ("Starts 12 Dec", "Hidden until
+   approved"): the warning text colour (6.38:1 on white, checked on the grey
+   wells too) and weight, not .field-error, which reads as a form error. */
+.text-warning { color: var(--warning-text); font-weight: 600; }
 
 /* Numbers people read back or compare digit by digit (masked PWD IDs). */
 .mono { font-family: var(--font-mono); letter-spacing: .02em; }

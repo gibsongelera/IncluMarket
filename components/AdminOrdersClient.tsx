@@ -13,6 +13,7 @@ import { DeepLinkFocus } from "./DeepLinkFocus";
 import { Pill } from "./Pill";
 import { RowActions } from "./RowActions";
 import { TableWrap } from "./TableWrap";
+import { useRowFocus } from "./useRowFocus";
 
 type Ask = { kind: "accept" | "decline" | "cancel" | "refund"; order: AdminOrderRow };
 
@@ -30,10 +31,16 @@ export function AdminOrdersClient({ rows, empty }: { rows: AdminOrderRow[]; empt
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Where focus goes when an action takes the row off this view (a return
+  // settled on Returns, an order cancelled on In progress).
+  const focus = useRowFocus(rows);
+
   async function run(text: string) {
     if (!ask) return;
     setBusy(true);
     const id = ask.order.id;
+    // Before the await: the refreshed rows can land before it resolves.
+    focus.mark(id);
     const res =
       ask.kind === "accept"
         ? await adminSettleReturn(id, "returned", text)
@@ -43,7 +50,10 @@ export function AdminOrdersClient({ rows, empty }: { rows: AdminOrderRow[]; empt
             ? await adminCancelOrder(id, text)
             : await markRefundSent(id, text);
     setBusy(false);
-    if (!res.ok) return setError(res.error || "That did not work.");
+    if (!res.ok) {
+      focus.clear();
+      return setError(res.error || "That did not work.");
+    }
     setAsk(null);
     toast("Done. Buyer and seller have been told.", "success");
     router.refresh();
@@ -61,7 +71,9 @@ export function AdminOrdersClient({ rows, empty }: { rows: AdminOrderRow[]; empt
       <>
         <DeepLinkFocus />
         <div className="empty">
-          <p>{empty.text}</p>
+          <p ref={focus.emptyRef} tabIndex={-1}>
+            {empty.text}
+          </p>
           {empty.href && empty.action ? (
             <Link className="btn btn--outline" href={empty.href}>
               {empty.action}

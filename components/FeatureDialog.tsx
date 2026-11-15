@@ -5,6 +5,9 @@ import type { Product } from "@/lib/types";
 
 type Win = { position: number | null; from: string | null; until: string | null };
 
+/** The fields the dialog reads: a full Product fits, and so does an admin list row (AdminProductRow). */
+export type FeatureTarget = Pick<Product, "title" | "is_featured" | "featured_position" | "featured_from" | "featured_until">;
+
 /** "live", or why a featured listing is not on the homepage right now. */
 export function featureState(p: Pick<Product, "is_featured" | "featured_from" | "featured_until">): string {
   if (!p.is_featured) return "off";
@@ -32,7 +35,7 @@ export function FeatureDialog({
   onClose,
   onSave,
 }: {
-  product: Product | null;
+  product: FeatureTarget | null;
   onClose: () => void;
   /** Returns an error message, or null on success. */
   onSave: (featured: boolean, win: Win) => Promise<string | null>;

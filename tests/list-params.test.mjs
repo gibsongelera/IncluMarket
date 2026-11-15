@@ -7,6 +7,7 @@ import {
   SEARCH_MAX,
   cleanSearch,
   listHref,
+  missingHint,
   pageCount,
   pageItems,
   pageOf,
@@ -138,4 +139,11 @@ test("listHref keeps filters and search, drops defaults, and a new search starts
   assert.equal(listHref("/admin/orders", params, { view: null }), "/admin/orders?q=maria&per=50");
   assert.equal(listHref("/admin/orders", parseListParams({})), "/admin/orders");
   assert.equal(listHref("/admin/users", parseListParams({ q: "a&b=c d" })), "/admin/users?q=a%26b%3Dc+d");
+});
+
+test("missingHint points to the widest tab, the cleared search, both, or nothing", () => {
+  assert.equal(missingHint(true, false, "All"), " Try the All tab.");
+  assert.equal(missingHint(true, true, "Recent"), " Try the Recent tab or clear the search.");
+  assert.equal(missingHint(false, true, "All"), " Try clearing the search.");
+  assert.equal(missingHint(false, false, "All"), "");
 });
