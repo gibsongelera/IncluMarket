@@ -6,7 +6,7 @@
  * data and types only: nothing here reads the database.
  */
 
-import type { Product } from "@/lib/types";
+import type { Product, Profile } from "@/lib/types";
 
 // ---------------------------------------------------------------------------
 // Orders (P2-07)
@@ -116,3 +116,81 @@ export interface AdminProductList {
    */
   degraded: { featureWindow: boolean; moderationReason: boolean };
 }
+
+// ---------------------------------------------------------------------------
+// Users (P2-09)
+// ---------------------------------------------------------------------------
+
+/** How much an account has done: what the users list shows and what decides Delete or Anonymise. */
+export interface UserFootprint {
+  products: number;
+  orders: number;
+  reviews: number;
+  tickets: number;
+  consents: number;
+}
+
+export const USER_ROLES = [
+  { value: "all", label: "Everyone" },
+  { value: "buyer", label: "Buyers" },
+  { value: "seller", label: "Sellers" },
+  { value: "admin", label: "Admins" },
+] as const;
+export type UserRoleTab = (typeof USER_ROLES)[number]["value"];
+
+export const USER_STATUSES = [
+  { value: "any", label: "Any status" },
+  { value: "active", label: "Active" },
+  { value: "suspended", label: "Suspended" },
+] as const;
+export type UserStatusTab = (typeof USER_STATUSES)[number]["value"];
+
+/** ?role=; everyone by default (the Overview's "Active sellers" links to ?role=seller). */
+export function userRole(raw: string | undefined): UserRoleTab {
+  return USER_ROLES.find((r) => r.value === raw)?.value ?? "all";
+}
+/** ?status=; any by default. */
+export function userStatus(raw: string | undefined): UserStatusTab {
+  return USER_STATUSES.find((s) => s.value === raw)?.value ?? "any";
+}
+
+/**
+ * One account as the admin list shows it. The email and disability fields
+ * are here because the admin edits them (the edit dialog); phone and the
+ * sign-in id are not.
+ */
+export type AdminUserRow = Pick<
+  Profile,
+  | "id"
+  | "name"
+  | "email"
+  | "role"
+  | "disability_type"
+  | "assistive_needs"
+  | "is_featured_seller"
+  | "seller_story"
+  | "account_status"
+  | "created_at"
+  | "updated_at"
+> & {
+  footprint: UserFootprint;
+  /** Active PWD verification; null before verification exists (0017). */
+  verified: boolean | null;
+};
+
+export interface AdminUserList {
+  rows: AdminUserRow[];
+  /** Accounts with this role, status and search. */
+  total: number;
+  /** The page shown: the one asked for, clamped to the last, or the one holding ?focus=. */
+  page: number;
+  /** Each role's count with the status and search applied. */
+  roleCounts: Record<UserRoleTab, number>;
+  /** Each status's count with the role and search applied. */
+  statusCounts: Record<UserStatusTab, number>;
+  /** The search matched more accounts than are searched; the page says to narrow it. */
+  capped: boolean;
+  /** ?focus= named an account that is not in this role, status and search. */
+  focusMissing: boolean;
+}
+

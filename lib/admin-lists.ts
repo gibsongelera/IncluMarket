@@ -3,16 +3,24 @@ import { requireRole } from "@/lib/session";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { DataUnavailableError, getAllCategories, getDisplayNames } from "@/lib/data";
 import { isMissingObject } from "@/lib/db-errors";
+import { verifiedAmongIfAvailable } from "@/lib/pwd/data";
 import { pageCount, pageOf, pageRange, searchId, searchPattern, type ListParams } from "@/lib/list-params";
 import {
   ORDER_VIEWS,
   PRODUCT_TABS,
+  USER_ROLES,
+  USER_STATUSES,
   type AdminOrderList,
   type AdminOrderRow,
   type AdminProductList,
   type AdminProductRow,
   type OrderView,
   type ProductTab,
+  type AdminUserList,
+  type AdminUserRow,
+  type UserFootprint,
+  type UserRoleTab,
+  type UserStatusTab,
 } from "@/lib/admin-list-types";
 import type { Product } from "@/lib/types";
 
@@ -94,8 +102,20 @@ async function shopNames(db: Db, ids: readonly number[]): Promise<Record<number,
 
 // The tabs and row shapes live in lib/admin-list-types.ts, so the list
 // components can use them without importing this module.
-export { ORDER_VIEWS, PRODUCT_TABS, orderView, productTab } from "@/lib/admin-list-types";
-export type { AdminOrderList, AdminOrderRow, AdminProductList, AdminProductRow, OrderView, ProductTab } from "@/lib/admin-list-types";
+export { ORDER_VIEWS, PRODUCT_TABS, USER_ROLES, USER_STATUSES, orderView, productTab, userRole, userStatus } from "@/lib/admin-list-types";
+export type {
+  AdminOrderList,
+  AdminOrderRow,
+  AdminProductList,
+  AdminProductRow,
+  AdminUserList,
+  AdminUserRow,
+  OrderView,
+  ProductTab,
+  UserFootprint,
+  UserRoleTab,
+  UserStatusTab,
+} from "@/lib/admin-list-types";
 
 const ORDER_COLUMNS = "id, created_at, buyer_id, seller_id, total_amount, payment_provider, payment_status, order_status, refund_due, return_reason, cancel_reason";
 const ORDER_COLUMNS_BASE = "id, created_at, buyer_id, total_amount, payment_provider, payment_status, order_status";
@@ -406,4 +426,181 @@ export async function getAdminProductList(params: ListParams, tab: ProductTab): 
   });
 
   return { rows, total, page, counts, capped, focusMissing, degraded };
+}
+
+// ---------------------------------------------------------------------------
+// Users (P2-09)
+// ---------------------------------------------------------------------------
+
+/** Profile ids whose name, email or shop name (0019) matches; `capped` when more matched than are kept. */
+async function accountsMatching(db: Db, pattern: string): Promise<{ ids: number[]; capped: boolean }> {
+  const by = async (col: "name" | "email" | "shop_name") =>
+    db.from("im_profiles").select("id").ilike(col, pattern).order("id", { ascending: false }).limit(NAME_MATCHES + 1);
+  const [name, email, shop] = await Promise.all([by("name"), by("email"), by("shop_name")]);
+  if (name.error) fail("account search", name.error);
+  if (email.error) fail("account search", email.error);
+  if (shop.error && !isMissingObject(shop.error)) fail("account search", shop.error);
+  const pick = (r: { data: unknown }) => ((r.data ?? []) as { id: number }[]).map((x) => x.id);
+  const ids = [...new Set([...pick(name), ...pick(email), ...(shop.error ? [] : pick(shop))])].filter(isId);
+  return { ids: ids.slice(0, NAME_MATCHES), capped: ids.length > NAME_MATCHES };
+}
+
+/**
+ * How much each of these accounts has done: products listed, orders placed,
+ * reviews written, tickets and consent records. One id column per table,
+ * for these accounts only, read in 1,000-row pages so a busy account is
+ * counted in full (PostgREST returns at most 1,000 rows a request).
+ * A table this database lacks counts 0.
+ */
+async function footprintsFor(db: Db, ids: readonly number[]): Promise<Map<number, UserFootprint>> {
+  const out = new Map<number, UserFootprint>();
+  for (const id of ids) out.set(id, { products: 0, orders: 0, reviews: 0, tickets: 0, consents: 0 });
+  if (!ids.length) return out;
+  const PAGE = 1000;
+  const MAX_PAGES = 50;
+  const tally = async (table: string, col: string, key: keyof UserFootprint) => {
+    for (let n = 0; n < MAX_PAGES; n++) {
+      const res = await db
+        .from(table)
+        .select(col)
+        .in(col, [...ids])
+        .order("id")
+        .range(n * PAGE, n * PAGE + PAGE - 1);
+      if (res.error) {
+        if (isMissingObject(res.error)) return;
+        fail(`${key} counts`, res.error);
+      }
+      const page = (res.data ?? []) as unknown as Record<string, number | null>[];
+      for (const r of page) {
+        const f = r[col] != null ? out.get(r[col] as number) : undefined;
+        if (f) f[key]++;
+      }
+      if (page.length < PAGE) return;
+    }
+    console.error(`[admin-lists] ${key} counts stopped at ${MAX_PAGES * PAGE} rows`);
+  };
+  await Promise.all([
+    tally("im_products", "seller_id", "products"),
+    tally("im_orders", "buyer_id", "orders"),
+    tally("im_product_reviews", "buyer_id", "reviews"),
+    tally("im_support_tickets", "user_id", "tickets"),
+    tally("im_consent_logs", "user_id", "consents"),
+  ]);
+  return out;
+}
+
+const USER_COLUMNS =
+  "id, name, email, role, disability_type, assistive_needs, is_featured_seller, seller_story, account_status, created_at, updated_at";
+
+/**
+ * Admin → Users, one page: accounts by name (then id), filtered by role and
+ * status, searched by account number, name, email or shop name.
+ */
+export async function getAdminUserList(params: ListParams, role: UserRoleTab, status: UserStatusTab): Promise<AdminUserList> {
+  await requireRole(["admin"]);
+  const db = createAdminClient();
+
+  const id = params.q ? searchId(params.q) : null;
+  const pattern = params.q ? searchPattern(params.q) : null;
+  const matched = pattern ? await accountsMatching(db, pattern) : { ids: [] as number[], capped: false };
+  const searchIds = params.q ? [...new Set([...(id ? [id] : []), ...matched.ids])] : null;
+  const nothing = searchIds !== null && searchIds.length === 0;
+  const capped = matched.capped;
+
+  const scoped = (q: Sel, r: UserRoleTab, s: UserStatusTab): Sel => {
+    let out = q;
+    if (r !== "all") out = out.eq("role", r);
+    if (s !== "any") out = out.eq("account_status", s);
+    if (searchIds) out = out.in("id", searchIds);
+    return out;
+  };
+  // A count-only query typed as Sel, so scoped() can take it. The builder's
+  // inferred type is too deep for TypeScript to compare (TS2589), hence the
+  // cast through unknown; the query itself is the same as a typed one.
+  const head = (): Sel => db.from("im_profiles").select("id", { count: "exact", head: true }) as unknown as Sel;
+  // The current role and status appear in both tab rows: counted once.
+  const counted = new Map<string, Promise<number>>();
+  const countOf = (r: UserRoleTab, s: UserStatusTab): Promise<number> => {
+    const key = `${r}|${s}`;
+    let p = counted.get(key);
+    if (!p) {
+      p = (async () => {
+        if (nothing) return 0;
+        const { count, error } = await scoped(head(), r, s);
+        if (error) fail("account counts", error);
+        return count ?? 0;
+      })();
+      counted.set(key, p);
+    }
+    return p;
+  };
+
+  // Where ?focus= sits: the accounts before it by name, and those with the
+  // same name and a lower id (the list's tie-break), counted.
+  const focusIndex = async (): Promise<number | null> => {
+    if (!params.focus || nothing) return null;
+    const hit = await scoped(db.from("im_profiles").select("id, name"), role, status).eq("id", params.focus).maybeSingle();
+    if (hit.error) fail("account", hit.error);
+    const row = hit.data as { id: number; name: string } | null;
+    if (!row) return null;
+    const before = async (f: (q: Sel) => Sel) => {
+      const { count, error } = await f(scoped(head(), role, status));
+      if (error) fail("account position", error);
+      return count ?? 0;
+    };
+    const [earlier, sameName] = await Promise.all([
+      before((q) => q.lt("name", row.name)),
+      before((q) => q.eq("name", row.name).lt("id", row.id)),
+    ]);
+    return earlier + sameName;
+  };
+
+  const roles = USER_ROLES.map((r) => r.value);
+  const statuses = USER_STATUSES.map((s) => s.value);
+  const [roleList, statusList, index] = await Promise.all([
+    Promise.all(roles.map((r) => countOf(r, status))),
+    Promise.all(statuses.map((s) => countOf(role, s))),
+    focusIndex(),
+  ]);
+  const roleCounts = Object.fromEntries(roles.map((r, i) => [r, roleList[i]])) as Record<UserRoleTab, number>;
+  const statusCounts = Object.fromEntries(statuses.map((s, i) => [s, statusList[i]])) as Record<UserStatusTab, number>;
+  const total = roleCounts[role];
+
+  const lastPage = pageCount(total, params.perPage);
+  const page = index !== null ? pageOf(index, params.perPage) : Math.min(params.page, lastPage);
+  const focusMissing = Boolean(params.focus) && index === null;
+
+  if (nothing || total === 0) return { rows: [], total, page: 1, roleCounts, statusCounts, capped, focusMissing };
+
+  const { from, to } = pageRange(page, params.perPage);
+  const res = await scoped(db.from("im_profiles").select(USER_COLUMNS), role, status)
+    .order("name", { ascending: true })
+    .order("id", { ascending: true })
+    .range(from, to);
+  if (res.error) fail("accounts", res.error);
+  const list = (res.data ?? []) as unknown as Omit<AdminUserRow, "footprint" | "verified">[];
+
+  const ids = list.map((u) => u.id);
+  const [footprints, verified] = await Promise.all([footprintsFor(db, ids), verifiedAmongIfAvailable(ids)]);
+  const empty: UserFootprint = { products: 0, orders: 0, reviews: 0, tickets: 0, consents: 0 };
+
+  // Field by field, so a column added to im_profiles later does not reach
+  // the browser by itself.
+  const rows: AdminUserRow[] = list.map((u) => ({
+    id: u.id,
+    name: u.name,
+    email: u.email,
+    role: u.role,
+    disability_type: u.disability_type,
+    assistive_needs: u.assistive_needs,
+    is_featured_seller: Boolean(u.is_featured_seller),
+    seller_story: u.seller_story,
+    account_status: u.account_status,
+    created_at: u.created_at,
+    updated_at: u.updated_at,
+    footprint: footprints.get(u.id) ?? empty,
+    verified: verified === null ? null : verified.has(u.id),
+  }));
+
+  return { rows, total, page, roleCounts, statusCounts, capped, focusMissing };
 }

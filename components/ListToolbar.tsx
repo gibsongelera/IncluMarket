@@ -29,6 +29,11 @@ export interface ListToolbarProps {
   tabParam?: KeptParam;
   /** The tabs' nav name; "Show orders" for noun ["order", "orders"]. */
   tabsLabel?: string;
+  /**
+   * A second filter's tabs under the first, on another parameter (the users
+   * list: role above, account status here). Each row keeps the other's value.
+   */
+  moreTabs?: { tabs: readonly ListTab[]; param: KeptParam; label: string };
   /** The search box: its visible label ("Search orders") and an optional hint inside the field. */
   search?: { label: string; placeholder?: string };
   /** A link to the matching report in /admin/reports, where one exists (03 §6). */
@@ -64,6 +69,7 @@ export function ListToolbar({
   tabs,
   tabParam = "status",
   tabsLabel,
+  moreTabs,
   search,
   exportHref,
   exportLabel = "Export",
@@ -71,36 +77,16 @@ export function ListToolbar({
   noun,
 }: ListToolbarProps) {
   const [one, many] = noun;
-  const inUrl = params.filters[tabParam] ?? null;
-  const currentTab = tabs?.find((t) => t.value === inUrl) ?? tabs?.find((t) => t.value === null) ?? null;
   // One toolbar per page, so the path gives a unique, stable id.
   const searchId = `list-search${path.replace(/[^a-z0-9]+/gi, "-")}`;
 
   return (
     <div className="list-toolbar">
       {tabs?.length ? (
-        <nav className="tabs" aria-label={tabsLabel ?? `Show ${many}`}>
-          {tabs.map((t) => {
-            const current = t === currentTab;
-            return (
-              <Link
-                key={t.value ?? ""}
-                href={listHref(path, params, { [tabParam]: t.value })}
-                className={`tab${current ? " tab--active" : ""}`}
-                aria-current={current ? "page" : undefined}
-              >
-                {t.label}
-                {t.count !== null ? (
-                  <>
-                    {/* The space keeps "Pending 12" apart in the link's
-                        name; the flex gap spaces it on screen. */}{" "}
-                    <span className="tab__count">{num(t.count)}</span>
-                  </>
-                ) : null}
-              </Link>
-            );
-          })}
-        </nav>
+        <TabNav path={path} params={params} tabs={tabs} param={tabParam} label={tabsLabel ?? `Show ${many}`} />
+      ) : null}
+      {moreTabs?.tabs.length ? (
+        <TabNav path={path} params={params} tabs={moreTabs.tabs} param={moreTabs.param} label={moreTabs.label} />
       ) : null}
 
       {search || exportHref ? (
@@ -168,4 +154,50 @@ function countWords(total: number, one: string, many: string, q: string): string
   const rows = n === 0 ? `No ${many}` : `${num(n)} ${n === 1 ? one : many}`;
   if (!q) return rows;
   return `${rows} ${n === 1 ? "matches" : "match"} “${q}”`;
+}
+
+/**
+ * One row of filter tabs. The current tab is the one whose value is in the
+ * URL, else the null-valued one (a list ignores a value it does not know, so
+ * it shows them all).
+ */
+function TabNav({
+  path,
+  params,
+  tabs,
+  param,
+  label,
+}: {
+  path: string;
+  params: ListParams;
+  tabs: readonly ListTab[];
+  param: KeptParam;
+  label: string;
+}) {
+  const inUrl = params.filters[param] ?? null;
+  const currentTab = tabs.find((t) => t.value === inUrl) ?? tabs.find((t) => t.value === null) ?? null;
+  return (
+    <nav className="tabs" aria-label={label}>
+      {tabs.map((t) => {
+        const current = t === currentTab;
+        return (
+          <Link
+            key={t.value ?? ""}
+            href={listHref(path, params, { [param]: t.value })}
+            className={`tab${current ? " tab--active" : ""}`}
+            aria-current={current ? "page" : undefined}
+          >
+            {t.label}
+            {t.count !== null ? (
+              <>
+                {/* The space keeps "Pending 12" apart in the link's
+                    name; the flex gap spaces it on screen. */}{" "}
+                <span className="tab__count">{num(t.count)}</span>
+              </>
+            ) : null}
+          </Link>
+        );
+      })}
+    </nav>
+  );
 }

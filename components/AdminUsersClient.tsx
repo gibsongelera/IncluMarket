@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRef, useState, type ReactNode } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { formatDate, maskEmail } from "@/lib/format";
 import { toast } from "@/lib/toast";
 import {
@@ -17,15 +18,19 @@ import {
 import { Icon } from "./Icon";
 import { Pill } from "./Pill";
 import { ConfirmDialog } from "./ConfirmDialog";
-import type { Profile, Role } from "@/lib/types";
+import type { AdminUserRow } from "@/lib/admin-list-types";
+import type { Role } from "@/lib/types";
 import { TableWrap } from "./TableWrap";
 import { DeepLinkFocus } from "./DeepLinkFocus";
 
-type UserRow = Profile & {
-  footprint: { products: number; orders: number; reviews: number; tickets: number; consents: number };
-  /** Active PWD verification; null before verification exists. */
-  verified: boolean | null;
-};
+type UserRow = AdminUserRow;
+
+/** An empty list's sentence, and a link out of it when there is one. */
+export interface UsersEmpty {
+  text: string;
+  href?: string;
+  action?: string;
+}
 
 type Pending =
   | { kind: "suspend" | "restore" | "delete" | "anonymize"; user: UserRow }
@@ -39,22 +44,24 @@ function hasHistory(u: UserRow): boolean {
   return u.footprint.orders > 0 || u.footprint.products > 0;
 }
 
+/**
+ * Admin → Users: one page of accounts (the page filters, searches and pages
+ * on the server; the toolbar and notes come in as children, under the head),
+ * with the governance actions and their dialogs.
+ */
 export function AdminUsersClient({
   users,
   currentAdminId,
+  empty,
+  children,
 }: {
   users: UserRow[];
   currentAdminId: number;
+  empty: UsersEmpty;
+  /** The list toolbar and its notes, rendered on the server. */
+  children?: ReactNode;
 }) {
   const router = useRouter();
-  // Dashboard search links here as /admin/users?q=<name>&focus=<id>, so the
-  // list arrives already filtered to what the user picked.
-  const searchParams = useSearchParams();
-  const initialQ = searchParams.get("q") ?? "";
-
-  const [role, setRole] = useState(searchParams.get("role") ?? "");
-  const [status, setStatus] = useState("");
-  const [q, setQ] = useState(initialQ);
 
   const modalRef = useRef<HTMLDialogElement>(null);
   const detailsRef = useRef<HTMLDialogElement>(null);
@@ -73,18 +80,6 @@ export function AdminUsersClient({
   const [fDisability, setFDisability] = useState("");
   const [fNeeds, setFNeeds] = useState("");
   const [fConsent, setFConsent] = useState(false);
-
-  const filtered = useMemo(() => {
-    const query = q.trim().toLowerCase();
-    return users
-      .filter((u) => {
-        if (role && u.role !== role) return false;
-        if (status && u.account_status !== status) return false;
-        if (query && (u.name + " " + u.email).toLowerCase().indexOf(query) < 0) return false;
-        return true;
-      })
-      .sort((a, b) => a.name.localeCompare(b.name));
-  }, [users, role, status, q]);
 
   function openCreate() {
     setEditing(null);
@@ -278,7 +273,10 @@ export function AdminUsersClient({
   return (
     <>
       <div className="page-head">
-        <h1>User governance</h1>
+        <div className="page-head__text">
+          <h1>Users</h1>
+          <p className="muted">Every account: roles, access, and the personal data we hold (RA 10173)</p>
+        </div>
         <div className="page-head__actions">
           <button type="button" className="btn btn--primary" id="add-user" onClick={openCreate}>
             <Icon name="plus" size={18} /> Invite a user
@@ -286,38 +284,21 @@ export function AdminUsersClient({
         </div>
       </div>
 
-      <div className="filter-bar">
-        <label htmlFor="usr-role">Role</label>
-        <select id="usr-role" value={role} onChange={(e) => setRole(e.target.value)}>
-          <option value="">All roles</option>
-          <option value="buyer">Buyer</option>
-          <option value="seller">Seller</option>
-          <option value="admin">Admin</option>
-        </select>
-        <label htmlFor="usr-status">Status</label>
-        <select id="usr-status" value={status} onChange={(e) => setStatus(e.target.value)}>
-          <option value="">Any status</option>
-          <option value="active">Active</option>
-          <option value="suspended">Suspended</option>
-        </select>
-        <label htmlFor="usr-search" className="sr-only">
-          Search
-        </label>
-        <input
-          id="usr-search"
-          type="search"
-          placeholder="Search by name or email"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-        />
-        <span className="filter-bar__count muted small" aria-live="polite">
-          Showing {filtered.length} of {users.length} user{s(users.length)}
-        </span>
-      </div>
+      {children}
 
       <DeepLinkFocus />
+      {users.length === 0 ? (
+        <div className="empty">
+          <p tabIndex={-1}>{empty.text}</p>
+          {empty.href && empty.action ? (
+            <Link className="btn btn--outline" href={empty.href}>
+              {empty.action}
+            </Link>
+          ) : null}
+        </div>
+      ) : (
       <TableWrap label="Users">
-        <table className="data-table data-table--cards" aria-label="Registered users">
+        <table className="data-table data-table--cards" aria-label="Accounts by name">
           <thead>
             <tr>
               <th scope="col">Name</th>
@@ -330,7 +311,7 @@ export function AdminUsersClient({
             </tr>
           </thead>
           <tbody id="user-rows">
-            {filtered.map((u) => {
+            {users.map((u) => {
               const isSelf = u.id === currentAdminId;
               const suspended = u.account_status === "suspended";
               return (
@@ -412,7 +393,7 @@ export function AdminUsersClient({
           </tbody>
         </table>
       </TableWrap>
-      {filtered.length === 0 ? <p className="empty">No users match.</p> : null}
+      )}
 
       <ConfirmDialog
         open={Boolean(pending)}
