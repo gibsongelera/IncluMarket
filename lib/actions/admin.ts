@@ -517,13 +517,22 @@ export async function setAccountStatus(
   return { ok: true };
 }
 
-/** How much history an account carries — decides delete vs anonymize. */
-async function accountFootprint(db: ReturnType<typeof createAdminClient>, userId: number) {
+/**
+ * How much history an account carries — decides delete vs anonymize. Null
+ * when either count could not be read: a failed count is not a zero, and
+ * reading it as one would let a database error hard-delete an account
+ * whose orders the cascade then erases.
+ */
+async function accountFootprint(
+  db: ReturnType<typeof createAdminClient>,
+  userId: number
+): Promise<{ orders: number; products: number } | null> {
   const [orders, products] = await Promise.all([
     db.from("im_orders").select("id", { count: "exact", head: true }).eq("buyer_id", userId),
     db.from("im_products").select("id", { count: "exact", head: true }).eq("seller_id", userId),
   ]);
-  return { orders: orders.count ?? 0, products: products.count ?? 0 };
+  if (orders.error || products.error || orders.count === null || products.count === null) return null;
+  return { orders: orders.count, products: products.count };
 }
 
 /**
@@ -598,6 +607,12 @@ export async function deleteUser(userId: number): Promise<ActionResult> {
   // Never hard-delete an account that has orders or products: the cascade
   // would erase other people's records too. Suspend or anonymise instead.
   const footprint = await accountFootprint(db, userId);
+  if (!footprint) {
+    return {
+      ok: false,
+      error: "Could not check this account's orders and products, so it was not deleted. Try again.",
+    };
+  }
   if (footprint.orders > 0 || footprint.products > 0) {
     return {
       ok: false,
