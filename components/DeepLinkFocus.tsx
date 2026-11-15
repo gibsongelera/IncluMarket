@@ -55,16 +55,14 @@ export function DeepLinkFocus({
       el.scrollIntoView({ block: "center", behavior: scrollBehavior() });
       el.classList.add("is-deeplinked");
 
-      // Make the row focusable only for as long as it needs to be, so it does
-      // not become a permanent extra tab stop.
-      const hadTabIndex = el.hasAttribute("tabindex");
-      if (!hadTabIndex) el.setAttribute("tabindex", "-1");
+      // Make the row focusable, and leave it so. tabindex="-1" is never a tab
+      // stop, so it adds none; taking it off again is what lost focus:
+      // removing it from the focused row (on a timer, or on a blur, which a
+      // window switch fires too) drops focus to <body> (the Phase 2 check).
+      if (!el.hasAttribute("tabindex")) el.setAttribute("tabindex", "-1");
       el.focus({ preventScroll: true });
 
-      timer = setTimeout(() => {
-        el.classList.remove("is-deeplinked");
-        if (!hadTabIndex) el.removeAttribute("tabindex");
-      }, 2600);
+      timer = setTimeout(() => el.classList.remove("is-deeplinked"), 2600);
     };
 
     find();

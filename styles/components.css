@@ -832,8 +832,8 @@ fieldset {
   font-variant-numeric: tabular-nums;
 }
 /* A short code that stays whole, such as an order number ("#1024"): a
-   table cell breaks anywhere (responsive.css, so a long title cannot widen
-   the table), which also let a squeezed column cut "#10|24". */
+   phone card's cell breaks anywhere (responsive.css, so a long title
+   cannot widen the card), which also let a squeezed column cut "#10|24". */
 .data-table .cell-code { white-space: nowrap; }
 /* The row a link points at (Orders → Export lands on /admin/reports
    #report-orders): an inset ring and the tint, so it is not told by colour
@@ -841,9 +841,15 @@ fieldset {
    in-page link; .is-target where client-side navigation set the URL with
    pushState, which leaves :target alone (AdminReportsClient). After the
    stripes, so it beats them; inset, because .table-wrap clips an outline
-   drawn outside the row. */
+   drawn outside the row. The same marks the row ?focus= focused
+   (DeepLinkFocus leaves it tabindex="-1") for as long as it holds keyboard
+   focus: the base outline sits outside the row, where it is clipped, and
+   Safari draws none. :focus, not :focus-visible: focus set by script on a
+   page load does not match :focus-visible, and only that row has the
+   tabindex. */
 .data-table tbody tr:target,
-.data-table tbody tr.is-target {
+.data-table tbody tr.is-target,
+.data-table tbody tr[tabindex="-1"]:focus {
   outline: var(--focus-ring);
   outline-offset: -3px;
   background: var(--brand-blue-100);
@@ -851,7 +857,8 @@ fieldset {
 /* Safari does not draw an outline on a table row, which would leave only
    the tint: a bar on the row's first cell is drawn everywhere. */
 .data-table tbody tr:target > td:first-child,
-.data-table tbody tr.is-target > td:first-child {
+.data-table tbody tr.is-target > td:first-child,
+.data-table tbody tr[tabindex="-1"]:focus > td:first-child {
   box-shadow: inset 0.25rem 0 0 var(--brand-blue);
 }
 
@@ -901,6 +908,16 @@ fieldset {
   overflow-wrap: anywhere;
 }
 .cell-identity__name { font-weight: 600; }
+/* A link that is the cell's whole point (the overview's order numbers and
+   top products) is a target of its own, not a word in running text: at
+   least max(2.75rem, 44px) tall, like the row's buttons. The Phase 2 check
+   measured them at 24px. */
+.data-table td.cell-code > a,
+.data-table a.cell-identity__name {
+  display: inline-flex;
+  align-items: center;
+  min-height: max(2.75rem, 44px);
+}
 .cell-identity__meta {
   color: var(--text-muted);
   font-size: .875rem;

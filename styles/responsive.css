@@ -54,6 +54,34 @@ body {
   overflow-wrap: anywhere;
 }
 
+/* A table drawn as a table (768px up; below that .data-table--cards turns
+   rows into cards) inside TableWrap's sideways scroller. `anywhere` lets
+   the browser shrink a column to one letter, so at 24px text the admin
+   lists broke names, sums and the Actions button mid-word ("Buye/r",
+   "₱26/0.00") instead of scrolling. `break-word` wraps the same long
+   strings but keeps whole words as each column's minimum, so a table that
+   no longer fits scrolls inside .table-wrap (WCAG 1.4.10 allows that for
+   data tables). The role select (a compressible control with
+   max-width: 100%) and the Actions button keep their own width too. */
+@media (min-width: 768px) {
+  .table-wrap .data-table td,
+  .table-wrap .data-table .cell-identity__text,
+  .table-wrap .data-table .row-menu > .row-menu__panel > * {
+    overflow-wrap: break-word;
+  }
+  .table-wrap .data-table .row-menu > .row-menu__toggle {
+    white-space: nowrap;
+  }
+  /* The menu's minmax(0, 1fr) track (components.css) gives the Actions
+     column no minimum, so the toggle hung out of a narrower cell. */
+  .table-wrap .data-table .row-menu {
+    grid-template-columns: minmax(min-content, 1fr);
+  }
+  .table-wrap .data-table .role-sel {
+    min-width: max-content;
+  }
+}
+
 img,
 canvas,
 video,
@@ -152,8 +180,9 @@ body {
 /* A table in a dashboard card (the admin overview) fits its card instead:
    a span-8 card holds about 38rem of table at 1280px and under 45rem at
    the widest console, so 720px (45rem) scrolled it sideways at every
-   desktop width. Its text wraps (td breaks anywhere, section 1); its
-   figures stay whole. */
+   desktop width. Its text wraps between words (break-word from 768px up,
+   section 1), so at 20-24px text it can scroll inside its .table-wrap
+   rather than cut a name mid-word; its figures stay whole. */
 .chart-card .data-table {
   min-width: 0;
 }
@@ -240,6 +269,11 @@ body {
   }
   .data-table--cards td.cell-actions:empty {
     display: none;
+  }
+  /* An order number that is a 44px link (components.css) sits level with
+     its "Order" label, not below it. */
+  .data-table--cards td.cell-code {
+    align-items: center;
   }
   .data-table--cards td:has(+ td.cell-actions:empty) {
     border-bottom: 0;
