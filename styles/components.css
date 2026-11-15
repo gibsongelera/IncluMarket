@@ -831,6 +831,36 @@ fieldset {
    table cell breaks anywhere (responsive.css, so a long title cannot widen
    the table), which also let a squeezed column cut "#10|24". */
 .data-table .cell-code { white-space: nowrap; }
+/* The row a link points at (Orders → Export lands on /admin/reports
+   #report-orders): an inset ring and the tint, so it is not told by colour
+   alone, and in forced colours the ring stays. :target on a page load or an
+   in-page link; .is-target where client-side navigation set the URL with
+   pushState, which leaves :target alone (AdminReportsClient). After the
+   stripes, so it beats them; inset, because .table-wrap clips an outline
+   drawn outside the row. */
+.data-table tbody tr:target,
+.data-table tbody tr.is-target {
+  outline: var(--focus-ring);
+  outline-offset: -3px;
+  background: var(--brand-blue-100);
+}
+/* Safari does not draw an outline on a table row, which would leave only
+   the tint: a bar on the row's first cell is drawn everywhere. */
+.data-table tbody tr:target > td:first-child,
+.data-table tbody tr.is-target > td:first-child {
+  box-shadow: inset 0.25rem 0 0 var(--brand-blue);
+}
+
+/* A row's single action is a primary one (Refund sent…): 44px on every
+   screen, not only in the phone cards. */
+.data-table td.cell-actions > .btn {
+  min-height: max(2.75rem, 44px);
+  /* Its label stays on one line, so a crowded table (1280px with 24px
+     text) scrolls sideways in TableWrap instead of squeezing the button
+     to a column of letters. The phone cards wrap it again (responsive.css). */
+  white-space: nowrap;
+  overflow-wrap: normal;
+}
 
 /* Identity cell (01 §6.3): an initials avatar, the name and a muted second
    line. The block goes inside the <td> (a flex <td> is no longer a table
@@ -1691,6 +1721,19 @@ fieldset {
   font-variant-numeric: tabular-nums;
   overflow-wrap: anywhere;
 }
+/* Lines between the toolbar and its list that say what the list leaves out
+   (Admin → Orders): what a tab counts, a name search cut short, a ?focus=
+   row that is not in it, a view that needs a database update. Muted, at
+   reading width. */
+.list-notes {
+  display: grid;
+  gap: var(--space-1);
+  max-width: var(--measure);
+  margin: 0 0 var(--space-4);
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+.list-notes > p { margin: 0; }
 
 /* Pagination. Narrowest: "Showing …", then "Page 3 of 20" on its own line
    over Previous and Next at either end, then the page size; the numbered

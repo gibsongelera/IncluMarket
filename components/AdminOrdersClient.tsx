@@ -1,19 +1,30 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { adminCancelOrder, adminSettleReturn, markRefundSent } from "@/lib/actions/admin-orders";
-import type { AdminOrderLite } from "@/lib/data";
+import type { AdminOrderRow } from "@/lib/admin-list-types";
 import { buyerStatusText } from "@/lib/orders/state";
-import { formatDateTime, money } from "@/lib/format";
+import { formatDateTime, initials, money } from "@/lib/format";
 import { toast } from "@/lib/toast";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { DeepLinkFocus } from "./DeepLinkFocus";
+import { Pill } from "./Pill";
+import { RowActions } from "./RowActions";
 import { TableWrap } from "./TableWrap";
 
-type Ask = { kind: "accept" | "decline" | "cancel" | "refund"; order: AdminOrderLite };
+type Ask = { kind: "accept" | "decline" | "cancel" | "refund"; order: AdminOrderRow };
 
-/** Admin → Orders (C-40): disputes, cancellations, refunds. */
-export function AdminOrdersClient({ orders }: { orders: AdminOrderLite[] }) {
+/** An empty list's sentence, and a link out of it when there is one. */
+export interface OrdersEmpty {
+  text: string;
+  href?: string;
+  action?: string;
+}
+
+/** Admin → Orders (C-40): one page of orders, with disputes, cancellations and refunds in each row's Actions. */
+export function AdminOrdersClient({ rows, empty }: { rows: AdminOrderRow[]; empty: OrdersEmpty }) {
   const router = useRouter();
   const [ask, setAsk] = useState<Ask | null>(null);
   const [busy, setBusy] = useState(false);
@@ -38,12 +49,28 @@ export function AdminOrdersClient({ orders }: { orders: AdminOrderLite[] }) {
     router.refresh();
   }
 
-  function open(kind: Ask["kind"], order: AdminOrderLite) {
+  function open(kind: Ask["kind"], order: AdminOrderRow) {
     setError(null);
     setAsk({ kind, order });
   }
 
-  if (!orders.length) return <p className="empty">No orders here.</p>;
+  // DeepLinkFocus stays on an empty list too: it moves focus to the page's
+  // "not in this list" note when ?focus= names an order that is not here.
+  if (!rows.length) {
+    return (
+      <>
+        <DeepLinkFocus />
+        <div className="empty">
+          <p>{empty.text}</p>
+          {empty.href && empty.action ? (
+            <Link className="btn btn--outline" href={empty.href}>
+              {empty.action}
+            </Link>
+          ) : null}
+        </div>
+      </>
+    );
+  }
 
   const title =
     ask?.kind === "refund"
@@ -56,32 +83,46 @@ export function AdminOrdersClient({ orders }: { orders: AdminOrderLite[] }) {
 
   return (
     <>
+      <DeepLinkFocus />
       <TableWrap label="Orders">
-        <table className="data-table data-table--cards">
+        <table className="data-table data-table--cards" aria-label="Orders, newest first">
           <thead>
             <tr>
-              <th>Order</th>
-              <th>Buyer</th>
-              <th>Seller</th>
-              <th>Total</th>
-              <th>Payment</th>
-              <th>Status</th>
-              <th>Action</th>
+              <th scope="col">Order</th>
+              <th scope="col">Buyer</th>
+              <th scope="col">Shop</th>
+              <th scope="col" className="num">
+                Total
+              </th>
+              <th scope="col">Payment</th>
+              <th scope="col">Status</th>
+              <th scope="col">
+                <span className="sr-only">Actions</span>
+              </th>
             </tr>
           </thead>
           <tbody>
-            {orders.map((o) => (
+            {rows.map((o) => (
               <tr key={o.id} data-row-id={o.id}>
                 <td>
-                  <strong>#{o.id}</strong>
+                  <strong className="cell-code">#{o.id}</strong>
                   <div className="small muted">{formatDateTime(o.createdAt)}</div>
                 </td>
-                <td>{o.buyerName}</td>
-                <td>{o.sellerName ?? "Several"}</td>
-                <td className="price">{money(o.total)}</td>
                 <td>
-                  {o.paymentProvider === "paymongo" ? "Online" : "Cash on delivery"}
-                  <div className="small muted">{o.paymentStatus}</div>
+                  <div className="cell-identity">
+                    <span className="avatar" aria-hidden="true">
+                      {initials(o.buyerName)}
+                    </span>
+                    <span className="cell-identity__text">
+                      <span className="cell-identity__name">{o.buyerName}</span>
+                    </span>
+                  </div>
+                </td>
+                <td>{o.sellerName ?? "Several shops"}</td>
+                <td className="num">{money(o.total)}</td>
+                <td>
+                  <Pill status={o.paymentStatus} />
+                  <div className="small muted">{o.paymentProvider === "paymongo" ? "Online" : "Cash on delivery"}</div>
                 </td>
                 <td>
                   <span className={`pill pill--${o.status}`}>
@@ -95,27 +136,29 @@ export function AdminOrdersClient({ orders }: { orders: AdminOrderLite[] }) {
                   {o.returnReason ? <div className="small">Return reason: {o.returnReason}</div> : null}
                   {o.cancelReason ? <div className="small muted">Cancelled: {o.cancelReason}</div> : null}
                 </td>
-                <td>
-                  {o.refundDue ? (
-                    <button type="button" className="btn btn--primary btn--sm" onClick={() => open("refund", o)}>
-                      Refund sent…
-                    </button>
-                  ) : null}
-                  {o.status === "return_requested" ? (
-                    <>
-                      <button type="button" className="btn btn--outline btn--sm" onClick={() => open("accept", o)}>
-                        Accept return…
-                      </button>{" "}
-                      <button type="button" className="btn btn--ghost btn--sm" onClick={() => open("decline", o)}>
-                        Decline return…
+                <td className="cell-actions">
+                  <RowActions label={`order #${o.id}`}>
+                    {o.refundDue ? (
+                      <button type="button" className="btn btn--primary btn--sm" onClick={() => open("refund", o)}>
+                        Refund sent…
                       </button>
-                    </>
-                  ) : null}
-                  {o.status === "pending" || o.status === "processing" ? (
-                    <button type="button" className="btn btn--ghost btn--sm" onClick={() => open("cancel", o)}>
-                      Cancel order…
-                    </button>
-                  ) : null}
+                    ) : null}
+                    {o.status === "return_requested" ? (
+                      <>
+                        <button type="button" className="btn btn--outline btn--sm" onClick={() => open("accept", o)}>
+                          Accept return…
+                        </button>{" "}
+                        <button type="button" className="btn btn--ghost btn--sm" onClick={() => open("decline", o)}>
+                          Decline return…
+                        </button>
+                      </>
+                    ) : null}
+                    {o.status === "pending" || o.status === "processing" ? (
+                      <button type="button" className="btn btn--ghost btn--sm" onClick={() => open("cancel", o)}>
+                        Cancel order…
+                      </button>
+                    ) : null}
+                  </RowActions>
                 </td>
               </tr>
             ))}

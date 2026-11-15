@@ -85,6 +85,9 @@ const REQUIRED_PAIRS = [
   { fg: "--text-muted", bg: "--canvas-white", min: 4.5, what: "secondary text on a card" },
   { fg: "--text-muted", bg: "--color-body", min: 4.5, what: "secondary text on the page" },
   { fg: "--text-muted", bg: "--surface-gray", min: 4.5, what: "secondary text on a grey well" },
+  // A linked row (#report-orders) and an open row menu take the blue tint.
+  { fg: "--text-charcoal", bg: "--brand-blue-100", min: 4.5, what: "text in a linked, tinted table row" },
+  { fg: "--text-muted", bg: "--brand-blue-100", min: 4.5, what: "secondary text in a linked, tinted table row" },
   { fg: "--brand-blue", bg: "--canvas-white", min: 4.5, what: "a link on a card" },
   { fg: "--brand-blue", bg: "--color-body", min: 4.5, what: "a link on the page" },
   { fg: "--brand-brown", bg: "--canvas-white", min: 4.5, what: "a price on a card" },

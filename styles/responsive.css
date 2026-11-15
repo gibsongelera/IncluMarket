@@ -227,6 +227,24 @@ body {
   .data-table--cards td[data-label=""]::before {
     content: none;
   }
+  /* An Actions cell under a visually hidden header: TableWrap copies the
+     header's text, so its data-label is "Actions", which would sit beside
+     the Actions button. It is full width with no label, like an
+     empty-headed cell. A row with no action leaves the cell empty: it is
+     not drawn, and the cell above it closes the card. */
+  .data-table--cards td.cell-actions {
+    grid-template-columns: 1fr;
+  }
+  .data-table--cards td.cell-actions::before {
+    content: none;
+  }
+  .data-table--cards td.cell-actions:empty {
+    display: none;
+  }
+  .data-table--cards td:has(+ td.cell-actions:empty) {
+    border-bottom: 0;
+    padding-bottom: 0;
+  }
 
   .data-table--cards .row-actions {
     display: flex;
@@ -238,9 +256,16 @@ body {
     min-height: 44px;
   }
   /* A row with a single action: RowActions (P2-06) renders that one
-     button bare in the empty-headed action cell, with no menu around it. */
-  .data-table--cards td[data-label=""] > .btn {
+     button bare in the action cell, with no menu around it. */
+  .data-table--cards td[data-label=""] > .btn,
+  .data-table--cards td.cell-actions > .btn {
     min-height: max(2.75rem, 44px);
+  }
+  /* In a card the action has the card's full width: its label may wrap
+     again rather than run past a 320px screen at 24px text. */
+  .data-table--cards td.cell-actions > .btn {
+    white-space: normal;
+    overflow-wrap: anywhere;
   }
 
   /* In a dashboard card the rows are divided by a rule, not each drawn as

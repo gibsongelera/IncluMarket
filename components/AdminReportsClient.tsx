@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "@/lib/toast";
+import { scrollBehavior } from "@/lib/a11y/prefs";
 import { exportReport } from "@/lib/actions/admin";
 import type { ReportType } from "@/lib/types";
 import { Icon } from "./Icon";
@@ -71,6 +72,34 @@ function downloadBase64(base64: string, filename: string) {
 
 export function AdminReportsClient() {
   const [busy, setBusy] = useState<ReportType | null>(null);
+  // The row a link points at ("#report-orders", from Orders → Export). A
+  // page load or an in-page link makes it the :target. A link from another
+  // console page arrives by client-side navigation, which sets the URL with
+  // history.pushState and leaves :target unchanged, so the row is also
+  // marked from the hash itself.
+  const [target, setTarget] = useState<string | null>(null);
+
+  useEffect(() => {
+    const read = () => setTarget(window.location.hash.slice(1) || null);
+    read();
+    window.addEventListener("hashchange", read);
+    window.addEventListener("popstate", read);
+    return () => {
+      window.removeEventListener("hashchange", read);
+      window.removeEventListener("popstate", read);
+    };
+  }, []);
+
+  // A link to one report (Orders → "Orders report") lands on its Download
+  // button, not only its highlight: a highlight without focus looks focused
+  // to a sighted user while Tab still starts at the top of the page.
+  useEffect(() => {
+    if (!target) return;
+    const row = document.getElementById(target);
+    if (!row) return;
+    row.scrollIntoView({ block: "center", behavior: scrollBehavior() });
+    row.querySelector<HTMLElement>("button")?.focus({ preventScroll: true });
+  }, [target]);
 
   async function onExport(type: ReportType) {
     setBusy(type);
@@ -97,7 +126,11 @@ export function AdminReportsClient() {
         </thead>
         <tbody>
           {REPORTS.map((r) => (
-            <tr key={r.type}>
+            <tr
+              key={r.type}
+              id={`report-${r.type}`}
+              className={target === `report-${r.type}` ? "is-target" : undefined}
+            >
               <td>
                 <strong>{r.label}</strong>
               </td>

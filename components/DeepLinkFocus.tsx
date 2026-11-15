@@ -39,6 +39,15 @@ export function DeepLinkFocus({
       );
 
       if (!el) {
+        // The server already knows the row is not on this list (an admin
+        // list's "Order #… is not in this list" note): focus lands on that
+        // note rather than nowhere.
+        const missing = document.querySelector<HTMLElement>("[data-focus-missing]");
+        if (missing) {
+          missing.scrollIntoView({ block: "center", behavior: scrollBehavior() });
+          missing.focus({ preventScroll: true });
+          return;
+        }
         if (attempts++ < 10) timer = setTimeout(find, 100);
         return;
       }

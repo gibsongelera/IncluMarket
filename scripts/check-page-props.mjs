@@ -18,13 +18,13 @@
  *      id_number*. (Shipping fields an order's own seller needs are named
  *      shipping_* and are not matched.)
  *   3. No file outside app/admin/ may import an admin-only module
- *      (lib/admin-analytics.ts, lib/admin-overview.ts): they count and name
- *      across every user. Their readers check the admin role themselves,
+ *      (lib/admin-analytics.ts, lib/admin-overview.ts, lib/admin-lists.ts):
+ *      they count, list and name across every user. Their readers check the admin role themselves,
  *      but getAdminOverview()'s health counts start beside that check, and
  *      a component, layout or "use server" module that imports them is one
  *      careless call from showing them to anyone. This rule reads every
  *      .ts/.tsx file under app/ (outside app/admin/), components/ and lib/
- *      (except the two modules), and middleware.ts, not only pages.
+ *      (except those modules), and middleware.ts, not only pages.
  *
  * A line can opt out with a trailing `// props-ok: <reason>`, or in JSX a
  * block comment starting `props-ok: <reason>`. The reason is printed, so
@@ -55,8 +55,8 @@ const FIELD = "(?:email|phone|disability_type|assistive_needs|pwd_id_url|id_numb
 const SENSITIVE = new RegExp(`(?:\\b${FIELD}\\s*:|\\.\\s*${FIELD}\\b)`);
 const IMPORT_FROM_DATA = /import\s*\{([^}]*)\}\s*from\s*["']@\/lib\/data["']/g;
 // The alias or a relative path ("./admin-overview", "../../lib/admin-overview").
-const ADMIN_ONLY = /from\s*["'](?:@\/lib\/|\.\.?\/(?:[\w.-]+\/)*)(admin-analytics|admin-overview)["']/;
-const ADMIN_ONLY_SELF = new Set(["lib/admin-analytics.ts", "lib/admin-overview.ts"]);
+const ADMIN_ONLY = /from\s*["'](?:@\/lib\/|\.\.?\/(?:[\w.-]+\/)*)(admin-analytics|admin-overview|admin-lists)["']/;
+const ADMIN_ONLY_SELF = new Set(["lib/admin-analytics.ts", "lib/admin-overview.ts", "lib/admin-lists.ts"]);
 
 function walk(dir, out = []) {
   for (const name of readdirSync(dir)) {
