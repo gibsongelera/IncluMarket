@@ -80,7 +80,12 @@ async function imagesByProduct(productIds: number[]): Promise<Record<number, str
   return map;
 }
 
-async function hydrateImages(products: Product[]): Promise<Product[]> {
+/**
+ * Each product with its photos in `images`, in their order. Exported for
+ * the Seller Centre's products list (lib/seller-lists.ts), which hydrates
+ * only the page's rows, as getProductsBySeller does all of a seller's.
+ */
+export async function hydrateImages(products: Product[]): Promise<Product[]> {
   const map = await imagesByProduct(products.map((p) => p.id));
   return products.map((p) => ({ ...p, images: map[p.id] ?? [] }));
 }

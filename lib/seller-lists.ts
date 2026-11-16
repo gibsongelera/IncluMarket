@@ -7,6 +7,8 @@ import {
   getOrderItemsForOrders,
   getOrderStatusHistoryForOrders,
   getVariantsByIds,
+  getVariantsForProducts,
+  hydrateImages,
 } from "@/lib/data";
 import { isMissingObject } from "@/lib/db-errors";
 import { verificationLast4 } from "@/lib/pwd/data";
@@ -15,11 +17,14 @@ import { roundMoney } from "@/lib/pricing/core";
 import { pageCount, pageOf, pageRange, searchId, searchPattern, type ListParams } from "@/lib/list-params";
 import {
   SELLER_ORDER_TABS,
+  SELLER_PRODUCT_TABS,
   type SellerOrderList,
   type SellerOrderRow,
   type SellerOrderTab,
+  type SellerProductList,
+  type SellerProductTab,
 } from "@/lib/seller-list-types";
-import type { OrderItem, OrderStatusHistoryEntry } from "@/lib/types";
+import type { OrderItem, OrderStatusHistoryEntry, Product } from "@/lib/types";
 
 /**
  * Seller Centre lists, one page at a time (P3-05, 04 §6, the admin lists'
@@ -35,7 +40,8 @@ import type { OrderItem, OrderStatusHistoryEntry } from "@/lib/types";
  * their product is this seller's (im_products.seller_id, for the products
  * those lines name), so an order from before the one-order-per-seller split
  * never shows another seller's lines or total; options and PWD ID endings
- * for those lines only.
+ * for those lines only. Products by im_products.seller_id; their photos and
+ * options by the ids of the page's products.
  *
  * Search text never reaches a filter as text it could change, and no or()
  * is built: an order number ("12" or "#12") becomes .eq("id", n); anything
@@ -43,11 +49,17 @@ import type { OrderItem, OrderStatusHistoryEntry } from "@/lib/types";
  * escapes LIKE's wildcards) on the order's own buyer, joined through
  * im_orders.buyer_id, beside seller_id = me. So it finds only this seller's
  * buyers, however many people elsewhere share the name, and tells the
- * seller nothing about anyone else.
+ * seller nothing about anyone else. Products: words are an .ilike() on the
+ * title; a listing number is .in("id", …) of that number and the ids of
+ * this seller's titles containing it, both beside seller_id = me.
  *
  * A database without im_orders.seller_id (before 0015) gives a `degraded`
- * empty list, never another seller's orders. Any other failure throws
- * DataUnavailableError for the Seller Centre's error boundary.
+ * empty orders list, never another seller's orders. Before 0016 no product
+ * can be "archived" (im_products.status is text with a check, 0001), so the
+ * Unpublished tab simply counts 0; should status ever be an enum without
+ * that value, its count is null and the page names 0016 (statusUnknown).
+ * Any other failure throws DataUnavailableError for the Seller Centre's
+ * error boundary.
  */
 
 type Db = ReturnType<typeof createAdminClient>;
@@ -272,4 +284,169 @@ export async function getSellerOrderList(params: ListParams, tab: SellerOrderTab
   });
 
   return { rows, total, page, counts, focusMissing, degraded: false };
+}
+
+// ---------------------------------------------------------------------------
+// Products (P3-06)
+// ---------------------------------------------------------------------------
+
+/**
+ * How many of this seller's titles a number search adds beside the listing
+ * number itself before the list says it was cut short. Their ids go into the
+ * URL once (.in("id", …)): 200 ids of up to 7 digits, with each comma sent
+ * as %2C, come to about 2 KB.
+ */
+const TITLE_MATCHES = 200;
+
+/**
+ * "This database does not know that status": the column or value is missing
+ * (isMissingObject), or the status is an enum without "archived" (22P02,
+ * invalid input value). Only ever asked of the Unpublished tab's reads.
+ */
+const statusUnknown = (e: DbError) => isMissingObject(e) || e.code === "22P02";
+
+/**
+ * The fields the products list and the wizard use, one by one, so a column
+ * added to im_products later (or one only admins need: who moderated it,
+ * the search vector) does not reach the browser by itself. moderation_reason
+ * and adaptive_tags are absent before 0016.
+ */
+function productFields(p: Product): Product {
+  return {
+    id: p.id,
+    seller_id: p.seller_id,
+    title: p.title,
+    description: p.description ?? null,
+    base_price: Number(p.base_price) || 0,
+    category: p.category ?? null,
+    image: p.image ?? null,
+    status: p.status,
+    is_featured: Boolean(p.is_featured),
+    created_at: p.created_at,
+    updated_at: p.updated_at,
+    moderation_reason: p.moderation_reason ?? null,
+    adaptive_tags: Array.isArray(p.adaptive_tags) ? p.adaptive_tags : [],
+  };
+}
+
+/**
+ * Seller Centre → Products, one page: this seller's products in the tab,
+ * newest first, searched by title words or by listing number ("12" or
+ * "#12", which also finds titles containing 12), with their photos and
+ * options for the rows shown.
+ */
+export async function getSellerProductList(params: ListParams, tab: SellerProductTab): Promise<SellerProductList> {
+  const session = await requireRole(["seller"]);
+  const me = session.user_id;
+  const db = createAdminClient();
+
+  // The search. Words: the title, by a plain .ilike() beside seller_id = me.
+  // A number: that listing, or one of this seller's titles containing the
+  // number; those titles are read first (seller_id = me), and the list is
+  // then .in("id", …) of numbers only, again beside seller_id = me, so the
+  // typed number never shows another seller's product.
+  const id = params.q ? searchId(params.q) : null;
+  const pattern = params.q ? searchPattern(id ? String(id) : params.q) : null;
+  let ids: number[] | null = null;
+  let capped = false;
+  if (id) {
+    const res = await db
+      .from("im_products")
+      .select("id")
+      .eq("seller_id", me)
+      .ilike("title", pattern as string)
+      .order("id", { ascending: false })
+      .limit(TITLE_MATCHES + 1);
+    if (res.error) fail("product search", res.error);
+    const found = ((res.data ?? []) as { id: number }[]).map((r) => r.id).filter(isId);
+    capped = found.length > TITLE_MATCHES;
+    ids = unique([id, ...found.slice(0, TITLE_MATCHES)]);
+  }
+  // Search text with nothing left to match on (only punctuation) lists nothing.
+  const nothing = Boolean(params.q) && !id && !pattern;
+
+  const scoped = (q: Sel, t: SellerProductTab): Sel => {
+    let out = q.eq("seller_id", me);
+    if (t !== "all") out = out.eq("status", t);
+    if (ids) out = out.in("id", ids);
+    else if (pattern) out = out.ilike("title", pattern);
+    return out;
+  };
+
+  // Each tab's count. Unpublished ("archived", 0016) is counted with a GET
+  // of at most one row, not a HEAD request: a HEAD error has no body, so a
+  // status this database does not know would read as an outage. On this
+  // schema (text with a check) that cannot happen, and a database before
+  // 0016 just counts 0; the guard is for a status typed as an enum, where
+  // the error gives a null count and the degraded note, never a page error.
+  let degraded = false;
+  const countOf = async (t: SellerProductTab): Promise<number | null> => {
+    if (nothing) return 0;
+    if (t === "archived") {
+      const { count, error } = await scoped(db.from("im_products").select("id", { count: "exact" }), t).limit(1);
+      if (error) {
+        if (statusUnknown(error)) {
+          degraded = true;
+          return null;
+        }
+        fail("product counts", error);
+      }
+      return count ?? 0;
+    }
+    const { count, error } = await scoped(db.from("im_products").select("id", { count: "exact", head: true }), t);
+    if (error) fail("product counts", error);
+    return count ?? 0;
+  };
+
+  // Where ?focus= sits in this tab and search: this seller's products newer
+  // than it, and those as new with a higher id (the list's tie-break).
+  const focusIndex = async (): Promise<number | null> => {
+    if (!params.focus || nothing) return null;
+    const hit = await scoped(db.from("im_products").select("id, created_at"), tab).eq("id", params.focus).maybeSingle();
+    if (hit.error) {
+      // The Unpublished tab on a database without the status: not here.
+      if (tab === "archived" && statusUnknown(hit.error)) return null;
+      fail("product", hit.error);
+    }
+    const row = hit.data as { id: number; created_at: string } | null;
+    if (!row) return null;
+    const before = async (f: (q: Sel) => Sel) => {
+      const { count, error } = await f(scoped(db.from("im_products").select("id", { count: "exact", head: true }), tab));
+      if (error) fail("product position", error);
+      return count ?? 0;
+    };
+    const [newer, sameTime] = await Promise.all([
+      before((q) => q.gt("created_at", row.created_at)),
+      before((q) => q.eq("created_at", row.created_at).gt("id", row.id)),
+    ]);
+    return newer + sameTime;
+  };
+
+  const tabs = SELLER_PRODUCT_TABS.map((t) => t.value);
+  const [countList, index] = await Promise.all([Promise.all(tabs.map(countOf)), focusIndex()]);
+  const counts = Object.fromEntries(tabs.map((t, i) => [t, countList[i]])) as Record<SellerProductTab, number | null>;
+  const total = countList[tabs.indexOf(tab)] ?? 0;
+
+  const lastPage = pageCount(total, params.perPage);
+  const page = index !== null ? pageOf(index, params.perPage) : Math.min(params.page, lastPage);
+  const focusMissing = Boolean(params.focus) && index === null;
+
+  const empty = { products: [], variants: [], total, page: 1, counts, capped, focusMissing, degraded };
+  if (nothing || total === 0) return empty;
+
+  const { from, to } = pageRange(page, params.perPage);
+  const res = await scoped(db.from("im_products").select("*"), tab)
+    .order("created_at", { ascending: false })
+    .order("id", { ascending: false })
+    .range(from, to);
+  if (res.error) fail("products", res.error);
+  const list = ((res.data ?? []) as unknown as Product[]).map(productFields);
+
+  // The page's products only (their ids came from the read above, scoped to
+  // this seller): their photos, as getProductsBySeller hydrates them, and
+  // their options, which the stock column and the wizard read.
+  const productIds = list.map((p) => p.id);
+  const [products, variants] = await Promise.all([hydrateImages(list), getVariantsForProducts(productIds)]);
+
+  return { products, variants, total, page, counts, capped, focusMissing, degraded };
 }

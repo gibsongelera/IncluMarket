@@ -1295,6 +1295,9 @@ fieldset {
 }
 .empty p { margin: 0; }
 .empty strong { color: var(--text-charcoal); }
+/* The way out of an empty list (Clear search, See all, Add a product): the
+   full target at every text size, not only the 44px floor. */
+.empty > .btn { min-height: max(2.75rem, 44px); }
 
 /* Loading skeletons. Static neutral blocks — no shimmer, no pulse (a looping
    animation is both "AI-slop" and a vestibular trigger, M-10). The container

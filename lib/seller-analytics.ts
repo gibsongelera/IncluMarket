@@ -368,7 +368,7 @@ export const getSellerTodo = cache(async (): Promise<SellerTodoItem[]> => {
       key: "flagged",
       label: "listings needing changes",
       count: products ? products.filter((p) => p.status === "flagged").length : null,
-      href: "/seller/products",
+      href: "/seller/products?status=flagged",
     },
     { key: "reviews", label: "reviews waiting for your reply", count: reviews, href: "/seller/reviews" },
     { key: "messages", label: "unread messages", count: messages, href: "/seller/messages" },

@@ -241,6 +241,23 @@ body {
     padding-bottom: 0;
   }
 
+  /* Everything in a cell is its value: a second element (an order's date
+     under its number, a note under a status pill, "Running low" after the
+     stock) goes on in the value column, never under the label. The
+     unlabelled cells below have one column and undo this. */
+  .data-table--cards td > * {
+    grid-column: 2;
+  }
+  /* A status pill keeps its own width, as in the table, rather than
+     stretching across the value column like a bar. */
+  .data-table--cards td > .pill {
+    justify-self: start;
+  }
+  .data-table--cards td[data-label=""] > *,
+  .data-table--cards td.cell-actions > * {
+    grid-column: auto;
+  }
+
   /* The label comes from data-label on each <td>. */
   .data-table--cards td::before {
     content: attr(data-label);

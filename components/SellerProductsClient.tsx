@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Pill } from "./Pill";
 import { money, formatDate, productImageSrc } from "@/lib/format";
@@ -8,17 +9,34 @@ import { toast } from "@/lib/toast";
 import { setProductPublished, createFlashSale, duplicateProduct } from "@/lib/actions/seller";
 import { ProductWizard } from "./ProductWizard";
 import type { Category, Product, ProductVariant } from "@/lib/types";
+import { LOW_STOCK_MAX } from "@/lib/analytics/seller";
+import { photoWords, productStatusWords, stockWords, type SellerProductsEmpty } from "@/lib/seller-list-types";
 import { TableWrap } from "./TableWrap";
 import { DeepLinkFocus } from "./DeepLinkFocus";
+import { RowActions } from "./RowActions";
+import { useRowFocus } from "./useRowFocus";
 
+/**
+ * Seller Centre → Products (P3-06, 04 §6): one page of this seller's
+ * products, already filtered, searched and paged on the server
+ * (lib/seller-lists.ts), with each product's Edit…, Duplicate, Flash sale…
+ * and Unpublish / Republish in its row's Actions. The wizard (C-32) and the
+ * flash-sale dialog are the same as before. `toolbar` is the page's
+ * ListToolbar and its notes, rendered on the server, between the page head
+ * (whose Add a product button opens the wizard here) and the table.
+ */
 export function SellerProductsClient({
   products,
   variants,
   categories,
+  empty,
+  toolbar,
 }: {
   products: Product[];
   variants: ProductVariant[];
   categories: Category[];
+  empty: SellerProductsEmpty;
+  toolbar?: ReactNode;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -28,6 +46,15 @@ export function SellerProductsClient({
   // Opened by ?new=1, not by a click: on close there is no button to send
   // focus back to, so it goes to "Add a product".
   const openedByLink = useRef(false);
+  // An action already on its way: the row's buttons do nothing until it
+  // lands. Not `disabled`: disabling the focused button would drop focus to
+  // <body>.
+  const inFlight = useRef(false);
+
+  // Where focus goes when an action takes the product off this tab
+  // (Unpublish on On sale, Republish on Unpublished, an edit that sends an
+  // approved product back to review).
+  const focus = useRowFocus(products);
 
   // ?new=1 (the dashboard's "Add a product", P3-03) opens the existing
   // wizard, then comes off the URL, so Back, a reload or a shared link does
@@ -55,9 +82,31 @@ export function SellerProductsClient({
   const [flashBusy, setFlashBusy] = useState(false);
   const [flashStart, setFlashStart] = useState("");
 
+  function openWizard(p: Product | "new") {
+    if (inFlight.current) return;
+    // The wizard saves on its own and refreshes the page, so the rows can
+    // land while it is still open: mark now (an approved product sent back
+    // to review leaves the On sale tab, and its Edit… with it).
+    if (p !== "new") focus.mark(p.id);
+    setEditing(p);
+  }
+
+  function cancelWizard() {
+    focus.clear();
+    closeWizard();
+  }
+
   async function duplicate(p: Product) {
+    if (inFlight.current) return;
+    inFlight.current = true;
+    // Before the await: the refreshed rows can land before it resolves.
+    focus.mark(p.id);
     const res = await duplicateProduct(p.id);
-    if (!res.ok) return toast(res.error || "Could not duplicate.", "error");
+    inFlight.current = false;
+    if (!res.ok) {
+      focus.clear();
+      return toast(res.error || "Could not duplicate.", "error");
+    }
     toast(`Copied “${p.title}”. The copy has 0 stock and is waiting for review.`, "success");
     router.refresh();
   }
@@ -66,6 +115,7 @@ export function SellerProductsClient({
     categories.find((c) => c.id === id)?.label || id || "Uncategorized";
 
   function openFlash(id: number) {
+    if (inFlight.current) return;
     setFlashProductId(id);
     setFlashDiscount(20);
     setFlashHours(24);
@@ -77,6 +127,7 @@ export function SellerProductsClient({
     e.preventDefault();
     if (flashProductId == null) return;
     setFlashBusy(true);
+    focus.mark(flashProductId);
     const res = await createFlashSale(
       flashProductId,
       flashDiscount,
@@ -85,6 +136,7 @@ export function SellerProductsClient({
     );
     setFlashBusy(false);
     if (!res.ok) {
+      focus.clear();
       toast(res.error || "Could not start flash sale.", "error");
       return;
     }
@@ -94,8 +146,14 @@ export function SellerProductsClient({
   }
 
   async function onPublish(id: number, published: boolean) {
+    if (inFlight.current) return;
+    inFlight.current = true;
+    // Before the await (Unpublish on On sale takes the row off the tab).
+    focus.mark(id);
     const res = await setProductPublished(id, published);
+    inFlight.current = false;
     if (!res.ok) {
+      focus.clear();
       toast(res.error || "Could not update the listing.", "error");
       return;
     }
@@ -108,113 +166,150 @@ export function SellerProductsClient({
     router.refresh();
   }
 
+  /** Each product's options, for the stock column. */
+  const optionsOf = (id: number) => variants.filter((v) => v.product_id === id);
+
   return (
     <>
       <div className="page-head">
-        <h1>Product catalog</h1>
-        <button type="button" className="btn btn--primary" id="add-product" onClick={() => setEditing("new")}>
-          Add new product
+        <div className="page-head__text">
+          <h1>Products</h1>
+          <p className="muted">Add and edit your products, fix what an admin sent back, and run flash sales</p>
+        </div>
+        <button type="button" className="btn btn--primary" id="add-product" onClick={() => openWizard("new")}>
+          Add a product
         </button>
       </div>
 
+      {toolbar}
+
+      {/* DeepLinkFocus stays on an empty list too: it moves focus to the
+          page's "not in this list" note when ?focus= names a product that
+          is not here. */}
       <DeepLinkFocus />
-      <TableWrap label="My products">
-        <table className="data-table data-table--cards" aria-label="My products">
-          <thead>
-            <tr>
-              <th scope="col">Product</th>
-              <th scope="col">Category</th>
-              <th scope="col">Base price</th>
-              <th scope="col">Status</th>
-              <th scope="col">Variants</th>
-              <th scope="col">Actions</th>
-            </tr>
-          </thead>
-          <tbody id="product-rows">
-            {products.length === 0 ? (
+      {products.length === 0 ? (
+        <div className="empty">
+          {/* Focus lands on the sentence when an action empties the list:
+              it says why, which the link alone would skip. */}
+          <p ref={focus.emptyRef} tabIndex={-1}>
+            {empty.text}
+          </p>
+          {empty.addProduct ? (
+            <button type="button" className="btn btn--primary" onClick={() => openWizard("new")}>
+              Add a product
+            </button>
+          ) : empty.href && empty.action ? (
+            <Link className="btn btn--outline" href={empty.href}>
+              {empty.action}
+            </Link>
+          ) : null}
+        </div>
+      ) : (
+        <TableWrap label="Products">
+          <table className="data-table data-table--cards" aria-label="Products, newest first">
+            <thead>
               <tr>
-                <td colSpan={6} className="empty">
-                  You have no products yet.
-                </td>
+                <th scope="col">Product</th>
+                <th scope="col">Category</th>
+                <th scope="col" className="num">
+                  Base price
+                </th>
+                <th scope="col">Status</th>
+                <th scope="col">Stock</th>
+                <th scope="col">
+                  <span className="sr-only">Actions</span>
+                </th>
               </tr>
-            ) : (
-              products.map((p) => {
-                const vs = variants.filter((v) => v.product_id === p.id);
-                const totalStock = vs.reduce((n, v) => n + v.stock_qty, 0);
-                const hasPhoto = Array.isArray(p.images) && p.images.length > 0;
+            </thead>
+            <tbody>
+              {products.map((p) => {
+                const status = p.status || "pending";
+                const stock = stockWords(optionsOf(p.id).map((v) => v.stock_qty), LOW_STOCK_MAX);
+                const photos = Array.isArray(p.images) ? p.images.length : 0;
                 return (
                   <tr key={p.id} data-row-id={p.id}>
                     <td>
-                      <div className="cell-product">
+                      <div className="cell-identity">
+                        {/* The title beside it names the product. */}
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img className="cell-thumb" src={productImageSrc(p, 0)} alt="" />
-                        <div>
-                          <strong>{p.title}</strong>
-                          <div className="muted small">
-                            {formatDate(p.created_at)}
-                            {hasPhoto ? (
-                              <>
-                                {" "}
-                                &middot;{" "}
-                                <span className="badge badge--success">
-                                  {p.images!.length} photo{p.images!.length > 1 ? "s" : ""}
-                                </span>
-                              </>
-                            ) : null}
-                          </div>
-                        </div>
+                        <img className="cell-identity__thumb" src={productImageSrc(p, 0)} alt="" decoding="async" />
+                        <span className="cell-identity__text">
+                          <span className="cell-identity__name">{p.title}</span>
+                          <span className="cell-identity__meta">
+                            <span className="cell-code">#{p.id}</span> · {formatDate(p.created_at)} · {photoWords(photos)}
+                          </span>
+                        </span>
                       </div>
                     </td>
                     <td>{categoryLabel(p.category)}</td>
-                    <td>{money(p.base_price)}</td>
+                    <td className="num">{money(p.base_price)}</td>
                     <td>
-                      <Pill status={p.status || "pending"} />
-                      {p.status === "flagged" && p.moderation_reason ? (
+                      <Pill status={status} label={productStatusWords(status)} />
+                      {status === "flagged" && p.moderation_reason ? (
                         <p className="small muted">Admin note: {p.moderation_reason}</p>
                       ) : null}
                     </td>
                     <td>
-                      {vs.length} variants &middot; {totalStock} units
+                      {stock.text}
+                      {stock.low ? <div className="small text-warning">Running low</div> : null}
                     </td>
-                    <td>
-                      <button className="btn btn--ghost btn--sm" onClick={() => setEditing(p)}>
-                        Edit<span className="sr-only"> {p.title}</span>
-                      </button>{" "}
-                      <button type="button" className="btn btn--ghost btn--sm" onClick={() => duplicate(p)}>
-                        Duplicate<span className="sr-only"> {p.title}</span>
-                      </button>{" "}
-                      <button
-                        className="btn btn--ghost btn--sm"
-                        disabled={p.status !== "approved"}
-                        title={p.status !== "approved" ? "Only approved products can run a flash sale." : undefined}
-                        onClick={() => openFlash(p.id)}
-                      >
-                        Flash sale
-                      </button>{" "}
-                      {p.status === "archived" ? (
-                        <button type="button" className="btn btn--ghost btn--sm" onClick={() => onPublish(p.id, true)}>
-                          Republish
+                    <td className="cell-actions">
+                      {/* Each keyed: Unpublish gives way to Republish as a
+                          new button, so RowActions moves focus to the
+                          toggle instead of leaving it on a button that now
+                          does something else. Flash sale… only where it
+                          can run (approved). */}
+                      <RowActions label={`${p.title} #${p.id}`}>
+                        <button key="edit" type="button" className="btn btn--ghost btn--sm" onClick={() => openWizard(p)}>
+                          Edit…
                         </button>
-                      ) : (
-                        <button type="button" className="btn btn--ghost btn--sm" onClick={() => onPublish(p.id, false)}>
-                          Unpublish
+                        <button key="duplicate" type="button" className="btn btn--ghost btn--sm" onClick={() => duplicate(p)}>
+                          Duplicate
                         </button>
-                      )}
+                        {status === "approved" ? (
+                          <button key="flash" type="button" className="btn btn--ghost btn--sm" onClick={() => openFlash(p.id)}>
+                            Flash sale…
+                          </button>
+                        ) : null}
+                        {status === "archived" ? (
+                          <button
+                            key="republish"
+                            type="button"
+                            className="btn btn--ghost btn--sm"
+                            onClick={() => onPublish(p.id, true)}
+                          >
+                            Republish
+                          </button>
+                        ) : (
+                          <button
+                            key="unpublish"
+                            type="button"
+                            className="btn btn--ghost btn--sm"
+                            onClick={() => onPublish(p.id, false)}
+                          >
+                            Unpublish
+                          </button>
+                        )}
+                      </RowActions>
                     </td>
                   </tr>
                 );
-              })
-            )}
-          </tbody>
-        </table>
-      </TableWrap>
+              })}
+            </tbody>
+          </table>
+        </TableWrap>
+      )}
 
       <ProductWizard
         product={editing}
         variants={variants}
         categories={categories}
-        onClose={closeWizard}
+        onClose={cancelWizard}
         onSaved={() => {
+          // A new product: the button that opened the wizard may be the
+          // empty state's, which the refreshed list replaces, so focus goes
+          // to the page's own "Add a product". An edit was marked on open.
+          if (editing === "new") openedByLink.current = true;
           closeWizard();
           router.refresh();
         }}
