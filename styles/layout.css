@@ -789,6 +789,14 @@ a.banners__link:focus-visible { outline: var(--focus-ring); outline-offset: var(
 .order-timeline__step:first-child { border-left-color: transparent; padding-left: 0; margin-left: 0; }
 .order-timeline__step.is-current { border-left-color: var(--palette-primary); }
 .order-timeline__note { margin: 0; }
+/* An order's History disclosure in a list row (Seller Centre → Orders): a
+   full-size target, with a drawn chevron since display:flex drops the
+   summary's own marker. */
+.order-history > summary { cursor: pointer; display: flex; align-items: center; gap: var(--space-2); min-height: max(2.75rem, 44px); font-weight: 600; color: var(--brand-blue); }
+.order-history > summary::-webkit-details-marker { display: none; }
+.order-history > summary::before { content: ""; flex: none; width: .45em; height: .45em; border: solid currentColor; border-width: 0 .15em .15em 0; transform: rotate(-45deg); }
+.order-history[open] > summary::before { transform: rotate(45deg); }
+.order-history > summary:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-ring-offset); }
 
 /* Cart */
 .main--cart, .main--checkout, .main--orders, .main--support, .main--wishlist, .main--messages { padding-top: 1.5rem; padding-bottom: 2rem; }

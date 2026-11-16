@@ -41,7 +41,16 @@ export function useRowFocus(rows: readonly { id: number }[]) {
       if (rows.length) {
         const still = rows.findIndex((r) => r.id === after.id);
         const at = still >= 0 ? still : Math.min(Math.max(after.index, 0), rows.length - 1);
-        actionControl(document.querySelector(`tr[data-row-id="${rows[at].id}"]`))?.focus();
+        const row = document.querySelector<HTMLElement>(`tr[data-row-id="${rows[at].id}"]`);
+        const control = actionControl(row);
+        if (control) return control.focus();
+        // The row stayed but has no step left (an order delivered or
+        // cancelled on All): the row itself, as DeepLinkFocus does, so focus
+        // stays where the action was. Its :focus style is the deep-link one.
+        if (row) {
+          if (!row.hasAttribute("tabindex")) row.setAttribute("tabindex", "-1");
+          row.focus();
+        }
         return;
       }
       emptyRef.current?.focus();

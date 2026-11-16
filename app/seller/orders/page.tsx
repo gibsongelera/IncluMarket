@@ -1,82 +1,87 @@
 import { requireRole } from "@/lib/session";
-import { SellerOrdersClient, type SellerOrderLite } from "@/components/SellerOrdersClient";
+import { listHref, missingHint, parseListParams, type ListParams, type RawParams } from "@/lib/list-params";
+import { getSellerOrderList } from "@/lib/seller-lists";
 import {
-  getDisplayNames,
-  getOrderItemsForProducts,
-  getOrdersByIds,
-  getOrderStatusHistoryForOrders,
-  getSellerProductIndex,
-  getVariantsByIds,
-} from "@/lib/data";
-import { shortName } from "@/lib/format";
-import { roundMoney } from "@/lib/pricing/core";
-import { verificationLast4 } from "@/lib/pwd/data";
+  SELLER_ORDER_EMPTY,
+  SELLER_ORDER_TABS,
+  sellerOrderTab,
+  type SellerOrderTab,
+  type SellerOrdersEmpty,
+} from "@/lib/seller-list-types";
+import { SellerOrdersClient } from "@/components/SellerOrdersClient";
+import { ListToolbar } from "@/components/ListToolbar";
+import { Pagination } from "@/components/Pagination";
 
 export const dynamic = "force-dynamic";
+export const metadata = { title: "Orders" };
 
-export default async function SellerOrdersPage() {
-  const session = await requireRole(["seller"]);
-  const products = await getSellerProductIndex(session.user_id);
+const PATH = "/seller/orders";
 
-  // Only this seller's lines, and only the orders they appear in. This page
-  // used to load every order, every line and every user's name and raw email,
-  // and hand all of it to the browser (B-13); it also showed other sellers'
-  // lines and the whole order total (B-09).
-  const myItems = await getOrderItemsForProducts(products.map((p) => p.id));
-  const orderIds = [...new Set(myItems.map((it) => it.order_id))];
-  const [orders, history, variants] = await Promise.all([
-    getOrdersByIds(orderIds),
-    getOrderStatusHistoryForOrders(orderIds),
-    getVariantsByIds(myItems.map((it) => it.variant_id).filter((n): n is number => n != null)),
-  ]);
-  const [names, last4] = await Promise.all([
-    getDisplayNames(orders.map((o) => o.buyer_id)),
-    verificationLast4(myItems.map((it) => it.verification_id ?? 0)),
-  ]);
-  const pwdCheck = (orderId: number) => {
-    const lines = myItems.filter((it) => it.order_id === orderId && Number(it.pwd_discount_amount ?? 0) > 0);
-    if (!lines.length) return null;
-    const vid = lines.find((it) => it.verification_id)?.verification_id ?? null;
-    return {
-      amount: roundMoney(lines.reduce((n, it) => n + Number(it.pwd_discount_amount ?? 0), 0)),
-      last4: vid ? last4.get(vid) ?? null : null,
-    };
-  };
+/** What an empty list says, and the way out of it: clear the search, or back to All. */
+function emptyState(tab: SellerOrderTab, shown: ListParams, degraded: boolean): SellerOrdersEmpty {
+  if (degraded) return { text: "Your orders will show here once the database is updated." };
+  if (shown.q) {
+    return { text: `No orders match “${shown.q}”.`, href: listHref(PATH, shown, { q: null }), action: "Clear search" };
+  }
+  if (tab === "all") return { text: SELLER_ORDER_EMPTY.all };
+  return { text: SELLER_ORDER_EMPTY[tab], href: PATH, action: "See all orders" };
+}
 
-  const lite: SellerOrderLite[] = orders.map((o) => ({
-    id: o.id,
-    created_at: o.created_at,
-    order_status: o.order_status,
-    payment_status: o.payment_status,
-    payment_provider: o.payment_provider,
-    buyer_id: o.buyer_id,
-    // Shipping details are this seller's to see: they ship the parcel.
-    shipping_name: o.shipping_name,
-    shipping_address: o.shipping_address,
-    shipping_city: o.shipping_city,
-    shipping_phone: o.shipping_phone,
-    courier: o.courier ?? null,
-    tracking_number: o.tracking_number ?? null,
-    delivered_at: o.delivered_at ?? null,
-    return_reason: o.return_reason ?? null,
-    cancel_reason: o.cancel_reason ?? null,
-    subtotal: roundMoney(
-      myItems.filter((it) => it.order_id === o.id).reduce((n, it) => n + it.unit_price * it.quantity, 0)
-    ),
-    pwdCheck: pwdCheck(o.id),
-  }));
+/**
+ * Seller Centre → Orders (P3-05, 04 §6): this seller's orders one page at a
+ * time, with a tab per status (?status=, as the dashboard's to-do tiles and
+ * donut link), search by order number or buyer name, and each order's steps
+ * in its row's Actions. lib/seller-lists.ts reads the page and the counts,
+ * scoped to the session's seller.
+ */
+export default async function SellerOrdersPage({ searchParams }: { searchParams: Promise<RawParams> }) {
+  await requireRole(["seller"]);
+  const params = parseListParams(await searchParams);
+  const tab = sellerOrderTab(params.filters.status);
+  const list = await getSellerOrderList(params, tab);
+  // The page actually shown: clamped past the end, or the one holding ?focus=.
+  const shown = { ...params, page: list.page };
 
   return (
     <main id="main" tabIndex={-1} className="main--seller">
-      <h1>Order fulfillment</h1>
-      <SellerOrdersClient
-        orders={lite}
-        orderItems={myItems}
-        products={products.map((p) => ({ id: p.id, title: p.title }))}
-        variants={variants.map((v) => ({ id: v.id, color_name: v.color_name, size: v.size }))}
-        buyers={Object.entries(names).map(([id, name]) => ({ id: Number(id), name: shortName(name) }))}
-        history={history}
+      <div className="page-head">
+        <div className="page-head__text">
+          <h1>Orders</h1>
+          <p className="muted">Accept, pack and ship your orders, and answer return requests</p>
+        </div>
+      </div>
+
+      <ListToolbar
+        path={PATH}
+        params={shown}
+        tabs={SELLER_ORDER_TABS.map((t) => ({
+          value: t.value === "all" ? null : t.value,
+          label: t.label,
+          count: list.counts[t.value],
+        }))}
+        tabParam="status"
+        search={{ label: "Search orders", placeholder: "Order number or buyer name" }}
+        total={list.total}
+        noun={["order", "orders"]}
       />
+
+      {list.focusMissing || list.degraded ? (
+        <div className="list-notes">
+          {list.focusMissing ? (
+            // A link meant one order and it is not here: say so where focus
+            // lands (DeepLinkFocus moves it to data-focus-missing).
+            <p className="notice notice--warning" tabIndex={-1} data-focus-missing>
+              Order #{params.focus} is not in this list.{missingHint(tab !== "all", Boolean(params.q), "All")}
+            </p>
+          ) : null}
+          {list.degraded ? (
+            <p>This list needs database migration 0015, which records the shop of each order.</p>
+          ) : null}
+        </div>
+      ) : null}
+
+      <SellerOrdersClient rows={list.rows} empty={emptyState(tab, shown, list.degraded)} />
+      <Pagination path={PATH} params={shown} total={list.total} label="Order pages" />
     </main>
   );
 }
