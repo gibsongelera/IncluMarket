@@ -72,6 +72,12 @@ body {
   .table-wrap .data-table .row-menu > .row-menu__toggle {
     white-space: nowrap;
   }
+  /* A status pill stays one line in a table ("On sale" broke in two at
+     24px text); the table scrolls inside its wrapper if it must. Cards
+     (below 768px) still let a long status wrap between words. */
+  .table-wrap .data-table .pill {
+    white-space: nowrap;
+  }
   /* The menu's minmax(0, 1fr) track (components.css) gives the Actions
      column no minimum, so the toggle hung out of a narrower cell. */
   .table-wrap .data-table .row-menu {
@@ -739,6 +745,12 @@ textarea {
   .console__content .data-table--cards td {
     grid-template-columns: minmax(0, 1fr);
     gap: var(--space-1);
+  }
+  /* One column here: the value goes under its label, not into a second
+     column (section 3's "value column" rule would make an implicit one and
+     squeeze the label to a letter a line). */
+  .console__content .data-table--cards td > * {
+    grid-column: auto;
   }
 }
 @container console (min-width: 35rem) {
