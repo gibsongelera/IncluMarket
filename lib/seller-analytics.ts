@@ -375,6 +375,28 @@ export const getSellerTodo = cache(async (): Promise<SellerTodoItem[]> => {
   ];
 });
 
+/** Which to-do counts each sidebar item's badge adds up (P3-04, 04 §2). */
+const BADGE_SOURCES: Record<string, readonly SellerTodoItem["key"][]> = {
+  "/seller/orders": ["pending", "processing"],
+  "/seller/reviews": ["reviews"],
+  "/seller/messages": ["messages"],
+};
+
+/**
+ * The Seller Centre sidebar's badges, keyed by nav href: the dashboard's own
+ * to-do counts through getSellerTodo()'s per-request cache, so a badge and
+ * its tile always agree and a dashboard visit counts once. A count that
+ * could not be read adds 0 here; the dashboard's tile says it could not be
+ * read.
+ */
+export async function getSellerBadges(): Promise<Record<string, number>> {
+  const todo = await getSellerTodo();
+  const byKey = new Map(todo.map((t) => [t.key, t.count ?? 0]));
+  return Object.fromEntries(
+    Object.entries(BADGE_SOURCES).map(([href, keys]) => [href, keys.reduce((sum, k) => sum + (byKey.get(k) ?? 0), 0)])
+  );
+}
+
 /**
  * The seller dashboard's DTO. Takes NO id, which is stricter than the plan
  * row's getSellerDashboard(sellerId): 04 §4 says the seller id comes from the
