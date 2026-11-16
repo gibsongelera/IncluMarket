@@ -504,6 +504,21 @@ a.kpi--queue.is-waiting:hover { border-left: 4px solid var(--brand-brown); }
   text-align: right;
 }
 .chart-legend__share { color: var(--text-muted); font-weight: 400; }
+/* A legend item that links to the list behind it (the seller's donut,
+   Point.href): the link is the item's grid, a 44px target that grows with
+   the text, and the status word is underlined link text, so it reads as a
+   link by more than its colour. */
+a.chart-legend__link {
+  min-height: max(2.75rem, 44px);
+  align-content: center;
+  color: var(--text-charcoal);
+  text-decoration: none;
+}
+a.chart-legend__link .chart-legend__label {
+  color: var(--brand-blue);
+  text-decoration: underline;
+}
+a.chart-legend__link:hover .chart-legend__label { color: var(--brand-blue-800); }
 /* Two or more lines: a row of names, each after a sample of its stroke. */
 .chart-legend--series {
   display: flex;
@@ -535,23 +550,102 @@ a.kpi--queue.is-waiting:hover { border-left: 4px solid var(--brand-brown); }
   .chart-legend__swatch { outline: 1px solid CanvasText; }
 }
 
-/* --- Seller Centre to-dos and setup (C-31) -------------------------------- */
+/* --- Seller Centre shop settings ------------------------------------------ */
 .shop-settings { max-width: 44rem; }
 .shop-image { display: grid; gap: var(--space-2); }
 .shop-image p { margin: 0; }
 .shop-image__preview { max-width: 100%; border-radius: var(--radius-sm); border: 1px solid var(--border); object-fit: cover; }
 .shop-image--logo .shop-image__preview { width: 6rem; height: 6rem; border-radius: 999px; }
 .shop-image--banner .shop-image__preview { aspect-ratio: 16 / 4; width: 100%; }
-.seller-todos { display: grid; gap: var(--space-4); margin-bottom: var(--space-5); }
-.todo-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-2); grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); }
-.todo-list__item { display: flex; align-items: center; gap: var(--space-3); min-height: 2.75rem; padding: var(--space-2) var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-gray); color: var(--text-charcoal); text-decoration: none; }
-.todo-list__item:hover { border-color: var(--brand-blue); }
-.todo-list__count { font-size: var(--step-2); color: var(--brand-blue); font-variant-numeric: tabular-nums; }
-.setup-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-2); }
-.setup-list li { display: flex; align-items: center; gap: var(--space-3); min-height: 2.75rem; }
-.setup-list__mark { display: inline-grid; place-items: center; width: 1.75rem; height: 1.75rem; border-radius: 999px; border: 2px solid var(--border); font-weight: 800; flex: none; }
-.setup-list li.is-done .setup-list__mark { background: var(--success); border-color: var(--success); color: #FFFFFF; }
-.setup-list li.is-done { color: var(--text-muted); }
+
+/* --- Seller Centre dashboard (04 §2–§3) ------------------------------------
+   The setup steps, the to-dos and the figures are KPI tiles in .kpis rows
+   (components/SellerTodos.tsx, KpiCard); the cards are .chart-card in
+   .dash-grid, as on the admin overview. */
+
+/* A setup step as a tile: its words are the point, so the label is charcoal
+   at body size, not the muted small label above a figure. The line under it
+   says "Done" or "Not done yet"; the icon tile (a check once done) only
+   repeats it. A done step is a plain tile, not a link. */
+.kpi--step { min-height: 100%; }
+.kpi--step .kpi__label {
+  color: var(--text-charcoal);
+  font-size: 1rem;
+  font-weight: 700;
+}
+.kpi__status {
+  color: var(--text-muted);
+  font-size: .875rem;
+  font-weight: 700;
+}
+.kpi--step.is-done .kpi__status { color: var(--status-ok); }
+/* A second line under a figure: Ready to withdraw's "₱300 still on the
+   way". It wraps rather than widen the tile. */
+.kpi__note {
+  color: var(--text-muted);
+  font-size: .875rem;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+/* Running low: one row per option, a rule between them (like the
+   overview's health list): the product and its option, "2 left", and
+   "Update stock". On a narrow card the count and the link wrap under the
+   words; the link is a 44px target that grows with the text. */
+.stock-list { list-style: none; margin: 0; padding: 0; }
+.stock-list > li + li { border-top: 1px solid var(--border); }
+.stock-list__item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+  padding-block: var(--space-2);
+}
+.stock-list__text {
+  display: grid;
+  flex: 1 1 8rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.stock-list__name { font-weight: 600; color: var(--text-charcoal); }
+.stock-list__option { color: var(--text-muted); font-size: .875rem; }
+.stock-list__left { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.stock-list__link {
+  display: inline-flex;
+  align-items: center;
+  min-height: max(2.75rem, 44px);
+  font-weight: 600;
+}
+.stock-list__more { margin: var(--space-2) 0 0; }
+
+/* Latest reviews: stars and their figure, the first line, the product, who
+   and when, and "Reply" (a 44px target) while there is no reply. */
+.review-list { list-style: none; margin: 0; padding: 0; }
+.review-list > li + li { border-top: 1px solid var(--border); }
+.review-mini {
+  display: grid;
+  gap: var(--space-1);
+  padding-block: var(--space-3);
+  overflow-wrap: anywhere;
+}
+.review-list > li:first-child { padding-top: 0; }
+.review-mini p { margin: 0; }
+.review-mini__rating {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.review-mini__product { font-weight: 600; }
+.review-mini__state { color: var(--status-ok); font-weight: 700; }
+.review-mini__reply {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  min-height: max(2.75rem, 44px);
+  font-weight: 600;
+}
 
 /* --- Account area --------------------------------------------------------- */
 .account-tabs { margin-top: var(--space-4); }
@@ -1689,6 +1783,9 @@ fieldset {
 .list-toolbar { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-3); margin-bottom: var(--space-4); }
 .list-toolbar > .tabs { margin-bottom: 0; }
 .list-toolbar .tab { display: inline-flex; align-items: center; gap: var(--space-2); min-height: max(2.75rem, 44px); }
+/* A chart's view tabs (SalesOverview: Sales / Orders, on both dashboards):
+   .tab's padding alone made them 42px at 16px text. */
+.chart-card__head .tab { display: inline-flex; align-items: center; min-height: max(2.75rem, 44px); }
 /* The count: a white pill with a border on the page and on a hovered tab;
    the current tab's in its tint. Text and fill in one rule each. */
 .list-toolbar .tab__count {

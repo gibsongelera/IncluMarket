@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
+import Link from "next/link";
 import {
   MAX_SERIES,
   SERIES_DASHES,
@@ -132,19 +133,36 @@ export function Chart({
             </p>
           </div>
           <ul className="chart-legend">
-            {points.map((p, i) => (
-              <li key={`${p.label}-${i}`} className="chart-legend__item">
-                <span className="chart-legend__swatch" aria-hidden="true" style={{ background: segmentColor(p, i) }} />
-                <span className="chart-legend__label">{p.label}</span>{" "}
-                <span className="chart-legend__value">
-                  {formatValue(p.value, currency)}
-                  {/* A no-break space: .sr-only is absolutely positioned, so a
-                      plain leading space would collapse into "6orders". */}
-                  <span className="sr-only">{unit ? ` ${word(p.value)},` : ","}</span>{" "}
-                  <span className="chart-legend__share">{shareText(i)}</span>
-                </span>
-              </li>
-            ))}
+            {points.map((p, i) => {
+              const parts: ReactNode = (
+                <>
+                  <span className="chart-legend__swatch" aria-hidden="true" style={{ background: segmentColor(p, i) }} />
+                  <span className="chart-legend__label">{p.label}</span>{" "}
+                  <span className="chart-legend__value">
+                    {formatValue(p.value, currency)}
+                    {/* A no-break space: .sr-only is absolutely positioned, so a
+                        plain leading space would collapse into "6orders". */}
+                    <span className="sr-only">{unit ? ` ${word(p.value)},` : ","}</span>{" "}
+                    <span className="chart-legend__share">{shareText(i)}</span>
+                  </span>
+                </>
+              );
+              // With an href (the seller's donut) the item is a link to the
+              // list behind it, named by the same words ("Pending 2 orders,
+              // 15%"), and the link takes the item's grid. Without one (the
+              // admin donut) the item is as it was.
+              return p.href ? (
+                <li key={`${p.label}-${i}`} className="chart-legend__entry">
+                  <Link className="chart-legend__item chart-legend__link" href={p.href}>
+                    {parts}
+                  </Link>
+                </li>
+              ) : (
+                <li key={`${p.label}-${i}`} className="chart-legend__item">
+                  {parts}
+                </li>
+              );
+            })}
           </ul>
         </div>
       ) : (

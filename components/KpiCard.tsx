@@ -11,12 +11,18 @@ export interface KpiCardProps {
   /** Formatted by the caller ("₱128,430"); a number is grouped. null: it could not be read, or, with `empty`, there is none yet. */
   value: string | number | null;
   /**
-   * The words for a figure that is none yet rather than missing ("No
-   * orders in the last 30 days": no orders to average), shown under the
-   * "—" when value is null in place of "Needs a database update". Pass it
-   * only for a figure that was read.
+   * The words under the "—" when value is null, in place of "Needs a
+   * database update": for a figure that is none yet rather than missing
+   * ("No orders in the last 30 days": no orders to average), or one that
+   * could not be read for a reason other than a migration ("Could not load
+   * this right now", the Seller Centre's failed reads).
    */
   empty?: string;
+  /**
+   * A second line under the value, in words ("₱1,200 still on the way" under
+   * the seller's Ready to withdraw). Not shown when the value is missing.
+   */
+  note?: string;
   /** The list behind the number. */
   href: string;
   /** A name from components/Icon.tsx, shown in a tinted tile beside the label. */
@@ -52,6 +58,7 @@ export function KpiCard({
   label,
   value,
   empty,
+  note,
   href,
   icon,
   tone = "blue",
@@ -81,6 +88,15 @@ export function KpiCard({
         <>
           {" "}
           <span className="small muted">{empty || "Needs a database update"}</span>
+        </>
+      ) : note ? (
+        <>
+          {/* The comma keeps "₱0, ₱1,100 still on the way" two figures in
+              the link's name; on screen the note is its own line. */}
+          <span className="kpi__note">
+            <span className="sr-only">{", "}</span>
+            {note}
+          </span>
         </>
       ) : null}
       {t && t.kind !== "none" ? (

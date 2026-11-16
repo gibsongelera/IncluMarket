@@ -79,7 +79,11 @@ export function SellerOrdersClient({
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [filter, setFilter] = useState(searchParams.get("status") ?? "all");
+  // A status with no tab (the dashboard's donut can link to "returned")
+  // falls back to All: with no tab selected, every tab would be tabIndex -1
+  // and the tab list unreachable by keyboard.
+  const asked = searchParams.get("status");
+  const [filter, setFilter] = useState(asked && TABS.some((t) => t.value === asked) ? asked : "all");
   const [busy, setBusy] = useState<number | null>(null);
   const [ask, setAsk] = useState<Ask | null>(null);
   const [askError, setAskError] = useState<string | null>(null);

@@ -1712,14 +1712,6 @@ h3 {
   }
 }
 
-@media (min-width: 1024px) {
-  /* Seller Centre: setup checklist and to-dos side by side. */
-  .seller-todos {
-    grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
-    align-items: start;
-  }
-}
-
 /* ---------------------------------------------------------------------------
    Print: the packing slip (and any page) without the site's chrome, on A4.
    Sizes in pt so the accessibility font setting does not push the slip onto

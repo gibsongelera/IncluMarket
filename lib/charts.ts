@@ -27,6 +27,8 @@ export type Point = {
   status?: string;
   /** A token ("var(--x)" or "--x") or a colour; wins over the status and series colours. */
   color?: string;
+  /** donut: its legend item links here (the seller's orders in that status). Not drawn. */
+  href?: string;
 };
 export type Series = { points: Point[]; label?: string; color?: string };
 export type ChartKind = "line" | "bar" | "hbar" | "donut";

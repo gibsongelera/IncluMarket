@@ -11,7 +11,7 @@ import {
 } from "@/lib/data";
 import { getSellerFinance } from "@/lib/finance";
 import { getReviewsLite, type ReviewLite } from "@/lib/reviews";
-import { getMyVerification } from "@/lib/pwd/data";
+import { getMyVerification, type MyVerificationLite } from "@/lib/pwd/data";
 import { getMyUnreadMessageCount } from "@/lib/actions/messages";
 import { isMissingObject } from "@/lib/db-errors";
 import { shortName, statusLabel } from "@/lib/format";
@@ -168,6 +168,12 @@ export interface SellerDashboard {
   setup: SetupStep[] | null;
   /** The to-do counts, as getSellerTodo() gives them. */
   todo: SellerTodoItem[];
+  /**
+   * The seller's PWD verification, for the page's banner: the read the
+   * setup checklist's first step already makes, so the page does not make
+   * it twice. null when it could not be read (no banner then, as before).
+   */
+  verification: MyVerificationLite | null;
 }
 
 const TOOLS: SellerTools = { aggregate, statusLabel, optionLabel: variantLabel, shortName };
@@ -542,5 +548,6 @@ export async function getSellerDashboard(): Promise<SellerDashboard> {
     latestReviews: widgets.latestReviews,
     setup,
     todo,
+    verification,
   };
 }

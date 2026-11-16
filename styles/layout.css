@@ -963,6 +963,9 @@ a.banners__link:focus-visible { outline: var(--focus-ring); outline-offset: var(
 .page-head__text { flex: 1 1 15rem; }
 .page-head__text > h1 { margin: 0; }
 .page-head__text > p { margin: var(--space-1) 0 0; }
+/* Its action is a 44px target that grows with the text: .btn's 44px floor
+   alone fell under 2.75rem at the 24px setting. */
+.page-head__text + .btn { min-height: max(2.75rem, 44px); }
 
 /* Section header (01 §6.4): the h2 on the left, a "View all" link on the
    right; the link drops under the title when the two do not fit. The caller
@@ -985,7 +988,7 @@ a.banners__link:focus-visible { outline: var(--focus-ring); outline-offset: var(
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
-  min-height: 2.75rem; /* the 44px target, in rem so it grows with the text */
+  min-height: max(2.75rem, 44px); /* the 44px target, growing with the text */
   color: var(--brand-blue);
   font-weight: 600;
 }
