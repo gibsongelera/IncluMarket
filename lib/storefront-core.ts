@@ -224,6 +224,70 @@ export function filterAndSort(items: SearchableItem[], q: StorefrontQuery): Stor
   });
 }
 
+// --- Home rails and the hero side tile (05 #3, #8) ---------------------------------
+
+/** A category as a home rail names it: the name the chips show, its icon. */
+export interface RailCategory {
+  id: string;
+  label: string;
+  icon?: string;
+}
+
+const byText = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
+
+/**
+ * The `n` categories with the most live products, most first: the "Best
+ * sellers in …" rails. A tie goes to the label, A→Z, compared case-
+ * insensitively by code point so the order does not depend on the server's
+ * locale (then the id, so it is always total). Only categories in
+ * `categories` (the open ones) can be picked; one with no live products is
+ * left out, so there may be fewer than `n`.
+ */
+export function topCategories(
+  byCategory: Record<string, number>,
+  categories: readonly { id: string; label: string }[],
+  n = 2
+): string[] {
+  const take = Math.max(0, Math.floor(n));
+  if (!take) return [];
+  const seen = new Set<string>();
+  return categories
+    .filter((c) => !seen.has(c.id) && seen.add(c.id))
+    .map((c) => ({
+      id: c.id,
+      label: c.label.toLowerCase(),
+      count: Object.prototype.hasOwnProperty.call(byCategory, c.id) ? Number(byCategory[c.id]) : 0,
+    }))
+    .filter((c) => Number.isFinite(c.count) && c.count > 0)
+    .sort((a, b) => b.count - a.count || byText(a.label, b.label) || byText(a.id, b.id))
+    .slice(0, take)
+    .map((c) => c.id);
+}
+
+/** The hero's side tile: the live flash sale, else a featured shop, else none. */
+export type HeroPromo<Shop> =
+  | { kind: "flash"; item: StorefrontItem; endsAt: string }
+  | { kind: "shop"; shop: Shop }
+  | null;
+
+/**
+ * Pick the hero's side tile from reads the page already makes (05 #3):
+ * `onSale` is getOnSaleStorefront's list (ending soonest first), so the
+ * first listing whose sale has not ended is the live flash sale; otherwise
+ * the first featured shop; otherwise null, and the page hides the tile.
+ */
+export function heroPromo<Shop>(
+  onSale: readonly StorefrontItem[],
+  shops: readonly Shop[],
+  now: number = Date.now()
+): HeroPromo<Shop> {
+  for (const item of onSale) {
+    // An unparsable or missing end is NaN, which is never in the future.
+    if (item.saleEndsAt && Date.parse(item.saleEndsAt) > now) return { kind: "flash", item, endsAt: item.saleEndsAt };
+  }
+  return shops.length ? { kind: "shop", shop: shops[0] } : null;
+}
+
 // --- Search suggestions (header search box) --------------------------------------
 
 export interface ProductSuggestion {

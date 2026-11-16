@@ -17,18 +17,21 @@ import {
   stockByProduct,
 } from "@/lib/data";
 import { verifiedAmong } from "@/lib/pwd/data";
+import type { Category } from "@/lib/types";
 import {
   PAGE_SIZE,
   filterAndSort,
   matchScore,
+  topCategories,
   type ProductSuggestion,
+  type RailCategory,
   type SearchableItem,
   type Suggestions,
   type StorefrontItem,
   type StorefrontQuery,
 } from "./storefront-core";
 
-export type { StorefrontItem, StorefrontQuery, Suggestions, ProductSuggestion } from "./storefront-core";
+export type { StorefrontItem, StorefrontQuery, Suggestions, ProductSuggestion, RailCategory } from "./storefront-core";
 
 /**
  * Storefront reads (home, search, shop pages, rails).
@@ -314,6 +317,66 @@ export async function getCategoryCounts(): Promise<{ total: number; byCategory: 
   const byCategory: Record<string, number> = {};
   for (const c of cats) if (c) byCategory[c] = (byCategory[c] ?? 0) + 1;
   return { total: cats.length, byCategory };
+}
+
+/**
+ * Live listings per seller, for a known set of sellers (the store cards):
+ * one read of the seller column for those sellers only. Every id asked for
+ * is in the result, 0 when it has nothing live. Counts the same rows as a
+ * shop page's total (im_search_products by seller).
+ */
+export async function getListingCountsBySeller(sellerIds: readonly number[]): Promise<Map<number, number>> {
+  const ids = [...new Set(sellerIds.filter((n) => Number.isInteger(n) && n > 0))];
+  const counts = new Map<number, number>(ids.map((id) => [id, 0]));
+  if (!ids.length) return counts;
+  let owners: number[];
+  if (await hasStorefrontView()) {
+    const { data, error } = await createAdminClient().from("im_storefront_products").select("seller_id").in("seller_id", ids);
+    if (error) throw new DataUnavailableError("shops");
+    owners = ((data ?? []) as { seller_id: number }[]).map((r) => Number(r.seller_id));
+  } else {
+    owners = (await fallbackCatalog()).map((i) => i.sellerId);
+  }
+  for (const id of owners) if (counts.has(id)) counts.set(id, (counts.get(id) ?? 0) + 1);
+  return counts;
+}
+
+export interface CategoryBestSellers {
+  category: RailCategory;
+  items: StorefrontItem[];
+}
+
+/** How many "Best sellers in …" rails /home shows, and cards in each (05 #8). */
+const BEST_SELLER_RAILS = 2;
+const BEST_SELLER_CARDS = 10;
+
+/**
+ * Best sellers by category (05 #8): the two categories with the most live
+ * products (ties by name), their ten top-selling listings each. Takes the
+ * counts the page already read (getCategoryCounts) and the open categories
+ * (getCategories), so it adds no counting read: only the two searches, run
+ * in parallel. A category whose search comes back empty is dropped.
+ */
+export async function getCategoryBestSellers(
+  counts: { byCategory: Record<string, number> },
+  categories: readonly Category[]
+): Promise<CategoryBestSellers[]> {
+  const rails = categories.map(
+    (c): RailCategory => ({ id: c.id, label: c.folder || c.label, ...(c.icon ? { icon: c.icon } : {}) })
+  );
+  const byId = new Map(rails.map((c) => [c.id, c]));
+  const picked = topCategories(counts.byCategory, rails, BEST_SELLER_RAILS);
+  const found = await Promise.all(
+    picked.map(async (id) => ({
+      category: byId.get(id) as RailCategory,
+      // Sold-out listings are left out, as on the other home rails; reading
+      // twice as many keeps the rail full when a few top sellers ran out.
+      items: (await searchStorefront({ category: id, sort: "top_sales", pageSize: BEST_SELLER_CARDS * 2 })).items
+        .filter((i) => i.stockTotal > 0)
+        .slice(0, BEST_SELLER_CARDS),
+    }))
+  );
+  return found.filter((r) => r.items.length > 0);
 }
 
 // --- Search suggestions ------------------------------------------------------------
