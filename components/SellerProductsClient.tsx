@@ -1,7 +1,7 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Pill } from "./Pill";
 import { money, formatDate, productImageSrc } from "@/lib/format";
 import { toast } from "@/lib/toast";
@@ -21,8 +21,34 @@ export function SellerProductsClient({
   categories: Category[];
 }) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const flashDialogRef = useRef<HTMLDialogElement>(null);
   const [editing, setEditing] = useState<Product | "new" | null>(null);
+  // Opened by ?new=1, not by a click: on close there is no button to send
+  // focus back to, so it goes to "Add a product".
+  const openedByLink = useRef(false);
+
+  // ?new=1 (the dashboard's "Add a product", P3-03) opens the existing
+  // wizard, then comes off the URL, so Back, a reload or a shared link does
+  // not open it again. The other parameters stay.
+  useEffect(() => {
+    if (searchParams.get("new") !== "1") return;
+    openedByLink.current = true;
+    setEditing("new");
+    const rest = new URLSearchParams(searchParams.toString());
+    rest.delete("new");
+    const query = rest.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  }, [searchParams, pathname, router]);
+
+  function closeWizard() {
+    setEditing(null);
+    if (openedByLink.current) {
+      openedByLink.current = false;
+      requestAnimationFrame(() => document.getElementById("add-product")?.focus());
+    }
+  }
   const [flashProductId, setFlashProductId] = useState<number | null>(null);
   const [flashDiscount, setFlashDiscount] = useState(20);
   const [flashHours, setFlashHours] = useState(24);
@@ -187,9 +213,9 @@ export function SellerProductsClient({
         product={editing}
         variants={variants}
         categories={categories}
-        onClose={() => setEditing(null)}
+        onClose={closeWizard}
         onSaved={() => {
-          setEditing(null);
+          closeWizard();
           router.refresh();
         }}
       />
