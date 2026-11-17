@@ -432,14 +432,207 @@ a.seller-card:focus-visible { outline: var(--focus-ring); outline-offset: var(--
 .why__more { font-weight: 600; text-decoration: underline; }
 .why p { margin: var(--space-1) 0 0; max-width: var(--measure); color: var(--text-charcoal); }
 
-/* --- Homepage banners ---------------------------------------------------- */
-.banners { margin-bottom: var(--space-4); }
-.banners__list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-3); grid-auto-flow: column; grid-auto-columns: minmax(16rem, 1fr); overflow-x: auto; scroll-snap-type: x proximity; }
-.banners__item { scroll-snap-align: start; min-width: 0; }
-.banners__link { display: grid; border-radius: var(--radius-md); overflow: hidden; background: var(--canvas-white); border: 1px solid var(--border); color: inherit; text-decoration: none; }
-.banners__link img { width: 100%; aspect-ratio: 16 / 6; object-fit: cover; display: block; background: var(--surface-gray-2); }
-.banners__title { padding: var(--space-2) var(--space-3); font-weight: 700; }
-a.banners__link:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-ring-offset); }
+/* --- Home hero (P4-03, 05 #3, 01 §6.5) ------------------------------------
+   components/BannerStrip.tsx (the carousel: RailScroller's hero, whose track
+   and buttons are in components.css) and components/PromoTile.tsx (the side
+   tile). One column here, at every width: .home-hero--split stacks the carousel
+   over the tile, .home-hero--carousel and .home-hero--promo hold one of them full
+   width. responsive.css puts .home-hero--split side by side from 1024px and gives
+   a tile 34rem wide or more its wide form. */
+.home-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-4);
+  margin-block-end: var(--space-7);
+}
+
+/* A slide: the banner at the ratio Admin → Banners asks for (about
+   1600 × 600), its box reserved before the image arrives so nothing shifts;
+   the title under it, never over it (a banner may carry baked-in text, which
+   its alt text repeats). */
+.hero-slide {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--canvas-white);
+  color: var(--text-charcoal);
+  text-decoration: none;
+}
+.hero-slide__img {
+  display: block;
+  inline-size: 100%;
+  block-size: auto;
+  aspect-ratio: 16 / 6;
+  object-fit: cover;
+  background: var(--surface-gray-2);
+}
+.hero-slide__title {
+  padding: var(--space-2) var(--space-3);
+  font-weight: 700;
+  overflow-wrap: break-word;
+}
+a.hero-slide:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-ring-offset); }
+
+/* The side tile: white, 1px border, the carousel's radius. Its one link's
+   ::after covers the tile (PromoTile.tsx), so the tile is the target and
+   the ::after draws the keyboard ring. It is the `promo` query container: its wide form
+   (responsive.css) follows its own width in rem, so the text setting moves
+   the switch too. In a split row it stretches to the carousel's height; the
+   body fills it and centres the content in any spare height. */
+.promo-tile {
+  position: relative; /* holds the link's ::after */
+  container: promo / inline-size;
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--canvas-white);
+  color: var(--text-charcoal);
+}
+@media (hover: hover) and (pointer: fine) {
+  .promo-tile { transition: box-shadow var(--dur-2) var(--ease-out); }
+  .promo-tile:hover { box-shadow: var(--shadow-md); }
+}
+.promo-tile__body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: center;
+  gap: var(--space-3);
+  block-size: 100%;
+}
+/* The product photo: a 1:1 --surface-gray well, at most 60% of a narrow
+   tile, so the 1/3 column stays near the carousel's height. */
+.promo-tile__media--product {
+  inline-size: min(60%, 14rem);
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  background: var(--surface-gray);
+}
+.promo-tile__media--product img {
+  display: block;
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
+}
+/* No photo: the product's initial, as on a product card. */
+.promo-tile__initial {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  block-size: 100%;
+  background: var(--surface-gray-2);
+  color: var(--text-muted);
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: var(--step-5);
+}
+/* The shop: a 3rem round logo, else the initial as the seller cards draw it. */
+.promo-tile__logo,
+.promo-tile__avatar {
+  display: block;
+  inline-size: 3rem;
+  block-size: 3rem;
+  border-radius: 50%;
+}
+.promo-tile__logo {
+  object-fit: cover;
+  border: 1px solid var(--border);
+  background: var(--surface-gray);
+}
+.promo-tile__avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--palette-primary-100);
+  color: var(--palette-primary-dark);
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: var(--step-2);
+}
+.promo-tile__text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.promo-tile__text > * { margin: 0; }
+/* The h3 holds the eyebrow and the link, so a heading jump hears "Flash
+   sale, <title>"; the link's own name stays the title alone. */
+.promo-tile__title {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: var(--step-1);
+  line-height: 1.3;
+}
+.promo-tile__eyebrow {
+  color: var(--brand-brown);
+  font-size: .875rem;
+  font-weight: 800;
+}
+/* Two lines at most (three for a shop name, which is short words that
+   wrap early at 24px text); long words wrap only when a whole one cannot
+   fit. */
+.promo-tile__link {
+  color: inherit;
+  text-decoration: none;
+  overflow-wrap: break-word;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.promo-tile--shop .promo-tile__link {
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+}
+/* Not positioned itself, so the ::after takes the tile as its box (and the
+   link's clamp, overflow: hidden, does not clip it: the ::after's
+   containing block is the tile, outside the clipping box). */
+.promo-tile__link::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-lg);
+}
+/* The ring is drawn on the ::after, so it outlines the whole tile, and only
+   for keyboard focus (a click draws none). */
+.promo-tile__link:focus-visible { outline: none; }
+.promo-tile__link:focus-visible::after {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+.promo-tile__price {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+  font-size: var(--step-1);
+}
+.promo-tile__price .badge { white-space: nowrap; }
+/* The countdown's words appear after hydration: hold their line meanwhile. */
+.promo-tile__ends {
+  line-height: 1.5;
+  min-block-size: 1.5em;
+}
+.promo-tile__story {
+  max-inline-size: var(--measure);
+  color: var(--text-muted);
+  font-size: .875rem;
+  line-height: 1.45;
+  overflow-wrap: break-word;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.promo-tile__meta {
+  color: var(--text-muted);
+  font-size: .875rem;
+}
 
 /* --- Seller shop (/shop/[id]) ---------------------------------------------- */
 .main--shop { padding-top: 1.25rem; padding-bottom: 2rem; }

@@ -1327,6 +1327,41 @@ h3 {
   }
 }
 
+/* --- Home hero (P4-03, 05 #3, 01 §6.5) ----------------------------------
+   components/BannerStrip.tsx and PromoTile.tsx; the one-column base is in
+   layout.css. From 1024px a split hero sets the carousel and the tile side
+   by side, 2/3 and 1/3. The row is as tall as the taller of the two and the
+   tile stretches to it (grid's default), its content centred in the spare
+   height. The carousel keeps one slide per view (components.css). */
+@media (min-width: 1024px) {
+  .home-hero--split {
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  }
+  .promo-tile {
+    padding: var(--space-5); /* card padding from lg (01 §4) */
+  }
+}
+/* The tile's wide form, by its own width (the `promo` container) in rem, so
+   at 24px text it needs a wider tile: the picture on the left (30% of the
+   tile, 7rem to 12rem; a shop's logo keeps its 3rem), the words beside it.
+   A full-width tile (no banners; or under the carousel below 1024px) is
+   then a wide horizontal card, while the 1/3 column (about 21rem at 16px
+   text, under 29rem at 12px) keeps the picture above the words. */
+@container promo (min-width: 34rem) {
+  .promo-tile__body {
+    grid-template-columns: clamp(7rem, 30%, 12rem) minmax(0, 1fr);
+    align-items: center;
+    column-gap: var(--space-5);
+  }
+  .promo-tile__media--product {
+    inline-size: 100%;
+  }
+  .promo-tile--shop .promo-tile__body {
+    grid-template-columns: 3rem minmax(0, 1fr);
+    align-items: start;
+  }
+}
+
 /* --- Product detail: fixed commit bar ----------------------------------- */
 /* The signature Shopee pattern. Below md the buy actions leave the flow and
    pin to the bottom edge, so Add to cart stays reachable without scrolling

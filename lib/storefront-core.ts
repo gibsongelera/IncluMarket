@@ -288,6 +288,23 @@ export function heroPromo<Shop>(
   return shops.length ? { kind: "shop", shop: shops[0] } : null;
 }
 
+/**
+ * How the hero lays out (05 #3, plan Q4), from what it has to show:
+ *   "split"    banners and a promo: the carousel 2/3 and the tile 1/3 from
+ *              1024px, stacked (carousel first) below that;
+ *   "carousel" banners only: the carousel full width;
+ *   "promo"    a promo only: the tile full width, as a wide card;
+ *   "none"     neither: no section at all (no empty box, no heading).
+ * One banner is still a carousel layout; RailScroller drops its controls.
+ */
+export type HeroLayout = "split" | "carousel" | "promo" | "none";
+
+export function heroLayout(bannerCount: number, promo: HeroPromo<unknown>): HeroLayout {
+  const banners = bannerCount > 0;
+  if (banners) return promo ? "split" : "carousel";
+  return promo ? "promo" : "none";
+}
+
 // --- Search suggestions (header search box) --------------------------------------
 
 export interface ProductSuggestion {

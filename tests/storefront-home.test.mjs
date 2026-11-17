@@ -1,8 +1,9 @@
 // lib/storefront-core.ts (P4-01): which categories get the "Best sellers in …"
-// rails on /home (05 #8), and what the hero's side tile shows (05 #3).
+// rails on /home (05 #8), what the hero's side tile shows and how the hero
+// lays out (05 #3, P4-03).
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { heroPromo, topCategories } from "../lib/storefront-core.ts";
+import { heroLayout, heroPromo, topCategories } from "../lib/storefront-core.ts";
 
 const cats = [
   { id: "bags", label: "Bags" },
@@ -91,4 +92,28 @@ test("heroPromo: no live sale → the first featured shop", () => {
 test("heroPromo: neither → null, and the page hides the tile", () => {
   assert.equal(heroPromo([], [], NOW), null);
   assert.equal(heroPromo([sale(1, "not a date")], [], NOW), null);
+});
+
+// P4-03: the four hero layouts (plan Q4).
+test("heroLayout: banners and a promo → the 2/3 + 1/3 split", () => {
+  assert.equal(heroLayout(3, { kind: "shop", shop }), "split");
+  assert.equal(heroLayout(1, heroPromo([sale(1, "2026-11-17T10:00:00Z")], [], NOW)), "split", "one banner still splits");
+});
+
+test("heroLayout: banners only → the carousel full width", () => {
+  assert.equal(heroLayout(4, null), "carousel");
+  assert.equal(heroLayout(1, heroPromo([], [], NOW)), "carousel");
+});
+
+test("heroLayout: a promo only → the tile full width", () => {
+  assert.equal(heroLayout(0, { kind: "shop", shop }), "promo");
+  assert.equal(heroLayout(0, heroPromo([sale(1, "2026-11-17T10:00:00Z")], [shop], NOW)), "promo");
+});
+
+test("heroLayout: neither → nothing (no empty section)", () => {
+  assert.equal(heroLayout(0, null), "none");
+  assert.equal(heroLayout(0, heroPromo([sale(1, "2026-11-16T00:00:00Z")], [], NOW)), "none", "an ended sale is no promo");
+  // A count that is not a positive number is no banners.
+  assert.equal(heroLayout(Number.NaN, null), "none");
+  assert.equal(heroLayout(-1, { kind: "shop", shop }), "promo");
 });

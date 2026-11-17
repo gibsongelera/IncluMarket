@@ -26,11 +26,11 @@
  *   modifier's width rules go there, after the RailScroller block, or carry
  *   three classes (`.rail-scroller--rail .rail__track.rail__track--tiles`).
  *
- *   P4-03, the hero: variant="hero", label="banner" ("Previous banner"),
- *   ariaLabel="Promotions" (or ariaLabelledby a visible heading), one banner
- *   link per child. One slide per view at every width; the buttons and the
- *   "2 of 4" counter sit under the slide, so they never cover text baked into
- *   a banner image.
+ *   P4-03, the hero (components/BannerStrip.tsx): variant="hero",
+ *   label="promotion" ("Previous promotion"), ariaLabel="Promotions",
+ *   slideLabels from the banner titles, one banner link per child. One slide
+ *   per view at every width; the buttons and the "2 of 4" counter sit under
+ *   the slide, so they never cover text baked into a banner image.
  *
  * Children: one element per item (arrays are flattened, fragments are not).
  * The component wraps each one: `<li class="rail__item">` in the rail's
