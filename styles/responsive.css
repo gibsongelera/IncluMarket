@@ -1853,6 +1853,37 @@ h3 {
   }
 }
 
+/* The buyer dashboard (P4-06, 05 §3; layout.css). The purchase tiles go
+   four to a row once four of 7.5rem fit, else two or one; from 600px the
+   wishlist's cards go four to a row, still never under 7.5rem (fewer to a
+   row at 24px text). From 1024px two columns: the wider one
+   holds the recent orders and the wishlist's four cards, the narrower one
+   PWD verification and the shortcuts; My purchases and Picked for you span
+   both. */
+/* Four tiles of 7.5rem and three --space-4 (1rem) gaps: 33rem. In rem, so
+   at 24px text it takes a wider box (container queries cannot read var()). */
+@container purchases (min-width: 33rem) {
+  .purchase-tiles {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+@media (min-width: 600px) {
+  .dash-cards {
+    grid-template-columns: repeat(
+      auto-fill,
+      minmax(min(100%, max(7.5rem, calc((100% - 3 * var(--space-3)) / 4))), 1fr)
+    );
+  }
+}
+@media (min-width: 1024px) {
+  .buyer-dash {
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  }
+  .buyer-dash__wide {
+    grid-column: 1 / -1;
+  }
+}
+
 @media (min-width: 768px) {
   /* Progress reads across once there is room for four labels. */
   .steps {

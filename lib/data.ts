@@ -334,6 +334,9 @@ export async function getOrdersByBuyer(buyerId: number): Promise<Order[]> {
       .select("*")
       .eq("buyer_id", buyerId)
       .order("created_at", { ascending: false })
+      // Ties broken by id, so at the 1,000-row cap this and the buyer
+      // dashboard's counts (lib/buyer-dashboard.ts) cut at the same order.
+      .order("id", { ascending: false })
   );
 }
 

@@ -98,6 +98,25 @@ export function buyerTab(order: OrderFacts): BuyerTab {
   }
 }
 
+/** The four "My purchases" tiles of the buyer dashboard (05 §3). */
+export type PurchaseTab = "to_pay" | "to_ship" | "to_receive" | "returns";
+export type PurchaseCounts = Record<PurchaseTab, number>;
+
+/**
+ * How many of these orders sit in each "My purchases" tile, by buyerTab():
+ * the same rule /buyer/orders counts its tabs with (OrdersClient), so the
+ * dashboard's figures are the tab labels' figures. Completed and cancelled
+ * orders have no tile and are not counted.
+ */
+export function countBuyerTabs(orders: readonly OrderFacts[]): PurchaseCounts {
+  const counts: PurchaseCounts = { to_pay: 0, to_ship: 0, to_receive: 0, returns: 0 };
+  for (const o of orders) {
+    const tab = buyerTab(o);
+    if (tab in counts) counts[tab as PurchaseTab]++;
+  }
+  return counts;
+}
+
 /** Plain-language status for buyers. */
 export function buyerStatusText(order: OrderFacts): string {
   switch (order.order_status) {

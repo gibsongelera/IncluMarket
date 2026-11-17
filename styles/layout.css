@@ -469,6 +469,157 @@ body:has(.main--home) { background: var(--canvas-white); }
   color: var(--text-muted);
   font-size: .875rem;
 }
+
+/* --- Buyer dashboard (/account for a buyer, P4-06, 05 §3) -----------------
+   app/account/page.tsx. One column here; from 1024px two (responsive.css):
+   My purchases and Picked for you across both, then recent orders beside
+   PWD verification and the wishlist beside the shortcuts. Each widget is a
+   section under its 01 §6.4 header (.section-head: the h2 at --step-3, a
+   "View all" link named for what it lists); the console's --space-6
+   between them. The panels are .card, flat (responsive.css §7). Text
+   breaks between words only: a word splits only when it is wider than its
+   whole box. */
+.buyer-dash__head { margin-block: var(--space-5) var(--space-6); }
+.buyer-dash {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-6) var(--space-5);
+  align-items: start;
+  padding-bottom: var(--space-6);
+}
+.buyer-dash > * { min-width: 0; }
+/* Picked for you is the last widget, not a /home section: the grid's gap
+   spaces it. */
+.buyer-dash .home-section { margin-block-end: 0; }
+
+/* My purchases: KpiCard links, two to a row (2×2), or four once the
+   section holds four tiles of 7.5rem (the `purchases` container query in
+   responsive.css), never three and one. Never a tile under 7.5rem, so with
+   24px text on a phone they stack one to a row rather than split "receive"
+   mid-word; max() caps the row at two. */
+.buyer-dash__purchases { container: purchases / inline-size; }
+.purchase-tiles {
+  display: grid;
+  grid-template-columns: repeat(
+    auto-fill,
+    minmax(min(100%, max(7.5rem, calc((100% - var(--space-4)) / 2))), 1fr)
+  );
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+/* Equal heights in a row: the grid stretches the item, the item its tile. */
+.purchase-tiles > li { display: flex; min-width: 0; }
+.purchase-tiles > li > .kpi { flex: 1 1 auto; min-width: 0; }
+
+/* Recent orders: one row per order in one flat panel, the thumbnail
+   (decorative, alt="") beside the words. The Track link is a 44px target
+   that grows with the text, at the end of the status line, dropping under
+   it when they do not fit. */
+.dash-orders {
+  margin: 0;
+  padding: 0 var(--space-3);
+  list-style: none;
+}
+/* The thumbnail takes at most a quarter of the row, so with 24px text on a
+   phone the words keep room for a whole word per line. */
+.dash-order {
+  display: grid;
+  grid-template-columns: min(3.5rem, 25%) minmax(0, 1fr);
+  gap: var(--space-3);
+  align-items: start;
+  padding-block: var(--space-3);
+}
+.dash-order + .dash-order { border-top: 1px solid var(--border); }
+.dash-order__thumb {
+  display: block;
+  inline-size: 100%;
+  block-size: auto;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  background: var(--surface-gray);
+}
+.dash-order__body {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+}
+.dash-order__body > p { margin: 0; overflow-wrap: break-word; }
+/* An h3, so heading jumps reach each order; sized like the body text. */
+.dash-order__title {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: var(--step-0);
+  font-weight: 600;
+  line-height: 1.4;
+  overflow-wrap: break-word;
+}
+.dash-order__meta {
+  color: var(--text-muted);
+  font-size: .875rem;
+}
+.dash-order__foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  margin-top: var(--space-1);
+}
+.dash-order__total {
+  font-family: var(--font-display);
+  font-variant-numeric: tabular-nums;
+}
+/* Two classes: responsive.css (imported last) sets .btn--sm to 36px. */
+.dash-order__foot .dash-order__track {
+  margin-inline-start: auto;
+  min-height: max(2.75rem, 44px);
+}
+
+/* Wishlist: four StorefrontCards, two to a row on phones and four from
+   600px (responsive.css), never a column under the 7.5rem that keeps a
+   "₱1,250.00" price on one line (the rails' rule): at 24px text a narrow
+   box shows fewer to a row. Not .product-grid (check-grid.mjs). */
+.dash-cards {
+  display: grid;
+  grid-template-columns: repeat(
+    auto-fill,
+    minmax(min(100%, max(7.5rem, calc((100% - var(--space-3)) / 2))), 1fr)
+  );
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.dash-cards > li { display: flex; min-width: 0; }
+.dash-cards > li > * { flex: 1 1 auto; min-width: 0; }
+
+/* Shortcuts: the account sections and Help, one 44px row each. */
+.dash-shortcuts {
+  margin: 0;
+  padding-block: var(--space-1);
+  list-style: none;
+}
+.dash-shortcuts > li + li { border-top: 1px solid var(--border); }
+.dash-shortcut {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: max(2.75rem, 44px);
+  padding-block: var(--space-2);
+  color: var(--brand-blue);
+  font-weight: 600;
+  text-decoration: none;
+  overflow-wrap: break-word;
+}
+.dash-shortcut:hover { color: var(--brand-blue-800); text-decoration: underline; }
+.dash-shortcut .icon {
+  flex: none;
+  width: 1.25rem;
+  height: 1.25rem;
+}
+.dash-shortcut > span { min-width: 0; }
 .countdown { font-weight: 800; color: var(--price-color); font-variant-numeric: tabular-nums; }
 .feed__more { margin-top: var(--space-5); color: var(--text-muted); }
 

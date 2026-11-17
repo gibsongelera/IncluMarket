@@ -23,6 +23,12 @@ export interface KpiCardProps {
    * the seller's Ready to withdraw). Not shown when the value is missing.
    */
   note?: string;
+  /**
+   * What the number counts, for screen readers only ("orders"): the link
+   * then reads "To pay 3 orders", not a bare "To pay 3". Not shown on screen,
+   * where the label above says it.
+   */
+  unit?: string;
   /** The list behind the number. */
   href: string;
   /** A name from components/Icon.tsx, shown in a tinted tile beside the label. */
@@ -59,6 +65,7 @@ export function KpiCard({
   value,
   empty,
   note,
+  unit,
   href,
   icon,
   tone = "blue",
@@ -83,6 +90,7 @@ export function KpiCard({
       </span>{" "}
       <strong className="kpi__value">
         {missing ? <span aria-hidden="true">—</span> : typeof value === "number" ? value.toLocaleString("en-PH") : value}
+        {unit && !missing ? <span className="sr-only">{` ${unit}`}</span> : null}
       </strong>
       {missing ? (
         <>

@@ -12,11 +12,18 @@ export function VerificationStatus({
   my,
   role,
   compact = false,
+  headingLevel = 2,
 }: {
   my: MyVerificationLite;
   role: "buyer" | "seller";
   compact?: boolean;
+  /** 3 where the card sits under a section's own h2 (the buyer dashboard). */
+  headingLevel?: 2 | 3;
 }) {
+  const Heading = headingLevel === 3 ? "h3" : "h2";
+  // Under a section's own h2 the card is part of that region, not a second
+  // named region inside it.
+  const nested = headingLevel === 3;
   const why =
     role === "seller"
       ? "Verified sellers' listings appear in the shop with a Verified PWD seller badge."
@@ -124,11 +131,11 @@ export function VerificationStatus({
     );
   }
 
-  return (
-    <section className={`notice notice--${tone} verification-status`} aria-labelledby="verification-status-title">
-      <h2 id="verification-status-title" className="verification-status__title">
+  const content = (
+    <>
+      <Heading id="verification-status-title" className="verification-status__title">
         {title}
-      </h2>
+      </Heading>
       {body}
       {compact && my.state !== "unavailable" ? (
         <p>
@@ -137,6 +144,13 @@ export function VerificationStatus({
           </Link>
         </p>
       ) : null}
+    </>
+  );
+  return nested ? (
+    <div className={`notice notice--${tone} verification-status`}>{content}</div>
+  ) : (
+    <section className={`notice notice--${tone} verification-status`} aria-labelledby="verification-status-title">
+      {content}
     </section>
   );
 }

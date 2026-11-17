@@ -653,6 +653,9 @@ a.chart-legend__link:hover .chart-legend__label { color: var(--brand-blue-800); 
 .account-grid { display: grid; gap: var(--space-4); }
 .account-grid--spaced { margin-top: var(--space-4); }
 .verification-status__title { font-size: var(--step-1); margin: 0 0 var(--space-2); }
+/* The compact card's only action: 44px and growing with the text, though
+   responsive.css sets .btn--sm to 36px from 768px (two classes win). */
+.verification-status .btn--sm { min-height: max(2.75rem, 44px); }
 
 /* Inline error under one field. The words carry the meaning; colour and
    weight repeat it (WCAG 1.4.1). */

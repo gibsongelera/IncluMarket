@@ -215,6 +215,13 @@ const ICONS: Record<string, React.ReactNode> = {
       <path d="M8 10.5V7.5a4 4 0 0 1 8 0v3" />
     </>
   ),
+  // The buyer dashboard's Addresses shortcut (P4-06).
+  "map-pin": (
+    <>
+      <path d="M19 10c0 5.5-7 11-7 11s-7-5.5-7-11a7 7 0 0 1 14 0z" />
+      <circle cx="12" cy="10" r="2.5" />
+    </>
+  ),
   // Row actions (ADR-04): the disclosure's chevron, turned up when open.
   "chevron-down": <path d="M6 9l6 6 6-6" />,
   // RailScroller's Previous / Next (P4-02, ADR-06): the "‹ ›" of 05 §2.
