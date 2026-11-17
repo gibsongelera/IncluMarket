@@ -25,6 +25,37 @@ export function GridSkeleton({ label = "Loading products…", cards = 8, wide = 
   );
 }
 
+/**
+ * /home (app/home/loading.tsx), in the page's order: the hero, a row of
+ * category circles, then a rail of cards. The cards sit in the rail's own
+ * track (.rail-scroller--rail .rail__track), so they take its columns at
+ * every width; heights are rem or ratios, so nothing shifts sideways.
+ */
+export function HomeSkeleton({ label = "Loading the shop…" }: { label?: string }) {
+  return (
+    <div className="skeleton skeleton--home" role="status" aria-live="polite">
+      <Status label={label} />
+      <div className="skeleton__block skeleton__hero" aria-hidden="true" />
+      <div className="skeleton__block skeleton__line skeleton__line--title" aria-hidden="true" />
+      <div className="skeleton__tiles" aria-hidden="true">
+        {Array.from({ length: 6 }, (_, i) => (
+          <div key={i} className="skeleton__block skeleton__circle" />
+        ))}
+      </div>
+      <div className="skeleton__block skeleton__line skeleton__line--title" aria-hidden="true" />
+      <div className="rail-scroller rail-scroller--rail product-rail" aria-hidden="true">
+        <div className="rail__track">
+          {Array.from({ length: 5 }, (_, i) => (
+            <div key={i} className="rail__item">
+              <div className="skeleton__block skeleton__card" />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function ListSkeleton({ label = "Loading…", rows = 6 }: { label?: string; rows?: number }) {
   return (
     <div className="skeleton" role="status" aria-live="polite">

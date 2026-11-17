@@ -79,7 +79,6 @@ export default async function SearchPage({
                 items={results.items}
                 wishlistIds={wishlistIds}
                 showWishlist={session?.role === "buyer"}
-                labelledBy="results-title"
               />
               <LoadMore shown={results.shown} total={results.total} href={nextHref} />
             </>

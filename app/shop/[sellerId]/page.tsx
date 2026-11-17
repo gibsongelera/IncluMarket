@@ -113,7 +113,6 @@ export default async function ShopPage({ params, searchParams }: Params) {
                 items={results.items}
                 wishlistIds={wishlistIds}
                 showWishlist={session?.role === "buyer"}
-                labelledBy="shop-products"
               />
               <LoadMore shown={results.shown} total={results.total} href={next} />
             </>

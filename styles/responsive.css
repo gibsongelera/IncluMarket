@@ -1181,6 +1181,10 @@ h3 {
 @media (min-width: 768px) {
   .skeleton__split { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
 }
+/* The home skeleton's hero: the carousel's 2/3 at 16:6 is about 4:1 of the row. */
+@media (min-width: 1024px) {
+  .skeleton__hero { aspect-ratio: 4 / 1; }
+}
 
 /* --- The product grid: its ONLY definition (B-17) -----------------------
    It was defined five times across three files, and `auto-fill` kept empty
@@ -1192,7 +1196,20 @@ h3 {
               5 columns when the panel is collapsed or there is none
               (.product-grid--wide; /search with its filters collapsed)
    minmax(0, 1fr) lets a long title wrap instead of widening its track.
-   scripts/check-grid.mjs fails the build on any other definition. */
+   scripts/check-grid.mjs fails the build on any other definition.
+
+   Never a column under 7.5rem (P4-05, 1.4.10): the narrowest card that
+   keeps a "₱1,250.00" price on one line at any text size, the rule the
+   rails' phone wrap uses (.rail__track, components.css). At 320px with 24px
+   text two columns left a 92px card body that cut the price. So each count
+   above is a ceiling: inside StorefrontGrid's .product-list (the query
+   container), the grid drops columns while its box is under
+   n × 7.5rem + (n − 1) gaps, with the gap of that width (container queries
+   in rem follow the text setting; a media query would not). At 16px text no
+   page changes; at 24px a phone gets one column, 480px two, /search
+   beside its filters fewer. A grid outside a .product-list (the loading
+   skeleton, the wishlist) keeps the ceilings. Explicit counts only: no
+   auto-fill here (check-grid.mjs). */
 .product-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1214,35 +1231,61 @@ h3 {
     grid-template-columns: repeat(5, minmax(0, 1fr));
   }
 }
-
-/* --- Section rails: horizontal scroll ----------------------------------- */
-@media (max-width: 767px) {
-  /* ONLY .seller-rail scrolls. .rail is the section WRAPPER around a heading
-     plus a grid — turning it into a horizontal flex track laid the <h2> and
-     the grid side by side at 78% each, which is what pushed the cards off to
-     the right with an empty column beside the heading. */
-  .seller-rail {
-    display: flex;
-    flex-wrap: nowrap;
-    gap: var(--space-3);
-    overflow-x: auto;
-    scroll-snap-type: x proximity;
-    margin-inline: calc(var(--space-3) * -1);
-    padding-inline: var(--space-3);
-    padding-bottom: var(--space-2);
-    scrollbar-width: none;
+.product-list {
+  container: product-list / inline-size;
+}
+/* After the ceilings. Each width's rules come after the narrower width's,
+   and within a width the smaller box comes last, so the last match wins. */
+@container product-list (width < 15.5rem) {
+  .product-grid,
+  .product-grid--wide,
+  .search-layout--collapsed .product-grid {
+    grid-template-columns: minmax(0, 1fr);
   }
-  .seller-rail::-webkit-scrollbar {
-    display: none;
+}
+@media (min-width: 480px) {
+  @container product-list (width < 24rem) {
+    .product-grid,
+    .product-grid--wide,
+    .search-layout--collapsed .product-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
   }
-  .seller-rail > * {
-    flex: 0 0 78%;
-    scroll-snap-align: start;
+  @container product-list (width < 15.75rem) {
+    .product-grid,
+    .product-grid--wide,
+    .search-layout--collapsed .product-grid {
+      grid-template-columns: minmax(0, 1fr);
+    }
   }
-
-  /* The wrapper stays a plain block. */
-  .rail {
-    display: block;
+}
+@media (min-width: 1024px) {
+  @container product-list (width < 41.5rem) {
+    .product-grid--wide,
+    .search-layout--collapsed .product-grid {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+  }
+  @container product-list (width < 33rem) {
+    .product-grid,
+    .product-grid--wide,
+    .search-layout--collapsed .product-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+  @container product-list (width < 24.5rem) {
+    .product-grid,
+    .product-grid--wide,
+    .search-layout--collapsed .product-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+  @container product-list (width < 16rem) {
+    .product-grid,
+    .product-grid--wide,
+    .search-layout--collapsed .product-grid {
+      grid-template-columns: minmax(0, 1fr);
+    }
   }
 }
 
@@ -1308,6 +1351,41 @@ h3 {
 @media (min-width: 768px) {
   .rail-scroller--rail .rail__track--tiles {
     grid-auto-columns: 7.5rem;
+  }
+}
+
+/* --- Home product rails and store cards (P4-05, 05 §2, 01 §6.5) ---------
+   ProductRail shows four cards on phones (layout.css); from 768px every
+   card, in the scrolling row (display: flex, as .rail__item). The store
+   grid (components/StoreCards.tsx): one column, two from 600px, four from
+   1024px (two rows of four); card padding --space-5 from lg (01 §4). */
+@media (min-width: 600px) {
+  .store-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (min-width: 768px) {
+  .product-rail--capped .rail__item:nth-child(n + 5) {
+    display: flex;
+  }
+}
+@media (min-width: 1024px) {
+  .store-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  .store-card {
+    padding: var(--space-5);
+  }
+}
+/* A store card 17rem wide or more (its own width, in rem, so 24px text
+   needs a wider card): the logo on the left, the words beside it. A
+   narrower card (four to a row at 1024px, or 24px text) keeps the logo
+   above the name, so a name or the badge is never squeezed into a sliver. */
+@container store-card (min-width: 17rem) {
+  .store-card__body {
+    grid-template-columns: 3rem minmax(0, 1fr);
+    align-items: start;
+    column-gap: var(--space-3);
   }
 }
 

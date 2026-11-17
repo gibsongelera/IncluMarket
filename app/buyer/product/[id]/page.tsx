@@ -177,7 +177,6 @@ export default async function ProductPage({
               items={alsoBought}
               wishlistIds={wishlistIds}
               showWishlist={session?.role === "buyer"}
-              labelledBy="also-title"
             />
           </section>
         ) : null}

@@ -1321,6 +1321,20 @@ fieldset {
 .skeleton__head { display: grid; gap: var(--space-2); }
 .skeleton__tile { height: 8rem; border-radius: var(--radius-md); }
 .skeleton__panel { height: 16rem; border-radius: var(--radius-md); }
+/* The home skeleton (HomeSkeleton): the hero's box (4:1 from 1024px, where
+   the carousel takes 2/3, in responsive.css), one row of 5rem category
+   circles (as many as fit, never a sideways scroll) and a rail of cards in
+   the rail's own track, which shows no scrollbar here. */
+.skeleton__hero { aspect-ratio: 16 / 6; border-radius: var(--radius-lg); }
+.skeleton__tiles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  block-size: 5rem;
+  overflow: hidden;
+}
+.skeleton__circle { flex: none; inline-size: 5rem; block-size: 5rem; border-radius: 999px; }
+.skeleton--home .rail-scroller--rail .rail__track { overflow: hidden; }
 
 /* Inline sort control (buyer home feed head) */
 .sort-field {
@@ -2029,8 +2043,8 @@ fieldset {
 
 /* --- Rails and the hero carousel (P4-02, ADR-06, 05 §2, 01 §6.5) ---------
    components/RailScroller.tsx. The phone layout and the hero are here; the
-   one-row rail from 768px up is in responsive.css. .rail stays the section
-   WRAPPER (responsive.css "Section rails"): nothing here lays it out.
+   one-row rail from 768px up is in responsive.css. The section around a
+   rail (.home-section, .rail) is a plain block: nothing here lays it out.
 
    --rail-pad is a bleed. A scrolling track clips what overflows it (the
    focus ring, 5px outside a card; the 2px hover lift; the shadow), so a

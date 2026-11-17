@@ -7,20 +7,24 @@ import { BannerStrip } from "@/components/BannerStrip";
 import { CategoryChips } from "@/components/CategoryChips";
 import { FlashSaleStrip } from "@/components/FlashSaleStrip";
 import { LoadMore } from "@/components/LoadMore";
+import { ProductRail } from "@/components/ProductRail";
 import { RecommendationRail } from "@/components/RecommendationRail";
 import { getHomeRecommendations } from "@/lib/recommend";
 import { SortTabs } from "@/components/SortTabs";
+import { StoreCards } from "@/components/StoreCards";
 import { StorefrontGrid } from "@/components/StorefrontGrid";
 import { getCategories, getWishlistProductIds } from "@/lib/data";
 import { getFeaturedShops } from "@/lib/shops";
 import {
   getActiveBanners,
+  getCategoryBestSellers,
   getCategoryCounts,
   getFeaturedStorefront,
   getOnSaleStorefront,
   searchStorefront,
+  type CategoryBestSellers,
 } from "@/lib/storefront";
-import { parseStorefrontParams, storefrontParams } from "@/lib/storefront-core";
+import { heroPromo, parseStorefrontParams, storefrontParams } from "@/lib/storefront-core";
 
 export const dynamic = "force-dynamic";
 
@@ -29,6 +33,12 @@ export const dynamic = "force-dynamic";
  * on the server from the URL — category, sort, how many pages are shown —
  * and only 24 cards are read per page (B-16, C-27). Search with filters
  * lives on /search; this page browses.
+ *
+ * Browsing (no category), top to bottom as 05 §2: the hero, Explore
+ * categories, Today's deals, Featured products, Shops by PWD sellers, the
+ * two "Best sellers in …" rails, Picked for you, Discover. A section with
+ * nothing to show is not rendered. With a category selected only the tiles
+ * and that category's feed show, and the other reads are not made.
  */
 export default async function HomePage({
   searchParams,
@@ -47,9 +57,18 @@ export default async function HomePage({
   const query = { category: parsed.category, sort: parsed.sort, page: parsed.page };
   const browsing = !query.category;
 
-  const [categories, counts, results, onSale, featured, sellers, wishlistIds, banners, rec] = await Promise.all([
-    getCategories(),
-    getCategoryCounts(),
+  // One Promise.all. The best sellers need the counts and the categories,
+  // so they start as soon as those two arrive, while the rest still run
+  // (no second count read: getCategoryBestSellers takes these).
+  const categoriesP = getCategories();
+  const countsP = getCategoryCounts();
+  const bestP: Promise<CategoryBestSellers[]> = browsing
+    ? Promise.all([countsP, categoriesP]).then(([c, cats]) => getCategoryBestSellers(c, cats))
+    : Promise.resolve([]);
+
+  const [categories, counts, results, onSale, featured, sellers, wishlistIds, banners, rec, bestSellers] = await Promise.all([
+    categoriesP,
+    countsP,
     searchStorefront(query),
     browsing ? getOnSaleStorefront(10) : Promise.resolve([]),
     browsing ? getFeaturedStorefront(10) : Promise.resolve([]),
@@ -57,6 +76,7 @@ export default async function HomePage({
     session ? getWishlistProductIds(session.user_id) : Promise.resolve([] as number[]),
     browsing ? getActiveBanners() : Promise.resolve([]),
     browsing ? getHomeRecommendations(session?.role === "buyer" ? session.user_id : null) : Promise.resolve(null),
+    bestP,
   ]);
 
   const showWishlist = Boolean(session);
@@ -73,7 +93,7 @@ export default async function HomePage({
       <SiteHeader variant="buyer" active="home" session={session} />
       <main id="main" tabIndex={-1} className="container main--home">
         <h1 className="sr-only">Shop InclusiveMarket</h1>
-        <BannerStrip banners={banners} />
+        <BannerStrip banners={banners} promo={heroPromo(onSale, sellers)} />
 
         <CategoryChips
           categories={categories}
@@ -83,47 +103,51 @@ export default async function HomePage({
           hrefFor={(id) => href({ category: id ?? undefined, page: 1 })}
         />
 
-        {browsing ? <FlashSaleStrip items={onSale} wishlistIds={wishlistIds} showWishlist={showWishlist} /> : null}
+        {browsing ? (
+          <>
+            <FlashSaleStrip items={onSale} wishlistIds={wishlistIds} showWishlist={showWishlist} />
 
-        {browsing && sellers.length ? (
-          <section className="rail" aria-labelledby="sellers-title">
-            <h2 id="sellers-title">Featured PWD sellers</h2>
-            <ul className="seller-rail" role="list">
-              {sellers.map((s) => (
-                <li key={s.id}>
-                  <Link className="seller-card" href={`/shop/${s.id}`}>
-                    <span className="seller-card__avatar" aria-hidden="true">
-                      {s.name.charAt(0).toUpperCase()}
-                    </span>
-                    <span className="seller-card__name">{s.name}</span>
-                    {s.verified ? <span className="badge badge--verified">Verified PWD seller</span> : null}
-                    {s.story ? <span className="seller-card__story">{s.story}</span> : null}
-                    <span className="badge badge--featured">Visit shop</span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </section>
+            {/* No "View all": /search has no featured filter, so no page lists them all. */}
+            <ProductRail
+              id="featured-title"
+              title="Featured products"
+              label="featured products"
+              items={featured}
+              wishlistIds={wishlistIds}
+              showWishlist={showWishlist}
+            />
+
+            <StoreCards shops={sellers} />
+
+            {bestSellers.map((b, n) => (
+              <ProductRail
+                key={b.category.id}
+                id={`best-${n + 1}-title`}
+                title={`Best sellers in ${b.category.label}`}
+                label={`best sellers in ${b.category.label}`}
+                items={b.items}
+                wishlistIds={wishlistIds}
+                showWishlist={showWishlist}
+                viewAll={{
+                  href: href({ category: b.category.id, sort: "top_sales", page: 1 }),
+                  name: `best sellers in ${b.category.label}`,
+                }}
+              />
+            ))}
+
+            {rec ? <RecommendationRail rec={rec} wishlistIds={wishlistIds} showWishlist={showWishlist} /> : null}
+          </>
         ) : null}
-
-        {browsing && featured.length ? (
-          <section className="rail" aria-labelledby="featured-title">
-            <h2 id="featured-title">Featured products</h2>
-            <StorefrontGrid items={featured} wishlistIds={wishlistIds} showWishlist={showWishlist} labelledBy="featured-title" />
-          </section>
-        ) : null}
-
-        {rec ? <RecommendationRail rec={rec} wishlistIds={wishlistIds} showWishlist={showWishlist} /> : null}
 
         <section className="feed" aria-labelledby="feed-title">
-          <div className="feed-head">
+          <div className="section-head">
             <h2 id="feed-title">{catName ?? "Discover"}</h2>
             <SortTabs action="/home" current={query.sort ?? "latest"} params={params} withRelevance={false} />
           </div>
 
           {results.items.length ? (
             <>
-              <StorefrontGrid items={results.items} wishlistIds={wishlistIds} showWishlist={showWishlist} labelledBy="feed-title" />
+              <StorefrontGrid items={results.items} wishlistIds={wishlistIds} showWishlist={showWishlist} />
               <LoadMore
                 shown={results.shown}
                 total={results.total}

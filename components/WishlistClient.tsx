@@ -75,6 +75,7 @@ export function WishlistClient({
   return (
     <>
       {items.length ? (
+        <div className="product-list">
         <ul className="product-grid wishlist-grid" role="list" aria-label="Saved products">
           {items.map((i) => {
             const soldOut = i.stockTotal <= 0;
@@ -120,6 +121,7 @@ export function WishlistClient({
             );
           })}
         </ul>
+        </div>
       ) : null}
 
       {unavailable.length ? (
