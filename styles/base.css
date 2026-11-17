@@ -43,13 +43,9 @@ main > h1,
 .page-head > h1,
 .page-head__text > h1,
 .page-head > h2,
-#feed-title,
-.category-strip > h2 {
+#feed-title {
   color: var(--text-on-canvas, var(--text-heading, var(--text-charcoal)));
   
-}
-.category-folder-hint {
-  color: var(--text-on-canvas-muted, var(--text-muted));
 }
 h1 { font-size: var(--step-5); }
 h2 { font-size: var(--step-3); }

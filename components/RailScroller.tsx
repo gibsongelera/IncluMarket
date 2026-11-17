@@ -43,7 +43,8 @@
  *     so without JavaScript (or with five cards that fit) the row is a plain
  *     scrollable list with no dead buttons. Below 768px a rail is a 2-column
  *     wrap that never overflows, so it has none (styles/responsive.css).
- *   - Previous / Next scroll one view (the track's clientWidth); scroll-snap
+ *   - Previous / Next scroll to the next whole item (pageBy, lib/rail.ts:
+ *     one view for cards that divide it exactly); scroll-snap
  *     lands it on whole cards. Instant under either reduced-motion switch
  *     (scrollBehavior() in lib/a11y/prefs.ts).
  *   - At an end the button is aria-disabled="true" and does nothing. Never
@@ -63,7 +64,7 @@
 
 import { Children, isValidElement, useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { scrollBehavior } from "@/lib/a11y/prefs";
-import { railPosition } from "@/lib/rail";
+import { pageDelta, railPosition } from "@/lib/rail";
 import { Icon } from "./Icon";
 
 export type RailVariant = "rail" | "hero";
@@ -86,6 +87,25 @@ export interface RailScrollerProps {
   /** Hero only: each slide's name (a banner's title), said after a press. */
   slideLabels?: readonly string[];
   children: ReactNode;
+}
+
+/**
+ * How far one press scrolls: to the next whole item (lib/rail.ts pageDelta),
+ * measured from the view's content edge (the track's scroll padding, where
+ * snap points land). Cards that divide the view exactly page by one view;
+ * fixed-width tiles page so no half-visible tile is skipped.
+ */
+function pageBy(track: HTMLElement, direction: -1 | 1): number {
+  const style = window.getComputedStyle(track);
+  const padStart = parseFloat(style.scrollPaddingInlineStart) || 0;
+  const padEnd = parseFloat(style.scrollPaddingInlineEnd) || 0;
+  const viewStart = track.getBoundingClientRect().left + track.clientLeft + padStart;
+  const viewWidth = track.clientWidth - padStart - padEnd;
+  const spans = Array.from(track.children, (el) => {
+    const r = el.getBoundingClientRect();
+    return { start: r.left - viewStart, end: r.right - viewStart };
+  });
+  return pageDelta(spans, viewWidth, direction) ?? direction * track.clientWidth;
 }
 
 function capitalise(s: string): string {
@@ -164,7 +184,7 @@ export function RailScroller({
       { scrollLeft: track.scrollLeft, scrollWidth: track.scrollWidth, clientWidth: track.clientWidth },
       count
     ).index;
-    track.scrollBy({ left: direction * track.clientWidth, behavior: scrollBehavior() });
+    track.scrollBy({ left: pageBy(track, direction), behavior: scrollBehavior() });
     if (hero) {
       const next = Math.min(count, Math.max(1, now + 1 + direction));
       const name = slideLabels?.[next - 1];

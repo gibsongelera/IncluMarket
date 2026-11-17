@@ -1000,34 +1000,6 @@ h3 {
   }
 }
 
-/* --- Category chips: one horizontal scroll row -------------------------- */
-@media (max-width: 767px) {
-  .category-chips {
-    display: flex;
-    flex-wrap: nowrap;
-    gap: var(--space-2);
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scroll-snap-type: x proximity;
-    padding-bottom: var(--space-2);
-    /* Bleed to the screen edges so the row reads as scrollable. */
-    margin-inline: calc(var(--space-3) * -1);
-    padding-inline: var(--space-3);
-    scrollbar-width: none;
-  }
-  .category-chips::-webkit-scrollbar {
-    display: none;
-  }
-  .category-chips > * {
-    flex: 0 0 auto;
-    scroll-snap-align: start;
-    min-height: 44px;
-  }
-  .category-folder-hint {
-    display: none;
-  }
-}
-
 /* --- Collapsible filter panel ------------------------------------------- */
 .filters__head {
   display: flex;
@@ -1324,6 +1296,18 @@ h3 {
 @media (min-width: 1280px) {
   .rail-scroller--rail .rail__track {
     --rail-per-view: 5;
+  }
+}
+
+/* --- Category tiles from 768px (P4-04, 05 #4, 01 §6.5) -------------------
+   components/CategoryChips.tsx; the phone grid and the tile are in
+   shopee.css. One row of 7.5rem tiles instead of 3 / 4 / 5 cards to a
+   view: a fixed rem width, so a wide screen shows more of them and the 24px
+   setting fewer, each name still on one or two whole-word lines. After the
+   block above, so it wins at equal specificity. */
+@media (min-width: 768px) {
+  .rail-scroller--rail .rail__track--tiles {
+    grid-auto-columns: 7.5rem;
   }
 }
 

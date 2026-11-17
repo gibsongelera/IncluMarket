@@ -37,7 +37,7 @@
 /* Cursor-pointer for every clearly interactive surface */
 button, .btn, .nav-link, .product-card, .quick-account,
 .tab, .variant-btn, .qty-ctrl button, .ticket-list__item,
-.category-chip, .pd__thumb, .image-thumb__remove,
+.pd__thumb, .image-thumb__remove,
 [role="tab"], [role="button"] {
   cursor: pointer;
 }
@@ -71,73 +71,96 @@ button[disabled], .btn[disabled], .variant-btn[disabled] {
   padding: 0 .9rem;
 }
 
-/* Category chip row */
-.category-strip {
-  background: var(--canvas-white);
-  border: 1px solid var(--border);
+/* --- Category tiles (P4-04, 05 #4, 01 §6.5) ---------------------------------
+   components/CategoryChips.tsx: "Explore categories", a RailScroller rail
+   (components.css) of round icon tiles, one link each, no box around them.
+   Phones: a grid whose column count follows the width in rem. auto-fit
+   keeps no empty tracks and 1fr shares the spare width; a tile is never
+   narrower than its 5rem circle, so 320px holds 3 columns at 16px text and
+   2 at 24px, and nothing scrolls sideways. From 768px: one row of 7.5rem
+   tiles with Previous / Next (responsive.css, after the RailScroller block). */
+.category-nav {
+  margin-block-end: var(--space-7);
+}
+.rail__track--tiles {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 5rem), 1fr));
+  row-gap: var(--space-4);
+}
+/* The whole tile is the link: circle, name and count, a target far over
+   44px at any text size. The block padding leaves room above the circle
+   for its selected ring (5px out), inside the tile's focus ring. */
+.category-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) 0;
   border-radius: var(--radius-md);
-  padding: .75rem;
-  margin: 0 0 1rem;
+  color: var(--text-charcoal);
+  text-align: center;
+  text-decoration: none;
 }
-.category-strip h2 {
-  font-size: .95rem;
-  margin: 0 0 .5rem;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: .06em;
-  font-weight: 700;
+.category-tile:hover { text-decoration: none; }
+.category-tile:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
 }
-.category-chips {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-  gap: .5rem;
-}
-.category-chip {
+/* The circle and its icon (aria-hidden; the name says the same). The icon
+   is 11.61:1 on the grey, so it carries meaning beside the name too. */
+.category-tile__circle {
   display: flex;
   align-items: center;
-  gap: .1rem;
-  padding: .55rem .75rem;
-  background: var(--surface-gray);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  font: inherit;
-  font-weight: 600;
-  color: var(--text-charcoal);
-  text-align: left;
-  transition: background-color var(--dur-1) var(--ease-out), border-color var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out);
-  text-decoration: none;
-}
-.category-chip:hover {
-  background: var(--brand-blue-100);
-  border-color: var(--brand-blue);
-  color: var(--brand-blue);
-  text-decoration: none;
-}
-.category-chip[aria-pressed="true"], .category-chip.is-active {
-  background: var(--brand-blue);
-  color: #FFFFFF;
-  border-color: var(--brand-blue);
-}
-.category-chip.is-active .chip-emoji,
-.category-chip[aria-pressed="true"] .chip-emoji { color: inherit; }
-.category-chip .chip-emoji {
-  /* One colour for every category icon (D-D), white on the active chip. */
-  color: var(--brand-blue);
-  display: inline-flex;
-  align-items: center;
   justify-content: center;
-  width: 1.1rem;
-  font-size: 1.1rem;
-  line-height: 1;
+  flex: none;
+  inline-size: 5rem;
+  block-size: 5rem;
+  border-radius: 999px;
+  background: var(--surface-gray-2);
+  color: var(--brand-blue-800);
+  transition: background-color var(--dur-1) var(--ease-out);
 }
-.category-chip .chip-count {
-  margin-left: auto;
-  color: var(--text-muted);
+.category-tile__circle svg {
+  inline-size: 1.75rem;
+  block-size: 1.75rem;
+}
+.category-tile:hover .category-tile__circle {
+  background: var(--brand-blue-100);
+  color: var(--brand-blue-800);
+}
+/* The whole name, never cut short (an admin may write up to 60 characters),
+   broken between words with balanced lines. A single word wider than the
+   tile (12+ letters on a phone at 24px text) is the one exception: it breaks
+   rather than being clipped. No automatic hyphens: they would also split
+   words that fit whole on the next line. */
+.category-tile__name {
+  max-inline-size: 100%;
+  font-size: .9375rem;
   font-weight: 600;
-  font-size: .8rem;
+  line-height: 1.25;
+  overflow-wrap: break-word;
+  word-break: normal;
+  hyphens: manual;
+  text-wrap: balance;
 }
-.category-chip[aria-pressed="true"] .chip-count,
-.category-chip.is-active .chip-count { color: rgba(255,255,255,.85); }
+.category-tile__count {
+  font-size: .875rem;
+  line-height: 1.3;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+/* Selected (aria-current="page"): not colour alone. A 3px ring around the
+   circle and the name in 700; an outline, which forced colours keep where
+   they would drop a box-shadow, and a dark blue ring around a light blue
+   circle in high contrast. */
+.category-tile[aria-current="page"] .category-tile__circle {
+  background: var(--brand-blue-100);
+  color: var(--brand-blue-800);
+  outline: 3px solid var(--brand-blue);
+  outline-offset: 2px;
+}
+.category-tile[aria-current="page"] .category-tile__name {
+  font-weight: 700;
+}
 
 
 
@@ -607,10 +630,5 @@ a, .nav-link, .quick-account {
   border-radius: var(--radius-xs);
   padding: 1px 6px;
   margin-bottom: .35rem;
-}
-.category-folder-hint {
-  font-size: .9rem;
-  color: var(--text-on-canvas-muted, var(--text-muted));
-  margin: 0 0 .75rem;
 }
 
