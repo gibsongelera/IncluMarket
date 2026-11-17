@@ -232,6 +232,16 @@
      not eat a 568px-tall viewport. */
   --modal-pad: var(--space-4);
 
+  /* RailScroller (P4-02, components.css and responsive.css). --rail-pad is
+     the bleed a scrolling track keeps on every side so a card's focus ring,
+     lift and shadow are not clipped; --rail-gap is the space between items
+     (twice the bleed wherever the track scrolls, so one view is exactly a
+     clientWidth); --rail-per-view is how many cards one view holds from
+     768px up (3, then 4 at 1024px and 5 at 1280px). */
+  --rail-pad: var(--space-2);
+  --rail-gap: var(--space-2);
+  --rail-per-view: 3;
+
   /* Stacking order, named. These were literals scattered across three files,
      which is how the toast region ended up painting over the chat button and
      both floating buttons ended up over the checkout bar. */

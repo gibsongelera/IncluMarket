@@ -217,6 +217,9 @@ const ICONS: Record<string, React.ReactNode> = {
   ),
   // Row actions (ADR-04): the disclosure's chevron, turned up when open.
   "chevron-down": <path d="M6 9l6 6 6-6" />,
+  // RailScroller's Previous / Next (P4-02, ADR-06): the "‹ ›" of 05 §2.
+  "chevron-left": <path d="M15 6l-6 6 6 6" />,
+  "chevron-right": <path d="M9 6l6 6-6 6" />,
 };
 
 export function Icon({

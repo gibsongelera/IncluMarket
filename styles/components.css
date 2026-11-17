@@ -2026,3 +2026,154 @@ fieldset {
 /* .data-table td .btn spaces inline buttons with a right margin; the menu
    has its own gap. */
 .data-table td .row-menu .btn { margin: 0; }
+
+/* --- Rails and the hero carousel (P4-02, ADR-06, 05 §2, 01 §6.5) ---------
+   components/RailScroller.tsx. The phone layout and the hero are here; the
+   one-row rail from 768px up is in responsive.css. .rail stays the section
+   WRAPPER (responsive.css "Section rails"): nothing here lays it out.
+
+   --rail-pad is a bleed. A scrolling track clips what overflows it (the
+   focus ring, 5px outside a card; the 2px hover lift; the shadow), so a
+   scrolling track takes this padding on every side and the same negative
+   margin: the cards stay where a plain row would put them, with room around
+   them. The gap is twice the pad, so one view (clientWidth) is exactly
+   n cards plus n gaps, and Next lands on a snap point. The defaults of
+   --rail-pad, --rail-gap and --rail-per-view are in tokens.css. */
+.rail__track {
+  display: grid;
+  /* Phones: a 2-column wrap that never scrolls sideways. Two columns while
+     each can be 7.5rem (the narrowest card that keeps a "₱1,250.00" price
+     on one line at any text size), else one: at 320px with 24px text two
+     columns would leave a 92px card body, which cuts the price and splits
+     title words. max() caps it at two columns. */
+  grid-template-columns: repeat(
+    auto-fill,
+    minmax(min(100%, max(7.5rem, calc((100% - var(--rail-gap)) / 2))), 1fr)
+  );
+  gap: var(--rail-gap);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+/* Equal heights: the grid stretches each item, the item stretches its card. */
+.rail__item {
+  display: flex;
+  min-width: 0;
+}
+.rail__item > * {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* The header row is .section-head (01 §6.4, layout.css): the title on the
+   left, then this group on the right, the "View all" link and the buttons. */
+.rail__end {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  margin-inline-start: auto;
+}
+/* A rail's buttons show from 768px up (responsive.css); the hero's always. */
+.rail__controls {
+  display: none;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+/* Previous / Next. A 44px target that grows with the text, a 3:1 control
+   outline (--border-control; #000 in high contrast) and the page ring.
+   font: inherit, so the sr-only name follows the text setting. */
+.rail__btn {
+  position: relative; /* holds the .sr-only name */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  inline-size: max(2.75rem, 44px);
+  block-size: max(2.75rem, 44px);
+  padding: 0;
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius-sm);
+  background: var(--canvas-white);
+  color: var(--brand-blue);
+  font: inherit;
+  cursor: pointer;
+  transition:
+    background-color var(--dur-1) var(--ease-out),
+    border-color var(--dur-1) var(--ease-out);
+}
+.rail__btn .icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  stroke-width: var(--icon-stroke-bold);
+}
+.rail__btn:hover:not([aria-disabled="true"]) {
+  background: var(--brand-blue-100);
+  color: var(--brand-blue-800);
+  border-color: var(--brand-blue-800);
+}
+.rail__btn:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+/* At an end: aria-disabled, still focusable (the disabled attribute would
+   drop focus to <body>). A grey fill and a dashed edge, so the state is not
+   colour alone, and still visible in high contrast where the fill is white. */
+.rail__btn[aria-disabled="true"] {
+  background: var(--surface-gray);
+  color: var(--text-muted);
+  /* 2px: in high contrast both fills are white, so the dash is the cue. */
+  border-style: dashed;
+  border-width: 2px;
+  cursor: default;
+}
+
+/* Hero: one slide per view at every width, the buttons and "2 of 4" under
+   the slide (never over a banner image, which may carry baked-in text). */
+.rail-scroller--hero .rail__track {
+  --rail-gap: calc(var(--rail-pad) * 2);
+  grid-template-columns: none;
+  grid-auto-flow: column;
+  grid-auto-columns: 100%;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scroll-padding-inline: var(--rail-pad);
+  padding: var(--rail-pad);
+  margin: calc(var(--rail-pad) * -1);
+}
+.rail-scroller--hero .rail__item {
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+}
+/* The scrollbar goes only once the buttons replace it. */
+.rail-scroller--hero.has-controls .rail__track {
+  scrollbar-width: none;
+}
+.rail-scroller--hero.has-controls .rail__track::-webkit-scrollbar {
+  display: none;
+}
+.rail-scroller--hero .rail__controls {
+  display: flex;
+  /* Wrap rather than push Previous into the page padding (320px, 24px text). */
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  margin-top: var(--space-2);
+}
+.rail__counter {
+  margin: 0;
+  min-inline-size: 4.5em;
+  text-align: center;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-charcoal);
+}
+
+/* Forced colours drop the fill; an end button takes the disabled grey. */
+@media (forced-colors: active) {
+  .rail__btn[aria-disabled="true"] {
+    border-color: GrayText;
+    color: GrayText;
+  }
+}

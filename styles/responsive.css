@@ -1274,6 +1274,59 @@ h3 {
   }
 }
 
+/* --- RailScroller rails (P4-02, ADR-06, 05 §2, 01 §6.5) -----------------
+   components/RailScroller.tsx; the phone wrap, the buttons and the hero are
+   in components.css. Phones: the 2-column wrap, no sideways scroll, no
+   buttons. From 768px: one row of whole cards, 3 / 4 / 5 to a view at
+   768 / 1024 / 1280, snapping to a card's start; Previous / Next in the
+   header row. The cards are a fraction of the track's content box, so at
+   24px text a view is still whole cards; only their width changes. The
+   tracks here are .rail__track, never .product-grid (check-grid.mjs). */
+@media (min-width: 480px) {
+  .rail-scroller--rail .rail__track {
+    --rail-gap: var(--space-3); /* as .product-grid */
+  }
+}
+@media (min-width: 768px) {
+  .rail-scroller--rail .rail__track {
+    --rail-gap: calc(var(--rail-pad) * 2);
+    grid-template-columns: none;
+    grid-auto-flow: column;
+    grid-auto-columns: calc((100% - (var(--rail-per-view) - 1) * var(--rail-gap)) / var(--rail-per-view));
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x mandatory;
+    /* A card focused out of view scrolls in with its ring inside the bleed. */
+    scroll-padding-inline: var(--rail-pad);
+    padding: var(--rail-pad);
+    margin: calc(var(--rail-pad) * -1);
+  }
+  .rail-scroller--rail .rail__item {
+    scroll-snap-align: start;
+  }
+  .rail-scroller--rail .rail__controls {
+    display: flex;
+  }
+  /* The scrollbar goes only once the buttons replace it; without JavaScript
+     the row keeps it. */
+  .rail-scroller--rail.has-controls .rail__track {
+    scrollbar-width: none;
+  }
+  .rail-scroller--rail.has-controls .rail__track::-webkit-scrollbar {
+    display: none;
+  }
+}
+@media (min-width: 1024px) {
+  .rail-scroller--rail .rail__track {
+    --rail-per-view: 4;
+  }
+}
+@media (min-width: 1280px) {
+  .rail-scroller--rail .rail__track {
+    --rail-per-view: 5;
+  }
+}
+
 /* --- Product detail: fixed commit bar ----------------------------------- */
 /* The signature Shopee pattern. Below md the buy actions leave the flow and
    pin to the bottom edge, so Add to cart stays reachable without scrolling
