@@ -121,18 +121,64 @@ arc, every destination is a 56px target with no hidden state, and **labels stay
 visible** because icon-only navigation is a known barrier for cognitive
 disabilities.
 
+### Header row
+
+The header never scrolls the page sideways, at any width or text size:
+
+- **768px and up:** `.header-row` wraps. The search's basis is `11rem` (the
+  Search button plus a 4rem input), so when brand, search and nav do not fit
+  on one line the nav takes its own line, and `.header-nav`
+  (`max-width: 100%`, `justify-content: flex-end`) wraps its links inside it.
+  The buyer's nav is 540px at 16px text and 780px at 24px; do not give it
+  `flex-shrink: 0` without that `max-width`.
+- **Below 768px:** a grid (brand mark, search, nav) and the `header-row`
+  container: under 23rem the nav moves to a second row at the end, under
+  13rem the Search button drops its icon. Brand, search, nav stays the DOM
+  order and the visual order. A media query cannot do this: its rem ignores
+  the text-size toolbar.
+- **Panels under the header on phones** (the bell's panel, the scoped
+  search's suggestions) are `position: fixed` with `top: 100%` and 8px side
+  insets. That works only because the row has `contain: layout`, which makes
+  it their containing block; `container-type` alone does not, and the panel
+  opened at the viewport's bottom edge. Check the panel's top against the
+  row's bottom, not just that it is visible. A fixed child of a contained
+  row adds no scroll area, so each panel is capped to fit:
+  `100svh - --header-block - --bottom-inset - --fab-clearance`, but at
+  least `min(10rem, the space above the tab bar)` (plain 10rem while the
+  header is static), with one scroller (the bell's list loses its own
+  360px cap on phones). Each `svh` line follows a `vh` fallback.
+- **Never cap an element that is not scrolling itself.** The phone filter
+  panel is static when open; a `max-height` with `overflow: visible` drew
+  its form over the first products, and taps landed on filter controls.
+- **Too tall to stick:** when the header is taller than a third of the
+  window (24px text on a landscape phone: 147px of 390), `HeaderMetrics`
+  sets `data-header-static` on `<html>`, the header (now `position:
+  relative`, so it keeps its z-index) scrolls away with the page, and
+  `--header-total` is `0px`. The window is `<html>`'s `clientHeight`, which
+  does not change when a phone's toolbar hides on scroll; `innerHeight`
+  does, and would flip the header back and forth. The flag also holds
+  while focus is in the header (an on-screen keyboard that shrinks the
+  window would scroll the search away mid-typing); `focusout` re-measures.
+- Measure a header change at 320, 375, 414, 768, 1024 and 1280px with 16 and
+  24px text: `scrollWidth === clientWidth`, the input at least 4rem, nothing
+  over the bell or Sign out. Measure below 768 at 700px or narrower: an
+  overflowing page widens the emulated viewport (767 became 788), so you
+  would be measuring the desktop layout.
+
 ### Header height and bottom inset
 
 Two measured custom properties, because both genuinely vary:
 
 | Property | Set by | Use for |
 |---|---|---|
-| `--header-total` | `components/HeaderMetrics.tsx` | `position: sticky; top: calc(var(--header-total) + …)` |
+| `--header-total` | `components/HeaderMetrics.tsx` | `position: sticky; top: calc(var(--header-total) + …)`; `0px` while the header is static |
+| `--header-block` | `components/HeaderMetrics.tsx` | The header's height, static or not: the height cap of a panel that opens under it |
 | `--bottom-inset` | `components/MobileNav.tsx` | Keeping content and floating buttons clear of the tab bar |
 
 **Never hardcode a pixel offset that depends on an element's height.** The old
 `top: 84px` was ~8px wrong at the default font and completely wrong at 24px,
-where the header exceeds 120px.
+where the header now runs from about 130px to 260px, depending on role and
+width.
 
 ### Floating controls
 

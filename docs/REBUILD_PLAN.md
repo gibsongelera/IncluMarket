@@ -509,13 +509,14 @@ does not yet have, and a privacy review; it was out of this build's scope.
 
 **Open from this build** (none blocks use; each is a change outside the plan):
 
-1. **Signed-in header is slow:** about 1.3 s per page. `SiteHeader` awaits
-   four public actions that each repeat the uncached session read. Fix:
-   server-only readers keyed by the header's session, all in one
-   `Promise.all`.
-2. **Signed-in header is too wide:** it scrolls the page sideways at 768 px
-   with 16 px text, at 1024 px with 24 px text, and at 320 px with 24 px
-   text. Fix: a header layout change.
+1. ~~**Signed-in header is slow**~~ **Fixed in F-01:** `SiteHeader` awaited
+   four public actions that each repeated the uncached session read (about
+   1.3 s per page). It now reads its badges through `lib/header-data.ts` in
+   one `Promise.all` with the request's memoised session.
+2. ~~**Signed-in header is too wide**~~ **Fixed in F-02:** it scrolled the
+   page sideways at 768 px with 16 px text and at 1024 px with 24 px text,
+   and the search slid under the bell at 320 px with 24 px text. The row now
+   wraps (the nav takes its own line) and phones use a container query.
 3. **Unpaged counts:** `getSellerProductIndex`, `getListingCountsBySeller` and
    `getCategoryCounts` read unpaged, so PostgREST's 1,000-row cap would
    undercount past 1,000 rows. Fix: head counts or an RPC.

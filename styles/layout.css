@@ -10,10 +10,15 @@
 .site-header--admin  { background: var(--color-nav); }
 .site-header--landing { background: var(--color-nav); }
 
+/* The row wraps: when brand, search and nav do not fit on one line (the
+   buyer's nav is 540px at 16px text and 780px at 24px), the nav takes a line
+   of its own instead of crushing the search to nothing and pushing the page
+   sideways (finding 59). Phones use the grid in responsive.css §11. */
 .header-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 1rem;
+  gap: .5rem 1rem;
   padding: .75rem 1rem;
   min-height: var(--header-h);
 }
@@ -37,13 +42,18 @@
 }
 .brand-word small { font-size: .7rem; opacity: .85; font-weight: 500; margin-left: .25rem; }
 
+/* Never wider than the row: on a line of its own at 24px text the links wrap
+   inside it rather than overflow, each line at the end, so Sign out stays
+   under the bell rather than alone at the left. */
 .header-nav {
   margin-left: auto;
   display: flex;
   gap: .15rem;
   align-items: center;
+  justify-content: flex-end;
   flex-wrap: wrap;
   flex-shrink: 0;
+  max-width: 100%;
 }
 .nav-link {
   padding: .4rem .5rem;
@@ -56,8 +66,10 @@
 .nav-link--active { background: rgba(255,255,255,.18); }
 .nav-link--cart { display: inline-flex; align-items: center; gap: .4rem; }
 
+/* 11rem: the "Search" button (about 6rem) plus an input of at least 4rem, at
+   every text size. Below that the nav wraps to its own line (.header-row). */
 .search {
-  flex: 1 1 220px;
+  flex: 1 1 11rem;
   display: flex;
   gap: .5rem;
   max-width: 460px;
@@ -338,6 +350,13 @@
   /* Measured header height; a literal is wrong at every font size but the
      default, and badly wrong at the 24px accessibility setting. */
   top: calc(var(--header-total) + var(--space-2));
+  /* Taller than the window below the header (24px text: the header alone is
+     over 200px), its lower filters sat off screen while they had focus. It
+     scrolls on its own instead, ending above the floating buttons, like the
+     console sidebar. */
+  max-height: calc(100vh - var(--header-total) - var(--space-2) - var(--fab-clearance)); /* no svh */
+  max-height: calc(100svh - var(--header-total) - var(--space-2) - var(--fab-clearance));
+  overflow: auto;
 }
 .filters h2 { font-size: 1rem; margin-bottom: .5rem; }
 .rating-row { display: flex; flex-wrap: wrap; gap: .5rem; }

@@ -9,6 +9,14 @@
   top: 0;
   z-index: var(--z-header);
 }
+/* ...unless it is taller than a third of the window (HeaderMetrics sets the
+   flag and publishes --header-total: 0px): then it scrolls away with the
+   page rather than covering most of it (WCAG 1.4.10, 2.4.11). Relative,
+   not static, so its z-index (and the bell panel above the page) holds
+   whatever its parent's display is. */
+:root[data-header-static] .site-header {
+  position: relative;
+}
 
 /* Inline SVG icon defaults */
 .icon {

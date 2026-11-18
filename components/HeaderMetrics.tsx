@@ -5,7 +5,10 @@ import { useEffect } from "react";
 /**
  * Publishes measured layout heights as CSS custom properties.
  *
- *   --header-total   the sticky header, including the user strip
+ *   --header-total   the sticky header, including the user strip; 0px when
+ *                    the header is too tall to stay sticky (data-header-static)
+ *   --header-block   the header's height whether sticky or not, for panels
+ *                    that open under it (the bell's, the search suggestions)
  *   --commit-bar-h   the fixed bottom action bar on a page that has one
  *                    (product detail, cart, checkout), or 0px
  *
@@ -31,7 +34,30 @@ export function HeaderMetrics() {
       const header = document.querySelector<HTMLElement>(".site-header");
       if (header) {
         const height = Math.round(header.getBoundingClientRect().height);
-        if (height > 0) root.style.setProperty("--header-total", `${height}px`);
+        // A header taller than a third of the window (24px text on a
+        // landscape phone: about 216px of 390) would cover most of the page
+        // while sticky, so it scrolls away with the page instead
+        // (shopee.css) and nothing below it needs to clear it. Static or
+        // sticky, its box is the same height. The window is <html>'s
+        // clientHeight, not innerHeight: on a phone innerHeight grows when
+        // the browser toolbar hides on scroll, which would flip a header
+        // near the threshold between sticky and static as the page moves.
+        // Nor does it change while focus is in the header: where the
+        // on-screen keyboard shrinks the window, typing in the search would
+        // otherwise make the header static and scroll the field away.
+        // Leaving the header re-measures (focusout, below).
+        const tooTall = height > root.clientHeight / 3;
+        if (
+          root.hasAttribute("data-header-static") !== tooTall &&
+          !header.contains(document.activeElement)
+        ) {
+          root.toggleAttribute("data-header-static", tooTall);
+        }
+        const isStatic = root.hasAttribute("data-header-static");
+        if (height > 0) {
+          root.style.setProperty("--header-total", isStatic ? "0px" : `${height}px`);
+          root.style.setProperty("--header-block", `${height}px`);
+        }
       }
 
       // Only counts while the bar is actually fixed to the bottom edge, i.e.
@@ -47,6 +73,14 @@ export function HeaderMetrics() {
 
     window.addEventListener("resize", measure);
     window.addEventListener("orientationchange", measure);
+    // A sticky/static change held back while focus was in the header. The
+    // next frame, so focus has landed and activeElement is no longer body.
+    let focusFrame = 0;
+    const onFocusOut = () => {
+      cancelAnimationFrame(focusFrame);
+      focusFrame = requestAnimationFrame(measure);
+    };
+    document.addEventListener("focusout", onFocusOut);
 
     // Crossing the md breakpoint changes the bar from fixed to static without
     // changing its box, so neither `resize` on some platforms nor
@@ -75,6 +109,8 @@ export function HeaderMetrics() {
     return () => {
       window.removeEventListener("resize", measure);
       window.removeEventListener("orientationchange", measure);
+      document.removeEventListener("focusout", onFocusOut);
+      cancelAnimationFrame(focusFrame);
       mq.removeEventListener("change", measure);
       resizeObserver.disconnect();
       mutationObserver.disconnect();

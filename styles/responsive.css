@@ -928,7 +928,7 @@ h3 {
    ------------------------------------------------------------------------ */
 @media (max-width: 900px) {
   .main--buyer { grid-template-columns: 1fr; }
-  .filters { position: static; }
+  .filters { position: static; max-height: none; overflow: visible; }
   .product-detail { grid-template-columns: 1fr; }
   .checkout-grid { grid-template-columns: 1fr; }
   .support-grid { grid-template-columns: 1fr; }
@@ -940,10 +940,6 @@ h3 {
   .cart-item > *:nth-child(n+4) { grid-column: 1 / -1; }
 }
 
-@media (max-width: 480px) {
-  .header-row { flex-wrap: wrap; }
-  .search { order: 3; width: 100%; }
-}
 
 /* ---------------------------------------------------------------------------
    11. Shopee-style phone layout
@@ -972,6 +968,16 @@ h3 {
     gap: var(--space-2);
     padding: var(--space-2) var(--space-3);
     min-height: 0;
+    /* The query below moves the nav to a second row. A container query, not
+       a media query, because its rem follows the 12-24px text scale.
+       `contain: layout` (which container-type does not imply) makes this row
+       the containing block of its fixed children, the bell's panel and the
+       scoped search's suggestions (§14), so `top: 100%` is the header's
+       bottom edge whether the header is sticky or scrolls away
+       (data-header-static). The row is the whole header on a phone (the
+       user strip is hidden). */
+    container: header-row / inline-size;
+    contain: layout;
   }
 
   /* Brand collapses to the mark so the search field can take the width, the
@@ -997,6 +1003,71 @@ h3 {
     display: flex;
     align-items: center;
     gap: var(--space-1);
+  }
+}
+
+/* Below 23rem of bar (measured: under it the input is narrower than 4rem, and
+   at 24px text the "Search" button slides under the bell and Sign out), the
+   search takes the rest of the first row and the nav moves to a second row,
+   at the end: phones up to ~390px at 16px text, every phone at 24px. Brand,
+   search, nav is the DOM order, so what you see is still the focus order. */
+@container header-row (max-width: 23rem) {
+  .header-row > .search {
+    grid-column: 2 / -1;
+    grid-row: 1;
+  }
+  .header-row > .header-nav {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    justify-self: end;
+  }
+}
+/* The bell's panel hung from the bell's right edge with Sign out beside it,
+   so on a 320px phone its first 60-100px were off screen. Below 768px it
+   spans the header instead, just under it: `top: 100%` of .header-row, the
+   containing block of its fixed children (`contain: layout`, above). */
+@media (max-width: 767px) {
+  .notification-panel {
+    position: fixed;
+    top: calc(100% + var(--space-1));
+    left: var(--space-2);
+    right: var(--space-2);
+    width: auto;
+    /* Ends above the tab bar and the floating buttons, so "Settings" and
+       "See all" are never under the chat button. --header-block, not
+       --header-total: a static header still sits above the panel. The
+       panel is a fixed child of a contained row, so it adds no scroll
+       area to the page: it has to fit. Where that leaves too little (a
+       landscape phone at 24px text) it may reach 10rem, but never past
+       the tab bar. The vh line is for browsers without svh. */
+    max-height: max(min(10rem, calc(100vh - var(--header-block) - var(--space-1) - var(--space-2) - var(--bottom-inset))), calc(100vh - var(--header-block) - var(--space-1) - var(--space-2) - var(--bottom-inset) - var(--fab-clearance)));
+    max-height: max(min(10rem, calc(100svh - var(--header-block) - var(--space-1) - var(--space-2) - var(--bottom-inset))), calc(100svh - var(--header-block) - var(--space-1) - var(--space-2) - var(--bottom-inset) - var(--fab-clearance)));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  /* A static header scrolls away, and the panel with it: the full 10rem
+     floor, for a window too short for anything else (320x256). */
+  :root[data-header-static] .notification-panel {
+    max-height: max(10rem, calc(100vh - var(--header-block) - var(--space-1) - var(--space-2) - var(--bottom-inset) - var(--fab-clearance)));
+    max-height: max(10rem, calc(100svh - var(--header-block) - var(--space-1) - var(--space-2) - var(--bottom-inset) - var(--fab-clearance)));
+  }
+  /* One scroller, not a 360px one inside it: a swipe in the list would not
+     reach the foot until the list ran out. */
+  .notification-panel .notification-list {
+    max-height: none;
+    overflow: visible;
+  }
+}
+/* The narrowest bars (13rem: a 320-350px phone at 24px text; never at 16px)
+   still leave the input under 3rem beside a 146px "Search" button. The
+   button keeps its word and loses the magnifier (aria-hidden) and some
+   padding. */
+@container header-row (max-width: 13rem) {
+  .header-row > .search button[type="submit"] {
+    padding-inline: var(--space-2);
+  }
+  .header-row > .search button[type="submit"] > svg {
+    display: none;
   }
 }
 
@@ -1828,14 +1899,22 @@ h3 {
 @media (max-width: 767px) {
   .search--scoped .search__suggestions {
     /* Full width of the header rather than the input, so two-line results are
-       readable on a narrow screen. */
+       readable on a narrow screen. Fixed children of .header-row resolve
+       against it on phones (`contain: layout`, §11), so 100% is the
+       header's bottom edge, sticky or not. Its height is capped like the
+       bell's panel (§11): above the tab bar and the floating buttons. */
     position: fixed;
     left: var(--space-2);
     right: var(--space-2);
-    top: var(--header-total);
-    max-height: 60vh;
+    top: 100%;
+    max-height: max(min(10rem, calc(100vh - var(--header-block) - var(--space-2) - var(--bottom-inset))), calc(100vh - var(--header-block) - var(--space-2) - var(--bottom-inset) - var(--fab-clearance)));
+    max-height: max(min(10rem, calc(100svh - var(--header-block) - var(--space-2) - var(--bottom-inset))), calc(100svh - var(--header-block) - var(--space-2) - var(--bottom-inset) - var(--fab-clearance)));
     overflow-y: auto;
     z-index: var(--z-header);
+  }
+  :root[data-header-static] .search--scoped .search__suggestions {
+    max-height: max(10rem, calc(100vh - var(--header-block) - var(--space-2) - var(--bottom-inset) - var(--fab-clearance)));
+    max-height: max(10rem, calc(100svh - var(--header-block) - var(--space-2) - var(--bottom-inset) - var(--fab-clearance)));
   }
 
   .search--scoped .search__suggestion {
