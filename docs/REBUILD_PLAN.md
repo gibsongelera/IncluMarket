@@ -474,6 +474,64 @@ M-01–M-13), approved with every default, then steps S0–S10, each verified wi
 | S9 | Motion polish and the motion audit report (`motion-audits/`, local) |
 | S10 | README, CLAUDE.md, ERD, system diagrams, skills, this section; proposal Markdown regenerated from the .docx |
 
+## Dashboard and storefront build (November 2026) ✅ done
+
+Driven by `docs/agent-build/` (00 master prompt; 01 design system, 02
+architecture, 03 admin, 04 seller, 05 storefront, 06 skills and agents). A
+Stage A plan was approved with its defaults, then steps P0–P5 ran in order,
+each with `npx tsc --noEmit` and `npm run verify` at exit 0 and committed under
+its step id (`git log --grep "^P[0-5]-"`). The four build subagents
+(`.claude/agents/`) reviewed every step: security-reviewer for actions,
+server-only reads and migrations, a11y-checker for UI, qa-verifier at each
+phase end in a real browser. No migration, no new dependency.
+
+| Phase | Steps | What changed |
+|---|---|---|
+| P0 | 01–03 | The build spec and guest before-screenshots, the four subagents, the feature-review skill's stale gaps replaced |
+| P1 | 01–10 | Contrast measured under every theme preset and high contrast; chart series and warning colours; status pills; a 3:1 field outline; dark console sidebar with count badges; the KPI card; dashboard layout pieces; Canvas charts with "View as table"; the design skill updated |
+| P2 | 01–11 | Manila-time windows and sums (`lib/analytics/`); the admin overview (queue tiles, KPIs, sales, status, top products, categories, recent orders); sidebar badges; list building blocks (tabs with counts, search, paging in the URL); the row actions menu; admin orders, products and users lists |
+| P3 | 01–07 | The seller dashboard (setup, to-dos, KPIs, 12-week sales, best sellers, running low, recent orders and reviews, plain words); `?new=1` opens the product wizard; seller sidebar badges; seller orders and products lists |
+| P4 | 01–07 | Home data (shop cards, category best-sellers, hero promo); `RailScroller`; the hero (banner carousel plus a side promo); round category tiles; `/home` in the 05 §2 order; the buyer dashboard on `/account`. `/home` p95: 1.31 s in dev, 0.74 s in a production build |
+| P5 | 01–02 | qa-verifier as buyer, seller and admin (320–1280 px, 24 px text, high contrast, keyboard only), one fix (masked emails on `/admin/users` break at "@" and ".", not mid-letter); after-screenshots; README, this section and the design skill |
+
+Screenshots: `docs/screenshots/before-dashboards/` (guest, from P0-01) and
+`docs/screenshots/after-dashboards/` (guest `/home`; buyer `/account` and
+`/home`; seller dashboard, orders and products; admin overview, orders and
+products; each at 375, 768 and 1280 px, demo data only).
+
+**AI recommendations: a gap, stated honestly.** The proposal promises
+"AI-based recommendations". `lib/recommend.ts` is rule-based: category
+affinity from what a signed-in buyer viewed, saved and bought, "customers also
+bought" from shared orders, and "Popular this week" for guests and buyers who
+turned personalisation off. Every personalised rail says why it is shown, and
+nothing is labelled AI. Closing the gap needs a model, training data the shop
+does not yet have, and a privacy review; it was out of this build's scope.
+
+**Open from this build** (none blocks use; each is a change outside the plan):
+
+1. **Signed-in header is slow:** about 1.3 s per page. `SiteHeader` awaits
+   four public actions that each repeat the uncached session read. Fix:
+   server-only readers keyed by the header's session, all in one
+   `Promise.all`.
+2. **Signed-in header is too wide:** it scrolls the page sideways at 768 px
+   with 16 px text, at 1024 px with 24 px text, and at 320 px with 24 px
+   text. Fix: a header layout change.
+3. **Unpaged counts:** `getSellerProductIndex`, `getListingCountsBySeller` and
+   `getCategoryCounts` read unpaged, so PostgREST's 1,000-row cap would
+   undercount past 1,000 rows. Fix: head counts or an RPC.
+4. **Sweep gates fail open:** they let a sweep run when the rate-limit RPC
+   errors. Fix: fail closed for sweeps only.
+5. **No "View all" pages:** Today's deals, Featured products and PWD shops
+   have none, so those rails have no "View all". This needs an on-sale and a
+   featured filter on `/search` and a shop directory; that is the owner's
+   call.
+6. **Older pages at 24 px text:** on a seller's or admin's `/account`, the
+   Account details list splits names and emails mid-word in a narrow card.
+   The phone tab bar cuts "Dashboard", "Products" and "Messages" to an
+   ellipsis at 320 px. The "Go to the admin console" link is 36 px tall.
+   Fix: stack the list in a narrow card, let tab labels wrap, and size the
+   link like a button.
+
 ## Open items that need the user, not a guess
 
 1. **Apply migrations 0013–0024** — to a development Supabase project first,

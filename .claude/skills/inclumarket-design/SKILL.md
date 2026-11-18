@@ -4,7 +4,7 @@ description: InclusiveMarket's design-token system, CSS layer order and visual c
 license: MIT
 metadata:
   project: inklumarket-next
-  version: "1.1"
+  version: "1.2"
 ---
 
 # InclusiveMarket Design System
@@ -21,7 +21,7 @@ to this codebase.
 ## The one-paragraph orientation
 
 There is **no Tailwind, no CSS framework, and no PostCSS pipeline**. The UI is
-~5,900 lines of hand-written CSS in `styles/`, plus a design-token layer and a
+~7,400 lines of hand-written CSS in `styles/`, plus a design-token layer and a
 runtime theming system that injects CSS custom properties into the document
 head on every request. Do not suggest adding a framework. There is no chart
 library either: charts are Canvas 2D in `lib/charts.ts`.
@@ -141,6 +141,7 @@ the sticky filter panel was wrong at 16px and badly wrong at 24px. Use `rem`,
 | `--chart-1` … `--chart-6` | brand blue, brown, teal, forest, plum, yellow-800 | Lines take the first four in order, at most four per chart; segments with no status take all six. Each is 3:1 on a card; `--chart-6` is never text. |
 | `--focus-ring-nav` | 3px solid `--color-nav-text` | The ring on the dark sidebar. |
 | `--console-max` | `90rem` | The Seller Centre and admin console width, and the header and footer on console pages. Storefront pages keep `--container-max`. |
+| `--rail-pad`, `--rail-gap`, `--rail-per-view` | `--space-2`, `--space-2`, 3 | RailScroller: the track's inner padding (room for a card's lift and focus ring), the gap between items, and cards per view (4 from 1024px, 5 from 1280px in `responsive.css`). |
 
 ## Component conventions
 
@@ -163,7 +164,12 @@ duplicated and get it wrong:
 | `components/ConsoleNav.tsx` | The console sidebar: sections, `aria-current="page"`, count badges with "n waiting" for screen readers. |
 | `components/StarInput.tsx` | The rating input: a radio group with arrow keys and a visible "n of 5". |
 | `components/MobileNav.tsx` | Bottom tab bar and More sheet. |
-| `components/Pill.tsx` | Status colour semantics in one place. |
+| `components/Pill.tsx` | Status colour semantics in one place; an optional `label` for words other than the raw status. |
+| `components/RowActions.tsx` | A list row's "Actions for …" disclosure (ADR-04): `aria-expanded`, the row's own buttons in the flow under it (never a floating popover: `TableWrap` scrolls sideways), Escape returns focus. One action or none renders as is. |
+| `components/ListToolbar.tsx`, `components/Pagination.tsx` | The console lists: tabs with counts, a named search, paging that clamps; state lives in the URL (`lib/list-params.ts`). |
+| `components/RailScroller.tsx` | The storefront's rails and hero carousel (ADR-06); see "Storefront rules". |
+| `components/ProductRail.tsx`, `StorefrontCard` | One product rail (heading, optional "View all", meta) of the one product card. |
+| `components/PromoTile.tsx`, `components/StoreCards.tsx` | The hero's side tile (flash sale or featured shop) and the shop cards: one stretched link per card, the ring on the link's `::after`. |
 
 Other conventions:
 
@@ -209,11 +215,17 @@ dash pattern per line (`SERIES_DASHES`).
   reserved for things that genuinely float: modals, FABs, toasts, the
   notification panel. A shadow on every card over a gradient is what made the
   dashboards feel busy.
-- The 3-stop gradient stays on the storefront. `.main--admin` and
-  `.main--seller` get a flat `--color-body`.
+- `.main--admin` and `.main--seller` get a flat `--color-body`; `/home`
+  is white (`body:has(.main--home)`); the other buyer pages keep the
+  3-stop gradient.
 - Vertical rhythm between dashboard sections is `--space-6`.
-- **Container queries.** `.console__content` is the only container
+- **Container queries.** `.console__content` is the console's container
   (`console`, inline size); nothing `position: fixed` may render inside it.
+  The storefront has four more, each sized in rem so 24px text counts:
+  `product-list` (every product grid drops a column before a card goes
+  under 7.5rem, so a "₱1,250.00" price is never cut), `promo` (the hero's
+  side tile), `store-card` and `purchases` (the buyer's four tiles go four
+  or two to a row, never three and one).
   Thresholds are rem of content: KPI row one column, two from 35rem, one row
   of equal columns from 58rem (three to a row for five or more), compact tile
   below 15rem; `.dash-grid` 12 columns from 58rem with
@@ -256,6 +268,61 @@ dash pattern per line (`SERIES_DASHES`).
   right-aligned with even digits (left in cards); `.cell-identity` with a 2rem
   `.avatar` (`--brand-blue-100` / `--brand-blue-800`). Phones:
   `.data-table--cards` through `TableWrap`.
+
+## Storefront rules
+
+`/home` runs, top to bottom: hero, Explore categories, Today's deals,
+Featured products, Shops by PWD sellers, Best sellers in two categories,
+Picked for you, Discover (05 §2).
+
+- **Never an empty rail.** A section with nothing to show is not rendered,
+  heading included. "View all" only where a page lists the rest (the
+  best-seller rails go to `/home?cat=<id>&sort=top_sales`); deals,
+  featured products and shops have none.
+- **Rails** (`RailScroller`, `lib/rail.ts`): a `section-head`, then
+  `ul.rail__track[role=list]` of `li.rail__item`. Previous/Next render only
+  after mount and only when the track overflows; they are 2.75rem, named
+  for what they move ("Next picks"), `aria-disabled` (never `disabled`) at
+  an end so focus stays on them, and they page to the next whole item
+  (`pageDelta`), so a half-visible card is never skipped. Instant under
+  reduced motion (`scrollBehavior()` in `lib/a11y/prefs.ts`). On phones a
+  product rail shows its first four cards (`.product-rail--capped`); from
+  768px it scrolls.
+- **Hero** (`BannerStrip`, `heroLayout()`): banner carousel plus the side
+  `PromoTile` (2fr/1fr from 1024px). Carousel roles only with two or more
+  banners; no autoplay; slides out of view are `inert` while the buttons
+  show; after a press a polite live region names the slide. No banner: the
+  promo tile goes full width; neither: no hero.
+- **Category tiles:** round 5rem icon tiles, the name in full (an admin may
+  write 60 characters), `overflow-wrap: break-word` and `hyphens: manual`,
+  "n products" under it, `aria-current="page"` on the selected one. A wrap
+  grid on phones, one 7.5rem-tile rail from 768px.
+- **Product cards:** one card everywhere (`StorefrontCard`), never under
+  7.5rem wide (the `product-list` container), the price on one line.
+- **Words:** "Picked for you" only when the picks are personalised,
+  otherwise the recommender's own title ("Popular picks"). Nothing is
+  labelled "AI": `lib/recommend.ts` ranks by views, co-purchases and
+  popularity.
+- **Buyer dashboard** (`/account` for a buyer, 05 §3): `KpiCard` tiles
+  with `unit` ("To ship 8 orders" for screen readers), each a link to its
+  `/buyer/orders?tab=` tab; a widget that fails shows its own message and
+  the rest still renders; `VerificationStatus headingLevel={3}` under the
+  section's own h2 (it then renders a plain div, not a second region).
+
+## Lessons this build paid for
+
+- `hyphens: auto` split words that would have fitted on the next line;
+  use `hyphens: manual` with `overflow-wrap: break-word` as the last resort.
+- A button that can keep focus at the end of its job (rail Next, pagers)
+  gets `aria-disabled="true"`, not `disabled`: `disabled` drops focus to
+  `<body>`.
+- `aria-labelledby` on a `div` with no role names nothing; name the
+  `section`, `nav` or `ul[role=list]` instead, or let the grid follow its
+  heading.
+- A class name already styled elsewhere (`.hero` on the landing page) will
+  leak in; grep `styles/` before naming a new block.
+- A card with one link stretches it with `::after` and draws the focus ring
+  there, for `:focus-visible` only, so a click does not leave a ring.
 
 ## Verify
 

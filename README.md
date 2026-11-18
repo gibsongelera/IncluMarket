@@ -133,6 +133,10 @@ app/                     pages (async Server Components, force-dynamic)
 components/              UI; client components only where there is interaction
 lib/
   data.ts, storefront.ts, admin-content.ts, ...        reads ("server-only"), shaped DTOs
+  admin-analytics.ts, seller-analytics.ts, analytics/  dashboard figures (Manila-time windows)
+  admin-lists.ts, seller-lists.ts, list-params.ts      console lists: tabs, search, paging in the URL
+  buyer-dashboard.ts                                   a buyer's /account, read for their own id only
+  recommend.ts, kpi.ts, rail.ts                        picks, KPI trend words, rail paging
   actions/*.ts                                         mutations ("use server")
   pricing/                                             cart → discounts → shipping, one engine
   orders/                                              state machine and transitions
@@ -159,12 +163,40 @@ scripts/                 checks, provisioning, backfill, icons
 - **States:** every data page has a loading state, an error boundary and a
   designed empty state; product and shop pages return a real 404.
 
+## Dashboards and storefront
+
+Built from `docs/agent-build/` (design system, architecture and one spec per
+surface); `docs/REBUILD_PLAN.md` has the summary and
+`docs/screenshots/before-dashboards/` and `after-dashboards/` the pages at
+375, 768 and 1280 px.
+
+- **Admin** `/admin`: what needs doing now (queue tiles), four KPI cards
+  with trend and sparkline, sales over time, order status, top products,
+  sales by category, recent orders. Orders, products and users are lists
+  with tabs and counts, search, paging and an "Actions" menu per row.
+- **Seller** `/seller/dashboard`: setup steps while unfinished, to-do tiles,
+  four KPI cards, 12-week sales, order status, best sellers, running low,
+  recent orders and reviews, in plain words ("Sales", "Ready to withdraw").
+  The sidebar counts what is waiting.
+- **Storefront** `/home`: hero (banners and a side promo), round category
+  tiles, today's deals, featured products, PWD shops, two best-seller rails,
+  picks, then the full grid. Empty sections are not shown.
+- **Buyer** `/account`: a purchases dashboard (To pay, To ship, To receive,
+  Return / refund, recent orders, PWD verification, wishlist, shortcuts,
+  picks). Sellers and admins keep the account details page.
+
+Every number links to the list behind it, and every chart has "View as
+table". Charts are Canvas 2D (`lib/charts.ts`); there is no chart library.
+"Picked for you" is rule-based (`lib/recommend.ts`): the categories a buyer
+viewed, saved and bought, "customers also bought", and what is popular this
+week for everyone else. Nothing on the site is labelled AI.
+
 ## Routes
 
 | Area | Routes |
 |---|---|
 | Public | `/home`, `/search`, `/buyer/product/[id]`, `/shop/[sellerId]`, `/login`, `/reset-password`, `/about`, `/faq`, `/contact`, `/privacy`, `/terms`, `/accessibility`, `/newsletter/unsubscribe` |
-| Signed in | `/account` (profile, addresses, notifications, privacy, PWD verification), `/notifications` |
+| Signed in | `/account` (a buyer's purchases dashboard; profile, addresses, notifications, privacy, PWD verification), `/notifications` |
 | Buyer | `/buyer/cart`, `/buyer/checkout`, `/buyer/orders`, `/buyer/orders/[id]`, `/buyer/wishlist`, `/buyer/messages`, `/buyer/support` |
 | Seller | `/seller/dashboard`, `/seller/products`, `/seller/flash-sales`, `/seller/shop`, `/seller/orders` (and packing slips), `/seller/reviews`, `/seller/finance`, `/seller/messages`, `/seller/support` |
 | Admin | `/admin` (overview), `/admin/users`, `/admin/verifications`, `/admin/products`, `/admin/orders`, `/admin/categories`, `/admin/reviews`, `/admin/banners`, `/admin/tickets`, `/admin/reports`, `/admin/payouts`, `/admin/compliance`, `/admin/newsletter`, `/admin/discounts`, `/admin/payments`, `/admin/settings`, `/admin/theme` |
