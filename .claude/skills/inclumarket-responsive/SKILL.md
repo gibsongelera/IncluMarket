@@ -178,7 +178,11 @@ When something scrolls sideways, check in this order:
 3. Fixed `width` on a canvas, input or image
 4. `white-space: nowrap` on nav links or badges
 5. Long unbroken strings — product titles, SKUs, emails. Use
-   `overflow-wrap: anywhere`
+   `overflow-wrap: anywhere` as the last resort, but it breaks at any
+   letter ("u***.invali/d" at 320px with 24px text). For an email, give it
+   break points of its own: `<wbr />` after the "@" and before each "."
+   (`MaskedEmail` in `components/AdminUsersClient.tsx`; it adds no
+   character, so copy and screen readers are unchanged)
 6. A grid with more fixed columns than the viewport can hold
 7. `position: fixed` elements wider than the viewport
 
