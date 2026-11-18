@@ -1,9 +1,7 @@
 import Link from "next/link";
 import type { Role, SessionUser } from "@/lib/types";
 import { maskEmail } from "@/lib/format";
-import { getCartCount } from "@/lib/actions/cart";
-import { getMyNotifications, getMyUnreadCount } from "@/lib/actions/notifications";
-import { getMyUnreadMessageCount } from "@/lib/actions/messages";
+import { getHeaderData } from "@/lib/header-data";
 import { CartBadge } from "./CartBadge";
 import { SearchBox } from "./SearchBox";
 import { ScopedSearchBox } from "./ScopedSearchBox";
@@ -12,7 +10,6 @@ import { LogoutButton } from "./HeaderActions";
 import { MobileNav } from "./MobileNav";
 import { HeaderNavLinks } from "./HeaderNavLinks";
 import { HOME_HREF } from "@/lib/nav";
-import { getWishlistCount } from "@/lib/data";
 
 export async function SiteHeader({
   variant,
@@ -50,15 +47,9 @@ export async function SiteHeader({
     );
   }
 
-  const [cartCount, wishlistCount] =
-    variant === "buyer"
-      ? await Promise.all([getCartCount(), getWishlistCount(session.user_id)])
-      : [0, 0];
-  const [unread, notifications, unreadMessages] = await Promise.all([
-    getMyUnreadCount(),
-    getMyNotifications(),
-    variant === "buyer" || variant === "seller" ? getMyUnreadMessageCount() : Promise.resolve(0),
-  ]);
+  // One batch, with the session the page already resolved (memoised per
+  // request): the public actions would each resolve it again (finding 71).
+  const { cartCount, wishlistCount, unread, notifications, unreadMessages } = await getHeaderData(variant);
 
   return (
     <>

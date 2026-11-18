@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { getSession } from "@/lib/session";
+import { getRenderSession } from "@/lib/session";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { ProductDetailClient } from "@/components/ProductDetailClient";
@@ -66,7 +66,7 @@ export default async function ProductPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const session = await getSession();
+  const session = await getRenderSession();
   const { id } = await params;
   const resolved = await resolveProduct(Number(id), session);
   if (!resolved) notFound();

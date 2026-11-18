@@ -142,7 +142,7 @@ Each of these was live. Re-check them whenever the relevant file changes.
 | 7 | Open redirect via unvalidated `next` param | `app/auth/callback/route.ts` | `safeNext()` shape-check + origin assert |
 | 8 | No rate limiting on login/signup/resend/newsletter/chat/search | several | `lib/security/rate-limit.ts`, Postgres-backed |
 | 9 | `images: string[]` accepted with no validation server-side | `lib/actions/seller.ts` | `lib/validation/data-url.ts` |
-| 10 | `getCartCount(userId?)` — caller id beat session id | `lib/actions/cart.ts` | Parameter removed |
+| 10 | `getCartCount(userId?)` — caller id beat session id | `lib/actions/cart.ts` | Parameter removed; later the action itself (the header reads `readCartCount` in `lib/header-data.ts`, server-only) |
 | 11 | `applyThemePreset` accepted any string; theme values concatenated into a global `<style>` | `lib/actions/theme.ts`, `lib/theme.ts` | Allowlist + value filter in `themeVarsToCss` |
 | 12 | `listPaymentProviders` unauthenticated, returned all provider config | `lib/actions/payments.ts` | Admin-gated; checkout uses a narrow projection |
 | 13 | Six working accounts sharing `Admin123`, published in the README | `scripts/`, `README.md` | Env-driven, weak values rejected |

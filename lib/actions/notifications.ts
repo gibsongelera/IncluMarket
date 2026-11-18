@@ -6,6 +6,7 @@ import { getSession } from "@/lib/session";
 import type { Notification } from "@/lib/types";
 import { groupsFor } from "@/lib/notification-types";
 import { isMissingObject } from "@/lib/db-errors";
+import { readNotifications, readUnreadNotificationCount } from "@/lib/header-data";
 
 export interface ActionResult {
   ok: boolean;
@@ -15,28 +16,15 @@ export interface ActionResult {
 export async function getMyNotifications(limit = 20): Promise<Notification[]> {
   const session = await getSession();
   if (!session) return [];
-  // A public endpoint: the browser chooses limit, so bound it (N-24).
-  const n = Math.min(50, Math.max(1, Math.floor(Number(limit) || 20)));
-  const db = createAdminClient();
-  const { data } = await db
-    .from("im_notifications")
-    .select("*")
-    .eq("user_id", session.user_id)
-    .order("created_at", { ascending: false })
-    .limit(n);
-  return data ?? [];
+  // A public endpoint: the browser chooses limit; readNotifications bounds it
+  // to 1-50 (N-24).
+  return readNotifications(session.user_id, limit);
 }
 
 export async function getMyUnreadCount(): Promise<number> {
   const session = await getSession();
   if (!session) return 0;
-  const db = createAdminClient();
-  const { count } = await db
-    .from("im_notifications")
-    .select("*", { count: "exact", head: true })
-    .eq("user_id", session.user_id)
-    .eq("is_read", false);
-  return count ?? 0;
+  return readUnreadNotificationCount(session.user_id);
 }
 
 export async function markNotificationRead(id: number): Promise<ActionResult> {

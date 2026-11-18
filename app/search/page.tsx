@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { getSession } from "@/lib/session";
+import { getRenderSession } from "@/lib/session";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SearchLayout } from "@/components/SearchLayout";
@@ -33,7 +33,7 @@ export default async function SearchPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const session = await getSession();
+  const session = await getRenderSession();
   const query = parseStorefrontParams(await searchParams);
   const [categories, results, wishlistIds] = await Promise.all([
     getCategories(),

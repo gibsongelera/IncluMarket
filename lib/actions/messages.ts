@@ -119,22 +119,3 @@ export async function markConversationRead(conversationId: number): Promise<Acti
   revalidateMessages();
   return { ok: true };
 }
-
-export async function getMyUnreadMessageCount(): Promise<number> {
-  const session = await getSession();
-  if (!session || (session.role !== "buyer" && session.role !== "seller")) return 0;
-  const db = createAdminClient();
-
-  const col = session.role === "buyer" ? "buyer_id" : "seller_id";
-  const { data: convos } = await db.from("im_conversations").select("id").eq(col, session.user_id);
-  const ids = (convos ?? []).map((c) => c.id);
-  if (!ids.length) return 0;
-
-  const { count } = await db
-    .from("im_messages")
-    .select("*", { count: "exact", head: true })
-    .in("conversation_id", ids)
-    .neq("sender_id", session.user_id)
-    .is("read_at", null);
-  return count ?? 0;
-}

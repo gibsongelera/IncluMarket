@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { getSession } from "@/lib/session";
+import { getRenderSession } from "@/lib/session";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SortTabs } from "@/components/SortTabs";
@@ -32,7 +32,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
  * No loading boundary on purpose: an unknown shop answers a real 404.
  */
 export default async function ShopPage({ params, searchParams }: Params) {
-  const session = await getSession();
+  const session = await getRenderSession();
   const shop = await getPublicShop(Number((await params).sellerId));
   if (!shop) notFound();
 
