@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BrandMark } from "./BrandMark";
 
 /**
  * Frame for loading screens on routes that render their own header (the
@@ -13,9 +14,7 @@ export function LoadingShell({ children, mainClassName }: { children: React.Reac
       <header className="site-header site-header--buyer" role="banner">
         <div className="container header-row">
           <Link className="brand" href="/home" aria-label="InclusiveMarket home">
-            <span className="brand-mark" aria-hidden="true">
-              IM
-            </span>
+            <BrandMark />
             <span className="brand-word">InclusiveMarket</span>
           </Link>
         </div>

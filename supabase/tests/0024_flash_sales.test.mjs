@@ -1,7 +1,7 @@
 // 0024: flash sale rules.
 export default async function ({ q, runSql, check }) {
   await runSql(`insert into auth.users (id, email, raw_user_meta_data) values
-    ('00000000-0000-0000-0000-0000000024a1','s24@test.invalid','{"role":"seller","name":"Seller 24"}');`);
+    ('00000000-0000-0000-0000-0000000024a1','s24@test.invalid','{"role":"seller","name":"Seller 24"}'); update im_profiles set role = 'seller' where auth_user_id in (select id from auth.users where raw_user_meta_data->>'role' = 'seller');`);
   const [s] = await q(`select id from im_profiles where email='s24@test.invalid'`);
   await runSql(`insert into im_products (id, seller_id, title, base_price, status) values
     (2401, ${s.id}, 'Approved item', 100, 'approved'),

@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getSession } from "@/lib/session";
 import { checkPublicProduct } from "@/lib/catalog";
 import { MAX_LINE_QUANTITY } from "@/lib/pricing/constants";
+import { readCartCount } from "@/lib/header-data";
 
 export interface CartActionResult {
   ok: boolean;
@@ -26,19 +27,10 @@ function toInt(n: unknown): number | null {
   return Number.isInteger(v) && v > 0 ? v : null;
 }
 
-// Every export of a "use server" module is a public HTTP endpoint, so this
-// deliberately takes no user id: a caller-supplied id used to win over the
-// session id, which let any buyer enumerate other buyers' cart counts.
-export async function getCartCount(): Promise<number> {
-  const session = await getSession();
-  if (!session || session.role !== "buyer") return 0;
-  const db = createAdminClient();
-  const { data } = await db
-    .from("im_cart_items")
-    .select("quantity")
-    .eq("user_id", session.user_id);
-  return (data || []).reduce((n, r) => n + Number(r.quantity || 0), 0);
-}
+// There is no public "cart count" action any more: the header reads it with
+// readCartCount (lib/header-data.ts) and each action below returns the new
+// count for its own session. (The old getCartCount once took a user id that
+// won over the session id, which let any buyer read other buyers' counts.)
 
 /**
  * Resolve the variant a buyer may put in a cart, re-reading everything.
@@ -121,7 +113,7 @@ export async function addToCartAction(
   }
 
   revalidateCart();
-  return { ok: true, notice, count: await getCartCount() };
+  return { ok: true, notice, count: await readCartCount(session.user_id) };
 }
 
 /** Change a cart line's quantity. The line is identified by its own id. */
@@ -161,7 +153,7 @@ export async function setCartQuantityAction(
   return {
     ok: true,
     notice: next < wanted ? `Only ${resolved.stock} available.` : undefined,
-    count: await getCartCount(),
+    count: await readCartCount(session.user_id),
   };
 }
 
@@ -181,7 +173,7 @@ export async function removeFromCartAction(cartItemId: number): Promise<CartActi
   if (error) return { ok: false, error: "Could not remove the item. Please try again." };
 
   revalidateCart();
-  return { ok: true, count: await getCartCount() };
+  return { ok: true, count: await readCartCount(session.user_id) };
 }
 
 // There is deliberately no "clear cart" action. Checkout removes exactly the
@@ -235,5 +227,5 @@ export async function buyNowAction(
     cartItemId = data.id;
   }
   revalidateCart();
-  return { ok: true, notice, cartItemId, count: await getCartCount() };
+  return { ok: true, notice, cartItemId, count: await readCartCount(session.user_id) };
 }

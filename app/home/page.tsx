@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getSession, homeForRole } from "@/lib/session";
+import { getRenderSession, homeForRole } from "@/lib/session";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { BannerStrip } from "@/components/BannerStrip";
@@ -45,7 +45,7 @@ export default async function HomePage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const session = await getSession();
+  const session = await getRenderSession();
   if (session && session.role !== "buyer") redirect(homeForRole(session.role));
 
   const raw = await searchParams;

@@ -1,10 +1,7 @@
 import Link from "next/link";
 import type { Role, SessionUser } from "@/lib/types";
 import { maskEmail } from "@/lib/format";
-import { getCartCount } from "@/lib/actions/cart";
-import { getMyNotifications, getMyUnreadCount } from "@/lib/actions/notifications";
-import { getMyUnreadMessageCount } from "@/lib/actions/messages";
-import { CartBadge } from "./CartBadge";
+import { getHeaderData } from "@/lib/header-data";
 import { SearchBox } from "./SearchBox";
 import { ScopedSearchBox } from "./ScopedSearchBox";
 import { NotificationBell } from "./NotificationBell";
@@ -12,7 +9,7 @@ import { LogoutButton } from "./HeaderActions";
 import { MobileNav } from "./MobileNav";
 import { HeaderNavLinks } from "./HeaderNavLinks";
 import { HOME_HREF } from "@/lib/nav";
-import { getWishlistCount } from "@/lib/data";
+import { BrandMark } from "./BrandMark";
 
 export async function SiteHeader({
   variant,
@@ -30,9 +27,7 @@ export async function SiteHeader({
       <header className="site-header site-header--buyer" role="banner">
         <div className="container header-row">
           <Link className="brand" href="/home" aria-label="InclusiveMarket home">
-            <span className="brand-mark" aria-hidden="true">
-              IM
-            </span>
+            <BrandMark />
             <span className="brand-word">InclusiveMarket</span>
           </Link>
 
@@ -50,26 +45,35 @@ export async function SiteHeader({
     );
   }
 
-  const [cartCount, wishlistCount] =
-    variant === "buyer"
-      ? await Promise.all([getCartCount(), getWishlistCount(session.user_id)])
-      : [0, 0];
-  const [unread, notifications, unreadMessages] = await Promise.all([
-    getMyUnreadCount(),
-    getMyNotifications(),
-    variant === "buyer" || variant === "seller" ? getMyUnreadMessageCount() : Promise.resolve(0),
-  ]);
+  // One batch, with the session the page already resolved (memoised per
+  // request): the public actions would each resolve it again (finding 71).
+  const { cartCount, wishlistCount, unread, notifications, unreadMessages } = await getHeaderData(variant);
+  const roleLabel = variant === "admin" ? "Admin" : variant === "seller" ? "Seller" : null;
 
   return (
     <>
       <header className={`site-header site-header--${variant}`} role="banner">
-        <div className="container header-row">
-          <Link className="brand" href={HOME_HREF[variant]} aria-label="InclusiveMarket home">
-            <span className="brand-mark" aria-hidden="true">
-              IM
-            </span>
+        {/* --signed-in: on a phone this row is the brand and the search only.
+            Its nav (links, Cart, the bell, Sign out) is hidden there: the tab
+            bar has the links and the bell, its More sheet has Sign out. */}
+        <div className="container header-row header-row--signed-in">
+          {/* The name carries the visible "Seller"/"Admin" too (label in name,
+              WCAG 2.5.3); it is an aria-label because on a phone only the
+              mark shows. The space before <small> keeps the words apart. */}
+          <Link
+            className="brand"
+            href={HOME_HREF[variant]}
+            aria-label={`InclusiveMarket${roleLabel ? ` ${roleLabel}` : ""} home`}
+          >
+            <BrandMark />
             <span className="brand-word">
-              InclusiveMarket{variant !== "buyer" ? <small>{variant === "admin" ? "Admin" : "Seller"}</small> : null}
+              InclusiveMarket
+              {roleLabel ? (
+                <>
+                  {" "}
+                  <small>{roleLabel}</small>
+                </>
+              ) : null}
             </span>
           </Link>
 
@@ -79,12 +83,14 @@ export async function SiteHeader({
           {variant === "buyer" ? <SearchBox /> : <ScopedSearchBox variant={variant} />}
 
           <nav className="header-nav" aria-label="Primary">
-            <HeaderNavLinks variant={variant} unreadMessages={unreadMessages} wishlistCount={wishlistCount} />
-            {variant === "buyer" ? (
-              <Link className="nav-link nav-link--cart" href="/buyer/cart" aria-label="Cart">
-                Cart <CartBadge count={cartCount} />
-              </Link>
-            ) : null}
+            {/* Cart is among these links (last, for a buyer). Its count reads
+                "2 in cart" and, like the others, shows only above zero. */}
+            <HeaderNavLinks
+              variant={variant}
+              unreadMessages={unreadMessages}
+              wishlistCount={wishlistCount}
+              cartCount={cartCount}
+            />
             <NotificationBell initialUnread={unread} initialNotifications={notifications} />
             <LogoutButton />
           </nav>
@@ -116,6 +122,7 @@ export async function SiteHeader({
         cartCount={cartCount}
         unreadMessages={unreadMessages}
         wishlistCount={wishlistCount}
+        notifications={{ unread, items: notifications }}
       />
     </>
   );

@@ -43,7 +43,7 @@ const RULES: { keywords: string[]; reply: string }[] = [
   {
     keywords: ["seller", "sell", "pwd", "become a seller"],
     reply:
-      "Every seller on InclusiveMarket is a person with a disability running their own livelihood. To sell, sign up with a seller account; listings are reviewed before they go live.",
+      "Every seller on InclusiveMarket is a person with a disability running their own livelihood. Seller accounts are set up by AVRC staff, not through sign-up: send a message from the Contact page (choose \"Selling here\"). Listings are reviewed before they go live.",
   },
   {
     keywords: ["wishlist", "save item", "heart"],

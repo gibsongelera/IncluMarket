@@ -46,7 +46,7 @@ const required = [
   "lib/actions/messages.ts",
   "lib/actions/wishlist.ts",
   "lib/actions/payments-buyer.ts",
-  "lib/email/auth-mail.ts",
+  "supabase/migrations/0025_buyer_only_signup.sql",
   "lib/chatbot/responder.ts",
   "app/layout.tsx",
   "app/admin/payments/page.tsx",
@@ -197,12 +197,17 @@ assert(resetPage.includes("hasRecoveryMarker"), "reset page gates on the recover
 const landing = read("components/LandingClient.tsx");
 assert(landing.includes("requestPasswordResetAction"), "sign-in panel offers the reset");
 assert(
-  authAction.includes("mintAndSendAuthEmail"),
-  "signup and reset send through EMAIL_PROVIDER, not GoTrue's mailer"
+  /supabase\.auth\.signUp\(/.test(authAction) && authAction.includes("resetPasswordForEmail("),
+  "signup and reset emails are sent by Supabase Auth (dashboard templates + SMTP)"
 );
 assert(
-  !/supabase\.auth\.signUp\(/.test(authAction),
-  "signupAction does not call signUp() (that path is the empty {} mailer error)"
+  /export async function signupAction\(\s*name: string,\s*email: string,\s*password: string,\s*consent: boolean\s*\)/.test(authAction),
+  "signupAction takes no role: self sign-up is buyer-only"
+);
+assert(!/name="role"/.test(landing), "the sign-up form offers no role choice");
+assert(
+  /'buyer'\s*\)\s*on conflict \(email\) do nothing/.test(read("supabase/migrations/0025_buyer_only_signup.sql")),
+  "0025: the new-user trigger creates buyers only"
 );
 assert(
   authAction.includes("export async function verifySignupCodeAction"),
@@ -212,11 +217,6 @@ assert(
   /verifySignupCodeAction[\s\S]{0,1200}rateLimit\(/.test(authAction),
   "signup code redemption is rate limited"
 );
-const authMail = read("lib/email/auth-mail.ts");
-assert(authMail.includes("generateLink"), "auth mail mints tokens without sending via GoTrue");
-const emailTemplates = read("lib/email/templates.ts");
-assert(emailTemplates.includes('"signup_confirm"'), "signup_confirm template exists");
-assert(emailTemplates.includes('"password_reset"'), "password_reset template exists");
 
 console.log("\n=== Smoke: chatbot responder rules ===");
 const responder = read("lib/chatbot/responder.ts");

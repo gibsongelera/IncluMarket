@@ -20,9 +20,9 @@ import type { DeliveryResult } from "./types";
  * Verified against a live provider outage: sendEmail returned false, threw
  * nothing, and logged the reason.
  *
- * Auth mail (signup confirm, password reset) also goes through this module —
- * see lib/email/auth-mail.ts. Those callers DO treat a failed send as a
- * failed action, because an unconfirmed account with no email is a dead end.
+ * Auth mail (sign-up code, password reset) does NOT go through this module:
+ * Supabase Auth sends it from the dashboard's templates and SMTP settings
+ * (lib/actions/auth.ts).
  */
 
 export type { EmailKind } from "./templates";

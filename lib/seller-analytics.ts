@@ -12,7 +12,7 @@ import {
 import { getSellerFinance } from "@/lib/finance";
 import { getReviewsLite, type ReviewLite } from "@/lib/reviews";
 import { getMyVerification, type MyVerificationLite } from "@/lib/pwd/data";
-import { getMyUnreadMessageCount } from "@/lib/actions/messages";
+import { readUnreadMessageCount } from "@/lib/header-data";
 import { isMissingObject } from "@/lib/db-errors";
 import { shortName, statusLabel } from "@/lib/format";
 import { variantLabel } from "@/lib/pricing/core";
@@ -319,8 +319,9 @@ const HEAD = { count: "exact", head: true } as const;
  * The order counts are HEAD counts on im_orders by seller_id and status over
  * all time: the dashboard's 84-day read would miss an old pending order.
  * Each count that cannot be read is null, not 0, except unread messages:
- * getMyUnreadMessageCount (lib/actions/messages.ts, as the page uses it
- * today) answers 0 for a read it could not make, and only a throw is null.
+ * readUnreadMessageCount (lib/header-data.ts, the header's own count, keyed
+ * by this session so it does not resolve the session again) answers 0 for a
+ * read it could not make, and only a throw is null.
  */
 export const getSellerTodo = cache(async (): Promise<SellerTodoItem[]> => {
   const session = await requireRole(["seller"]);
@@ -351,7 +352,7 @@ export const getSellerTodo = cache(async (): Promise<SellerTodoItem[]> => {
             .eq("status", "visible")
             .is("seller_reply", null)
         ),
-    attempt("unread messages", () => getMyUnreadMessageCount()),
+    attempt("unread messages", () => readUnreadMessageCount(me, "seller")),
   ]);
 
   return [

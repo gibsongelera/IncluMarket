@@ -10,54 +10,123 @@
 .site-header--admin  { background: var(--color-nav); }
 .site-header--landing { background: var(--color-nav); }
 
+/* The row wraps: when brand, search and nav do not fit on one line (the
+   buyer's nav is 540px at 16px text and 780px at 24px), the nav takes a line
+   of its own instead of crushing the search to nothing and pushing the page
+   sideways (finding 59). Phones use the grid in responsive.css §11. */
 .header-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 1rem;
+  gap: .5rem 1rem;
   padding: .75rem 1rem;
   min-height: var(--header-h);
 }
+/* A 44px target at every text size; on a phone only the 32px mark shows, so
+   the box is centred around it rather than shrinking to it. */
 .brand {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  min-height: max(2.75rem, 44px);
+  min-width: max(2.75rem, 44px);
   gap: .55rem;
   font-weight: 800;
   font-size: 1.15rem;
   letter-spacing: .01em;
 }
+/* The AVRC III house mark on a white tile, so its reds and yellow read the
+   same on every header preset (F-07). */
 .brand-mark {
   display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  flex: none;
   width: 32px; height: 32px;
-  background: var(--palette-primary); color: var(--palette-primary-text); /* dark or white per preset */
+  padding: 2px;
+  background: #fff;
   border-radius: var(--radius-sm);
-  font-weight: 900;
-  font-size: .95rem;
 }
-.brand-word small { font-size: .7rem; opacity: .85; font-weight: 500; margin-left: .25rem; }
+.brand-mark img { display: block; width: 100%; height: 100%; }
+.brand-word small { font-size: .7rem; opacity: .85; font-weight: 500; }
 
+/* Never wider than the row: on a line of its own at 24px text the links wrap
+   inside it rather than overflow, each line at the end, so Sign out stays
+   under the bell rather than alone at the left. */
 .header-nav {
   margin-left: auto;
   display: flex;
-  gap: .15rem;
+  gap: .25rem;
   align-items: center;
+  justify-content: flex-end;
   flex-wrap: wrap;
   flex-shrink: 0;
+  max-width: 100%;
 }
+/* Every item in the nav row is one height (2.75rem, never under the 44px
+   target), centred, with its count inline after the word: the links, Cart,
+   the bell and Sign out used to be 35, 38, 40 and 32px tall, the bell's
+   count floated above its circle, and a count sat against its word
+   ("Wishlist3"). Hover and current tints are the nav text colour mixed
+   in, so they show on an admin theme with a light nav too. */
 .nav-link {
-  padding: .4rem .5rem;
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  justify-content: center;
+  min-width: max(2.75rem, 44px);
+  min-height: max(2.75rem, 44px);
+  padding: .4rem .6rem;
   border-radius: var(--radius-sm);
   color: var(--color-nav-text);
   font-size: .92rem;
+  line-height: 1.2;
   white-space: nowrap;
 }
-.nav-link:hover { background: rgba(255,255,255,.12); text-decoration: none; }
-.nav-link--active { background: rgba(255,255,255,.18); }
-.nav-link--cart { display: inline-flex; align-items: center; gap: .4rem; }
+.nav-link:hover { background: color-mix(in srgb, var(--color-nav-text) 12%, transparent); text-decoration: none; }
+.nav-link--active { background: color-mix(in srgb, var(--color-nav-text) 18%, transparent); }
 
+/* Counts in the nav (Wishlist, Messages, Cart, the bell): one compact pill,
+   in rem so it grows with the text. Shown only above zero. */
+.header-nav .badge,
+.site-header .icon-btn__count {
+  position: static;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.35rem;
+  height: 1.35rem;
+  min-height: 0;
+  padding: 0 .4rem;
+  border: 0;
+  border-radius: 999px;
+  background: var(--brand-yellow);
+  color: var(--text-charcoal);
+  font-size: .72rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+/* The header's bell (768px and up): a nav item like its neighbours, not a
+   white circle. Icon, then its count. */
+.site-header .notification-bell .icon-btn {
+  width: auto;
+  height: auto;
+  min-width: max(2.75rem, 44px);
+  min-height: max(2.75rem, 44px);
+  justify-content: center;
+  gap: .4rem;
+  padding: .4rem .6rem;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-nav-text);
+}
+.site-header .notification-bell .icon-btn:hover { background: color-mix(in srgb, var(--color-nav-text) 12%, transparent); }
+.site-header .notification-bell .icon-btn[aria-expanded="true"] { background: color-mix(in srgb, var(--color-nav-text) 18%, transparent); }
+
+/* 11rem: the "Search" button (about 6rem) plus an input of at least 4rem, at
+   every text size. Below that the nav wraps to its own line (.header-row). */
 .search {
-  flex: 1 1 220px;
+  flex: 1 1 11rem;
   display: flex;
   gap: .5rem;
   max-width: 460px;
@@ -135,13 +204,14 @@
 .search__suggestion.is-active,
 .search__suggestion:hover { background: var(--surface-gray); }
 
-/* Compact the buttons that share the nav row (Contrast, Sign in/out) so the
-   whole primary nav fits on one line instead of wrapping the last item. */
+/* The buttons that share the nav row (Sign in / Sign out): the row's height
+   and the links' text size, so they line up with them. */
 .header-nav .btn--ghost,
 .header-nav .btn--primary {
-  padding: .35rem .6rem;
-  font-size: .88rem;
-  min-height: 32px;
+  padding: .4rem .75rem;
+  font-size: .92rem;
+  line-height: 1.2;
+  min-height: max(2.75rem, 44px);
   white-space: nowrap;
 }
 
@@ -192,7 +262,8 @@
   padding: 2rem 1rem 1rem;
   text-align: left;
 }
-.footer-grid h2 {
+.footer-grid h2,
+.footer-partner h2 {
   font-size: .85rem;
   text-transform: uppercase;
   letter-spacing: .04em;
@@ -214,10 +285,12 @@
   min-height: 2.75rem;
 }
 .newsletter-form { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .5rem; }
-/* The input asks for 11.25rem beside "Subscribe" (the button wraps below
-   when they do not fit) but shrinks to its column: a footer column can be
-   160px (.footer-grid), and a fixed min-width of 180px stuck out of a 162px
-   column at 768px with a scrollbar and scrolled the page sideways. */
+/* Never wider than its column. The input asks for 11.25rem beside
+   "Subscribe" (the button wraps below when they do not fit) and shrinks to
+   its column: a footer column can be 160px (.footer-grid), 162px at 768px
+   with a scrollbar, 167px at 375px and 12px text with "Follow us" shown
+   (F-06). A fixed min-width of 180px stuck out and scrolled the page
+   sideways; in rem, the input also widens with the text. */
 .newsletter-form input {
   flex: 1 1 11.25rem;
   min-width: 0;
@@ -241,6 +314,10 @@
   padding: .85rem 0;
 }
 .static-page { padding: 2rem 1rem 3rem; max-width: 760px; }
+/* "About InclusiveMarket" is one word wider than a 375px phone at 24px text;
+   .prose is a grid, so only "anywhere" lets the title shrink below that word
+   instead of pushing the page sideways (F-06). */
+.static-page h1 { overflow-wrap: anywhere; }
 
 /* Full-page states: error, not found, suspended account. A heading, one
    sentence that says what happened, and the next step — never a blank page. */
@@ -345,6 +422,13 @@
   /* Measured header height; a literal is wrong at every font size but the
      default, and badly wrong at the 24px accessibility setting. */
   top: calc(var(--header-total) + var(--space-2));
+  /* Taller than the window below the header (24px text: the header alone is
+     over 200px), its lower filters sat off screen while they had focus. It
+     scrolls on its own instead, ending above the floating buttons, like the
+     console sidebar. */
+  max-height: calc(100vh - var(--header-total) - var(--space-2) - var(--fab-clearance)); /* no svh */
+  max-height: calc(100svh - var(--header-total) - var(--space-2) - var(--fab-clearance));
+  overflow: auto;
 }
 .filters h2 { font-size: 1rem; margin-bottom: .5rem; }
 .rating-row { display: flex; flex-wrap: wrap; gap: .5rem; }
@@ -1620,3 +1704,48 @@ a.hero-slide:focus-visible { outline: var(--focus-ring); outline-offset: var(--f
 /* Width media queries live in styles/responsive.css. */
 .ticket-reply { display: grid; gap: var(--space-2); justify-items: start; }
 .ticket-reply .field { width: 100%; margin: 0; }
+
+/* "In partnership with" strip: the DSWD marks sit on a white tile so they
+   read the same in every theme; links meet the 44px target (F-06). The tile
+   wraps and its logos shrink, so at 320px with 24px text nothing is cut off
+   (body clips sideways overflow, so it would not show as a scrollbar). */
+.footer-partner {
+  padding-block: 1.25rem;
+  border-top: 1px solid color-mix(in srgb, var(--color-footer-text) 25%, transparent);
+}
+.footer-partner__body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem 1.5rem;
+}
+.footer-partner__logos {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  max-width: 100%;
+  min-width: 0;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  background: #fff;
+}
+.footer-partner__logos img {
+  height: 3.5rem;
+  width: auto;
+  min-width: 0;
+  max-width: 100%;
+  object-fit: contain;
+}
+.footer-partner__text { flex: 1 1 16rem; min-width: 0; }
+.footer-partner__text p { margin: 0 0 0.25rem; }
+.footer-partner__links { display: flex; flex-wrap: wrap; gap: 0 1rem; margin: 0; padding: 0; list-style: none; }
+.footer-partner__links a,
+.footer-partner__plain {
+  display: inline-flex;
+  align-items: center;
+  min-height: max(2.75rem, 44px);
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  color: inherit;
+}

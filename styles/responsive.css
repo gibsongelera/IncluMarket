@@ -453,6 +453,8 @@ body:not(:has(.site-footer)) {
     bottom: 0;
     z-index: var(--z-fab);
     display: flex;
+    /* Two rows of three when MobileNav finds a label cut (data-rows). */
+    flex-wrap: wrap;
     justify-content: stretch;
     gap: 0;
     background: var(--canvas-white);
@@ -469,14 +471,11 @@ body:not(:has(.site-footer)) {
     display: flex;
     flex-direction: column;
     align-items: center;
-    /* Top, not centre: when one label wraps to two lines and its neighbours
-       do not, the icons still sit in one row. */
-    justify-content: flex-start;
+    justify-content: center;
     gap: 2px;
     min-height: 56px;
-    /* .125rem a side leaves a fifth of a 320px bar 58px of label at 24px
-       text: "Tickets" and "Orders" fit whole in the current tab's 800 weight,
-       which .25rem (52px) did not. */
+    /* 0.125rem a side, not --space-1: with six tabs a seller's "Dashboard"
+       (3.44rem) then fits a 375px phone on one row. */
     padding: var(--space-2) 0.125rem;
     color: var(--text-muted);
     text-decoration: none;
@@ -490,15 +489,40 @@ body:not(:has(.site-footer)) {
     font-family: inherit;
   }
 
-  /* The label is always shown whole, on up to two lines: it wraps at a space
-     ("My / orders") or at a long word's soft hyphen ("Dash-/board",
-     NavItem.tabLabel). It used to be cut with an ellipsis: at 320px with 24px
-     text "Dashboard", "Products" and "Messages" showed 52px of 82, 67 and
-     75. break-word is the last resort for a future label with no break point. */
+  /* The bell's tab (NotificationBell variant="tab") wraps a
+     .mobile-nav__item; `contents` makes that button a flex item of the bar
+     like its neighbours. A wrapper item without their padding came out 8px
+     narrower (flex-basis 0 still counts padding). Its panel is fixed, so the
+     wrapper never needed a box. */
+  .notification-bell--tab {
+    display: contents;
+  }
+
+  /* One line, never wrapped mid-word. The ellipsis is a last resort that
+     should not show: MobileNav measures this overflow and, if any label is
+     cut, sets data-rows="2" so each tab gets a third of the bar instead of
+     a sixth (24px text, 320px phones, "Dashboard"). A class, not
+     span:last-child: a tab with a badge ends in its screen-reader text. */
   .mobile-nav__label {
     max-width: 100%;
-    overflow-wrap: break-word;
-    hyphens: manual;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .mobile-nav[data-rows="2"] .mobile-nav__item {
+    flex-basis: 30%;
+  }
+  /* Taller than a third of the window (MobileNav): in the page, under the
+     header, scrolling away with it; --bottom-inset is 0px. z-index auto:
+     <body> is a flex column, so a static item keeps its z-index, and at 60
+     it slid over the sticky header (40) as the page scrolled. */
+  .mobile-nav[data-static] {
+    position: static;
+    z-index: auto;
+    border-top: 0;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0;
+    box-shadow: none;
   }
 
   .mobile-nav__item[aria-current="page"] {
@@ -530,7 +554,8 @@ body:not(:has(.site-footer)) {
     min-width: 16px;
   }
 
-  /* The header keeps brand, search and the bell; the tab bar owns navigation. */
+  /* The header keeps brand and search (and a guest's Sign in); the tab bar
+     owns navigation and, signed in, the bell (§11). */
   .site-header .header-nav .nav-link {
     display: none;
   }
@@ -541,9 +566,6 @@ body:not(:has(.site-footer)) {
     gap: var(--space-2);
     padding-top: var(--space-2);
     padding-bottom: var(--space-2);
-  }
-  .brand-word small {
-    display: none;
   }
 }
 
@@ -937,7 +959,7 @@ h3 {
    ------------------------------------------------------------------------ */
 @media (max-width: 900px) {
   .main--buyer { grid-template-columns: 1fr; }
-  .filters { position: static; }
+  .filters { position: static; max-height: none; overflow: visible; }
   .product-detail { grid-template-columns: 1fr; }
   .checkout-grid { grid-template-columns: 1fr; }
   .support-grid { grid-template-columns: 1fr; }
@@ -949,10 +971,6 @@ h3 {
   .cart-item > *:nth-child(n+4) { grid-column: 1 / -1; }
 }
 
-@media (max-width: 480px) {
-  .header-row { flex-wrap: wrap; }
-  .search { order: 3; width: 100%; }
-}
 
 /* ---------------------------------------------------------------------------
    11. Shopee-style phone layout
@@ -981,15 +999,22 @@ h3 {
     gap: var(--space-2);
     padding: var(--space-2) var(--space-3);
     min-height: 0;
+    /* The query below moves the nav to a second row (a guest's Sign in; a
+       signed-in row has no nav on a phone). A container query, not a media
+       query, because its rem follows the 12-24px text scale.
+       `contain: layout` (which container-type does not imply) makes this row
+       the containing block of its fixed children, the scoped search's
+       suggestions (§14), so `top: 100%` is the header's bottom edge whether
+       the header is sticky or scrolls away (data-header-static). The row is
+       the whole header on a phone (the user strip is hidden). */
+    container: header-row / inline-size;
+    contain: layout;
   }
 
   /* Brand collapses to the mark so the search field can take the width, the
      way the Shopee app bar is laid out. */
   .brand-word {
     display: none;
-  }
-  .brand-mark {
-    font-size: 1rem;
   }
 
   .search {
@@ -1006,6 +1031,84 @@ h3 {
     display: flex;
     align-items: center;
     gap: var(--space-1);
+  }
+}
+
+/* Below 23rem of bar (measured: under it the input is narrower than 4rem, and
+   at 24px text the "Search" button slides under the bell and Sign out), the
+   search takes the rest of the first row and the nav moves to a second row,
+   at the end: phones up to ~390px at 16px text, every phone at 24px. Brand,
+   search, nav is the DOM order, so what you see is still the focus order. */
+@container header-row (max-width: 23rem) {
+  .header-row > .search {
+    grid-column: 2 / -1;
+    grid-row: 1;
+  }
+  .header-row > .header-nav {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    justify-self: end;
+  }
+}
+/* Signed in, a phone's header is the brand and the search: its nav (links,
+   Cart, the bell, Sign out) is hidden, because the tab bar carries the links
+   and the bell and its More sheet has Sign out (MobileNav). One row, so
+   more of a phone screen is page. */
+@media (max-width: 767px) {
+  .header-row--signed-in {
+    grid-template-columns: auto 1fr;
+  }
+  .header-row--signed-in > .header-nav {
+    display: none;
+  }
+
+  /* The bell's tab (MobileNav) opens its panel upward from the bar, the
+     full width less 8px a side, ending above the floating buttons so
+     "Settings" and "See all" are never under the chat button. The buttons
+     also rise over a page's fixed action bar (product, cart, checkout:
+     --commit-bar-h), so the panel does too. It stops under a sticky header;
+     where that leaves under 10rem (a landscape phone at 24px text) it takes
+     10rem and covers the header instead, but never more than the window
+     above the buttons. The vh lines are for browsers without svh. */
+  .notification-bell--tab .notification-panel {
+    position: fixed;
+    top: auto;
+    bottom: calc(var(--bottom-inset) + var(--commit-bar-h) + var(--fab-clearance));
+    left: var(--space-2);
+    right: var(--space-2);
+    width: auto;
+    max-height: min(calc(100vh - var(--bottom-inset) - var(--commit-bar-h) - var(--fab-clearance) - var(--space-2)), max(10rem, calc(100vh - var(--header-total) - var(--bottom-inset) - var(--commit-bar-h) - var(--fab-clearance) - 2 * var(--space-2))));
+    max-height: min(calc(100svh - var(--bottom-inset) - var(--commit-bar-h) - var(--fab-clearance) - var(--space-2)), max(10rem, calc(100svh - var(--header-total) - var(--bottom-inset) - var(--commit-bar-h) - var(--fab-clearance) - 2 * var(--space-2))));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    transform-origin: bottom center;
+  }
+  /* One scroller, not a 360px one inside it: a swipe in the list would not
+     reach the foot until the list ran out. */
+  .notification-bell--tab .notification-list {
+    max-height: none;
+    overflow: visible;
+  }
+}
+/* It rises from the bar, so it fades in from below rather than above. */
+@media (max-width: 767px) and (prefers-reduced-motion: no-preference) {
+  @starting-style {
+    .notification-bell--tab .notification-panel { transform: translateY(4px) scale(0.98); }
+  }
+  .notification-bell--tab .notification-panel[data-state="closing"] {
+    transform: translateY(4px) scale(0.98);
+  }
+}
+/* The narrowest bars (13rem: a 320-350px phone at 24px text; never at 16px)
+   still leave the input under 3rem beside a 146px "Search" button. The
+   button keeps its word and loses the magnifier (aria-hidden) and some
+   padding. */
+@container header-row (max-width: 13rem) {
+  .header-row > .search button[type="submit"] {
+    padding-inline: var(--space-2);
+  }
+  .header-row > .search button[type="submit"] > svg {
+    display: none;
   }
 }
 
@@ -1837,14 +1940,22 @@ h3 {
 @media (max-width: 767px) {
   .search--scoped .search__suggestions {
     /* Full width of the header rather than the input, so two-line results are
-       readable on a narrow screen. */
+       readable on a narrow screen. Fixed children of .header-row resolve
+       against it on phones (`contain: layout`, §11), so 100% is the
+       header's bottom edge, sticky or not. Its height is capped like the
+       bell's panel (§11): above the tab bar and the floating buttons. */
     position: fixed;
     left: var(--space-2);
     right: var(--space-2);
-    top: var(--header-total);
-    max-height: 60vh;
+    top: 100%;
+    max-height: max(min(10rem, calc(100vh - var(--header-block) - var(--space-2) - var(--bottom-inset))), calc(100vh - var(--header-block) - var(--space-2) - var(--bottom-inset) - var(--fab-clearance)));
+    max-height: max(min(10rem, calc(100svh - var(--header-block) - var(--space-2) - var(--bottom-inset))), calc(100svh - var(--header-block) - var(--space-2) - var(--bottom-inset) - var(--fab-clearance)));
     overflow-y: auto;
     z-index: var(--z-header);
+  }
+  :root[data-header-static] .search--scoped .search__suggestions {
+    max-height: max(10rem, calc(100vh - var(--header-block) - var(--space-2) - var(--bottom-inset) - var(--fab-clearance)));
+    max-height: max(10rem, calc(100svh - var(--header-block) - var(--space-2) - var(--bottom-inset) - var(--fab-clearance)));
   }
 
   .search--scoped .search__suggestion {

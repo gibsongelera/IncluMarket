@@ -9,7 +9,7 @@ export async function seed({ runSql, q }) {
     insert into auth.users (id, email, raw_user_meta_data) values
       ('${B}','b15@test.invalid','{"name":"Buyer Fifteen"}'),
       ('${S1}','s151@test.invalid','{"role":"seller","name":"Seller A"}'),
-      ('${S2}','s152@test.invalid','{"role":"seller","name":"Seller B"}');
+      ('${S2}','s152@test.invalid','{"role":"seller","name":"Seller B"}'); update im_profiles set role = 'seller' where auth_user_id in (select id from auth.users where raw_user_meta_data->>'role' = 'seller');
   `);
   const [b] = await q(`select id from im_profiles where email='b15@test.invalid'`);
   const [s1] = await q(`select id from im_profiles where email='s151@test.invalid'`);

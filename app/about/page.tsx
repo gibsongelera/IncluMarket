@@ -28,6 +28,28 @@ export default function AboutPage() {
           basis.</li>
       </ul>
 
+      <h2>About AVRC III</h2>
+      <p>
+        {SITE.partner.name} is the DSWD vocational rehabilitation center for persons with disabilities in Zamboanga City,
+        under {SITE.partner.office}. Trainees learn a trade there, and the bags, clothes and crafts in this shop come from
+        its sheltered workshop.
+      </p>
+      {SITE.contactAddress ? <p>Visit: {SITE.contactAddress}</p> : null}
+      {SITE.social.facebook || SITE.partner.website ? (
+        <ul>
+          {SITE.social.facebook ? (
+            <li>
+              <a href={SITE.social.facebook} rel="noopener noreferrer">{SITE.socialName} on Facebook</a>
+            </li>
+          ) : null}
+          {SITE.partner.website ? (
+            <li>
+              <a href={SITE.partner.website} rel="noopener noreferrer">DSWD Field Office IX website</a>
+            </li>
+          ) : null}
+        </ul>
+      ) : null}
+
       <h2>Built to be usable</h2>
       <p>
         The shop works with a keyboard and screen readers, text can be enlarged to twice its size, and there are options

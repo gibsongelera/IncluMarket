@@ -264,6 +264,10 @@
      on resize, and on every accessibility font change — a hardcoded offset is
      wrong at 16px and badly wrong at 24px. The fallback matches the default. */
   --header-total: 92px;
+  /* The same measured height, but kept when the header is too tall to stick
+     (--header-total is then 0px). For panels that open under the header and
+     must fit the window below it. */
+  --header-block: 92px;
   /* Space reserved at the bottom of the viewport by the mobile tab bar, so
      floating buttons and page content can sit clear of it. */
   --bottom-inset: 0px;

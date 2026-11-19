@@ -298,6 +298,28 @@ export async function addAdminTicketResponse(
   return { ok: true };
 }
 
+/**
+ * Seller and admin rights go only to an account whose email is confirmed.
+ *
+ * Sign-up is buyer-only (0025), so sellers are made by promoting an account.
+ * Supabase keeps the password of an unconfirmed sign-up when the address signs
+ * up again, so whoever registered an address first and left it unconfirmed
+ * would sign in to the promoted account once the real owner confirms it.
+ * Returns the reason to refuse, or null.
+ */
+async function promotionBlocked(
+  db: ReturnType<typeof createAdminClient>,
+  authUserId: string | null | undefined
+): Promise<string | null> {
+  if (!authUserId) return "This account has no sign-in yet.";
+  const { data, error } = await db.auth.admin.getUserById(authUserId);
+  if (error || !data?.user) return "Could not check this account's sign-in. Please try again.";
+  if (!data.user.email_confirmed_at) {
+    return "This account has not confirmed its email yet. Ask the person to confirm it with the code we sent, then change the role.";
+  }
+  return null;
+}
+
 export async function updateUserRole(
   userId: number,
   role: "buyer" | "seller" | "admin"
@@ -307,6 +329,18 @@ export async function updateUserRole(
   if (userId === admin.user_id && role !== "admin")
     return { ok: false, error: "You cannot demote your own admin account." };
   const db = createAdminClient();
+  if (role !== "buyer") {
+    const { data: target } = await db
+      .from("im_profiles")
+      .select("role, auth_user_id")
+      .eq("id", userId)
+      .maybeSingle();
+    if (!target) return { ok: false, error: "User not found." };
+    if (target.role !== role) {
+      const blocked = await promotionBlocked(db, target.auth_user_id);
+      if (blocked) return { ok: false, error: blocked };
+    }
+  }
   const { error } = await db
     .from("im_profiles")
     .update({ role, updated_at: new Date().toISOString() })
@@ -412,10 +446,14 @@ export async function updateUser(userId: number, input: UserInput): Promise<Acti
   const db = createAdminClient();
   const { data: target } = await db
     .from("im_profiles")
-    .select("email, auth_user_id")
+    .select("email, auth_user_id, role")
     .eq("id", userId)
     .maybeSingle();
   if (!target) return { ok: false, error: "User not found." };
+  if (input.role !== "buyer" && input.role !== target.role) {
+    const blocked = await promotionBlocked(db, target.auth_user_id);
+    if (blocked) return { ok: false, error: blocked };
+  }
 
   const { data: clash } = await db
     .from("im_profiles")

@@ -57,8 +57,9 @@ const CHECKS = [
   // Re-asserts two columns 0007 already added: present means nothing to apply.
   ["0022_ui_prefs_complete", () => hasTable("im_ui_prefs", "visual_alerts")],
   ["0023_product_media_backfill", () => inSpec("im_move_product_image_to_storage")],
-  // A trigger only: nothing PostgREST can see. Reported, not counted.
+  // Triggers only: nothing PostgREST can see. Reported, not counted.
   ["0024_flash_sale_rules", null],
+  ["0025_buyer_only_signup", null],
 ];
 
 let missing = 0;
@@ -77,5 +78,10 @@ for (const [name, test] of CHECKS) {
   console.log(`  ${ok ? "✔ applied" : "✖ MISSING"}  ${name}.sql`);
   if (!ok) missing++;
 }
-console.log(missing ? `\n${missing} migration(s) missing. Apply them in order before deploying.` : "\nAll migrations present.");
+const unknown = CHECKS.filter(([, test]) => !test).length;
+console.log(
+  missing
+    ? `\n${missing} migration(s) missing. Apply them in order before deploying.`
+    : `\nEvery checkable migration is present${unknown ? `; ${unknown} marked "?" cannot be seen read-only, so confirm those in the SQL editor` : ""}.`
+);
 process.exitCode = missing ? 1 : 0;

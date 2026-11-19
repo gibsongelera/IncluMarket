@@ -20,8 +20,6 @@ export type EmailKind =
   | "seller_decision"
   | "ticket_reply"
   | "newsletter_welcome"
-  | "signup_confirm"
-  | "password_reset"
   | "account_status"
   | "pwd_verification"
   | "flash_sale"
@@ -422,56 +420,6 @@ export function renderTemplate(kind: EmailKind, d: TemplateData): RenderedEmail 
         subject: c.subject,
         html: shell(c.head, hello + c.lines.map((l) => p(l)).join(""), c.cta, page),
         text: `${c.head}\n\n` + c.lines.map(strip).join("\n") + `\n\n${c.cta}: ${page}\n`,
-      };
-    }
-
-    case "signup_confirm": {
-      const code = String(d.code || "").trim();
-      const codeBlock = code
-        ? p("Or enter this confirmation code on the sign-in page:") +
-          `<p style="margin:0 0 16px;font-size:28px;letter-spacing:.18em;font-weight:800;font-family:ui-monospace,Menlo,Consolas,monospace;color:${BRAND_DEEP}">${esc(code)}</p>`
-        : "";
-      return {
-        subject: "Confirm your InclusiveMarket account",
-        html: shell(
-          "Confirm your email",
-          p(`Hello${d.name ? ` ${esc(d.name)}` : ""}.`) +
-            p("Welcome to InclusiveMarket. Confirm your email to finish creating your account.") +
-            codeBlock,
-          "Confirm my email",
-          String(d.confirmUrl || url)
-        ),
-        text:
-          `Confirm your InclusiveMarket account\n\n` +
-          `Hello${d.name ? ` ${d.name}` : ""}.\n` +
-          `Confirm your email to finish creating your account.\n\n` +
-          (code ? `Confirmation code: ${code}\n\n` : "") +
-          `Confirm: ${d.confirmUrl || url}\n`,
-      };
-    }
-
-    case "password_reset": {
-      const code = String(d.code || "").trim();
-      const codeBlock = code
-        ? p("Or type this code on the reset page (it expires in one hour):") +
-          `<p style="margin:0 0 16px;font-size:28px;letter-spacing:.18em;font-weight:800;font-family:ui-monospace,Menlo,Consolas,monospace;color:${BRAND_DEEP}">${esc(code)}</p>`
-        : "";
-      return {
-        subject: "Reset your InclusiveMarket password",
-        html: shell(
-          "Reset your password",
-          p("We received a request to reset your password.") +
-            p("Use the button below, or enter the code on the reset page. If you did not ask for this, you can ignore this email.") +
-            codeBlock,
-          "Reset password",
-          String(d.confirmUrl || url)
-        ),
-        text:
-          `Reset your InclusiveMarket password\n\n` +
-          `We received a request to reset your password.\n` +
-          (code ? `Reset code: ${code}\n\n` : "") +
-          `Reset: ${d.confirmUrl || url}\n\n` +
-          `If you did not ask for this, you can ignore this email.\n`,
       };
     }
   }

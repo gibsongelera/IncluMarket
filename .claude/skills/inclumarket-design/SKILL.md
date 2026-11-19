@@ -226,7 +226,16 @@ dash pattern per line (`SERIES_DASHES`).
   `product-list` (every product grid drops a column before a card goes
   under 7.5rem, so a "₱1,250.00" price is never cut), `promo` (the hero's
   side tile), `store-card` and `purchases` (the buyer's four tiles go four
-  or two to a row, never three and one). One more holds everywhere:
+  or two to a row, never three and one). On phones the site header's row is
+  one too (`header-row`, below 768px only): under 23rem a guest's nav drops
+  to a second row (a signed-in phone header has no nav: the bell is a tab
+  bar tab, Sign out is in More), under 13rem the Search button loses its
+  icon. That row also has `contain: layout`, because `container-type` alone
+  did not make it the containing block of its fixed children (a panel at
+  `top: 100%` resolved against the viewport and opened off screen). With
+  it, the scoped search's suggestions sit at the row's bottom edge, sticky
+  or static. Safe only because that row is the whole phone header.
+  One more holds everywhere:
   `details-list`, each `.details-list` itself, which puts every label above
   its value under 18rem (a `--money` list under 14rem, amounts then left).
   Thresholds are rem of content: KPI row one column, two from 35rem, one row
