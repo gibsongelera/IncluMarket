@@ -48,6 +48,7 @@ export async function SiteHeader({
   // One batch, with the session the page already resolved (memoised per
   // request): the public actions would each resolve it again (finding 71).
   const { cartCount, wishlistCount, unread, notifications, unreadMessages } = await getHeaderData(variant);
+  const roleLabel = variant === "admin" ? "Admin" : variant === "seller" ? "Seller" : null;
 
   return (
     <>
@@ -56,10 +57,23 @@ export async function SiteHeader({
             Its nav (links, Cart, the bell, Sign out) is hidden there: the tab
             bar has the links and the bell, its More sheet has Sign out. */}
         <div className="container header-row header-row--signed-in">
-          <Link className="brand" href={HOME_HREF[variant]} aria-label="InclusiveMarket home">
+          {/* The name carries the visible "Seller"/"Admin" too (label in name,
+              WCAG 2.5.3); it is an aria-label because on a phone only the
+              mark shows. The space before <small> keeps the words apart. */}
+          <Link
+            className="brand"
+            href={HOME_HREF[variant]}
+            aria-label={`InclusiveMarket${roleLabel ? ` ${roleLabel}` : ""} home`}
+          >
             <BrandMark />
             <span className="brand-word">
-              InclusiveMarket{variant !== "buyer" ? <small>{variant === "admin" ? "Admin" : "Seller"}</small> : null}
+              InclusiveMarket
+              {roleLabel ? (
+                <>
+                  {" "}
+                  <small>{roleLabel}</small>
+                </>
+              ) : null}
             </span>
           </Link>
 

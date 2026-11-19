@@ -1,7 +1,8 @@
 /**
  * The site's mark: the AVRC III house mark (DSWD Centers and Residential Care
  * Facilities), as AVRC Region IX uses it beside its name. Decorative — every
- * brand link already says "InclusiveMarket home" — so the image has no alt
+ * brand link already has a name ("InclusiveMarket home", or "InclusiveMarket
+ * Seller home" / "… Admin home" on the consoles) — so the image has no alt
  * and its wrapper is hidden from assistive technology.
  */
 export function BrandMark({ className = "brand-mark" }: { className?: string }) {

@@ -567,9 +567,6 @@ body:not(:has(.site-footer)) {
     padding-top: var(--space-2);
     padding-bottom: var(--space-2);
   }
-  .brand-word small {
-    display: none;
-  }
 }
 
 /* The "More" sheet uses a native <dialog>, so focus trapping and Esc are free. */
