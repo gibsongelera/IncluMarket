@@ -15,7 +15,7 @@ admin console. Accessibility is a build requirement, not a feature.
 | Styling | Hand-written CSS in `styles/` (no Tailwind, no CSS-in-JS) |
 | Data | Supabase Postgres (40 `im_` tables), Supabase Auth, Supabase Storage |
 | Payments | PayMongo Checkout Sessions (GCash, Maya, GrabPay, card) |
-| Email | Resend (default) or Brevo, over HTTP |
+| Email | Sign-up codes and password reset: Supabase Auth. Everything else: Brevo (default) or Resend, over HTTP |
 | Chatbot | Rule-based; OpenRouter LLM when `CHAT_PROVIDER=openrouter` |
 
 `CLAUDE.md` holds the working rules for this codebase; read it before changing
@@ -72,7 +72,7 @@ Everything is documented in `.env.example`. `NEXT_PUBLIC_*` values are
 | `PWD_ID_HASH_KEY`, `PWD_ID_ENC_KEY` | PWD verification — **required in production** |
 | `RATE_LIMIT_SALT` | Hashing caller IPs for rate limits |
 | `PAYMONGO_SECRET_KEY`, `PAYMONGO_WEBHOOK_SECRET`, `PAYMONGO_ENV` | Online payment (without the key, checkout offers cash on delivery only) |
-| `EMAIL_PROVIDER`, `EMAIL_FROM`, `EMAIL_FROM_NAME`, `RESEND_API_KEY` / `BREVO_API_KEY` | Email (sends are skipped, not failed, when unset) |
+| `EMAIL_PROVIDER`, `EMAIL_FROM`, `EMAIL_FROM_NAME`, `BREVO_API_KEY` / `RESEND_API_KEY` | Order, ticket and newsletter email (sends are skipped, not failed, when unset). Sign-up and reset emails are set up in Supabase instead — see below |
 | `CHAT_PROVIDER`, `OPENROUTER_*` | Optional LLM chatbot |
 | `NEXT_PUBLIC_CONTACT_EMAIL`, `NEXT_PUBLIC_CONTACT_PHONE`, `NEXT_PUBLIC_FACEBOOK_URL`, `NEXT_PUBLIC_INSTAGRAM_URL` | Shown only when set |
 | `CSP_ENFORCE` | Enforce the Content-Security-Policy (report-only otherwise) |
@@ -87,6 +87,51 @@ Everything is documented in `.env.example`. `NEXT_PUBLIC_*` values are
    `https://<domain>/auth/callback` and `https://<domain>/auth/confirm`.
 3. PayMongo → Webhooks: register `https://<domain>/api/webhooks/paymongo` in the
    same mode (test or live) as `PAYMONGO_ENV` and the secret key.
+
+### Email and sign-up codes
+
+Only buyers create their own accounts; sellers are set up by an administrator
+in Admin → Users (migration 0025 enforces this in the database).
+
+**Sign-up codes and password-reset emails are sent by Supabase Auth**, not by
+the app's email provider. Set them up once in the Supabase dashboard:
+
+1. **Authentication → Emails → SMTP Settings: enable Custom SMTP.** Without it
+   Supabase sends only to your own project team's addresses, a few per hour,
+   so real buyers never get a code. Any SMTP service works; with Brevo:
+   host `smtp-relay.brevo.com`, port `587`, username = your Brevo SMTP login,
+   password = an **SMTP key** (`xsmtpsib-…`, not the API key), sender = an
+   address verified in Brevo.
+2. **Authentication → Rate Limits:** raise "emails sent per hour" from the
+   default to what you expect (for example 100).
+3. **Authentication → Emails → Templates → Confirm signup:** show the code and
+   link to `/auth/confirm` (works on any device):
+
+   ```html
+   <h2>Confirm your InclusiveMarket account</h2>
+   <p>Enter this code on the sign-in page:</p>
+   <p style="font-size:28px;letter-spacing:.18em;font-weight:800">{{ .Token }}</p>
+   <p>Or <a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email">confirm your email</a>.</p>
+   ```
+
+4. **Templates → Reset password:**
+
+   ```html
+   <h2>Reset your InclusiveMarket password</h2>
+   <p>Enter this code on the reset page (it expires in one hour):</p>
+   <p style="font-size:28px;letter-spacing:.18em;font-weight:800">{{ .Token }}</p>
+   <p>Or <a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery&next=/reset-password">reset your password</a>.
+   If you did not ask for this, ignore this email.</p>
+   ```
+
+5. **Authentication → URL Configuration:** Site URL = your site
+   (`http://localhost:3000` in development), and add `<site>/auth/confirm`
+   and `<site>/auth/callback` to the redirect URLs.
+
+Everything else (order confirmations, seller notices, ticket replies,
+newsletter) goes through `EMAIL_PROVIDER`. With Brevo, a 401 "unrecognised IP
+address" means Brevo → Settings → Security → Authorised IPs is on; turn it off,
+since serverless IPs change.
 
 ---
 
@@ -111,8 +156,9 @@ a rollback in `supabase/rollback/00xx_down.sql` and tests in `supabase/tests/`.
 | 0022 | Accessibility preferences on the account |
 | 0023 | Moving product photos from Postgres to Storage |
 | 0024 | Flash sale rules |
+| 0025 | Self sign-up creates buyers only |
 
-**Apply 0013–0024 to a development project first**, run the app against it,
+**Apply 0013–0025 to a development project first**, run the app against it,
 then production. Every page that depends on a newer migration says which one it
 needs instead of failing. After 0019 and 0023, move existing product photos out
 of the database:

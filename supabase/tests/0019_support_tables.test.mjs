@@ -8,7 +8,7 @@ export default async function ({ q, runSql, asUser, check }) {
     insert into auth.users (id, email, raw_user_meta_data) values
       ('${U}','u19@test.invalid','{"name":"Uno"}'),
       ('${V}','v19@test.invalid','{"name":"Vic"}'),
-      ('00000000-0000-0000-0000-0000000019a1','s19@test.invalid','{"role":"seller","name":"Seller 19"}');
+      ('00000000-0000-0000-0000-0000000019a1','s19@test.invalid','{"role":"seller","name":"Seller 19"}'); update im_profiles set role = 'seller' where auth_user_id in (select id from auth.users where raw_user_meta_data->>'role' = 'seller');
   `);
   const [u] = await q(`select id from im_profiles where email='u19@test.invalid'`);
   const [v] = await q(`select id from im_profiles where email='v19@test.invalid'`);

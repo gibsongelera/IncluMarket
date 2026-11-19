@@ -1,7 +1,7 @@
 // 0023: moving a photo to Storage does not hide an approved listing.
 export default async function ({ q, runSql, asUser, check }) {
   await runSql(`insert into auth.users (id, email, raw_user_meta_data) values
-    ('00000000-0000-0000-0000-0000000023a1','s23@test.invalid','{"role":"seller","name":"Seller 23"}');`);
+    ('00000000-0000-0000-0000-0000000023a1','s23@test.invalid','{"role":"seller","name":"Seller 23"}'); update im_profiles set role = 'seller' where auth_user_id in (select id from auth.users where raw_user_meta_data->>'role' = 'seller');`);
   const [s] = await q(`select id from im_profiles where email='s23@test.invalid'`);
   await runSql(`insert into im_products (id, seller_id, title, base_price, status) values (2301, ${s.id}, 'Photo item', 100, 'approved');
                 insert into im_product_images (id, product_id, url, position) values (23011, 2301, 'data:image/jpeg;base64,AAAA', 0);`);

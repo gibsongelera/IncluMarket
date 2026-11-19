@@ -10,7 +10,7 @@ export default async function ({ q, runSql, asUser, check }) {
     insert into auth.users (id, email, raw_user_meta_data) values
       ('${BUYER}',  'buyer@test.invalid',  '{"role":"buyer","name":"Bea Buyer"}'),
       ('${SELLER}', 'seller@test.invalid', '{"role":"seller","name":"Sam Seller"}'),
-      ('${OTHER}',  'other@test.invalid',  '{"role":"admin","name":"Would-be Admin"}');
+      ('${OTHER}',  'other@test.invalid',  '{"role":"admin","name":"Would-be Admin"}'); update im_profiles set role = 'seller' where auth_user_id in (select id from auth.users where raw_user_meta_data->>'role' = 'seller');
   `);
   const prof = await q(`select id, role, auth_user_id from im_profiles order by id`);
   const buyer = prof.find((p) => p.auth_user_id === BUYER);

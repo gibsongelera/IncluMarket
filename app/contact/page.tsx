@@ -73,8 +73,9 @@ export default async function ContactPage() {
 
       <h2>Selling here</h2>
       <p>
-        Sellers are PWD trainees and graduates of {SITE.operator}. To start, create a seller account and verify your PWD
-        ID; AVRC staff review it, and your listings are reviewed before they appear in the shop.
+        Sellers are PWD trainees and graduates of {SITE.operator}. Seller accounts are set up by AVRC staff, not through
+        sign-up: send us a message above (choose &ldquo;Selling here&rdquo;) or ask at the center. Staff check your PWD
+        ID, and your listings are reviewed before they appear in the shop.
       </p>
     </StaticPageLayout>
   );

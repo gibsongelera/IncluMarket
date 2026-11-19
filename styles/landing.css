@@ -243,18 +243,10 @@
   color: var(--text-muted);
   pointer-events: none;
 }
-/* The dropdown arrow drawn for .input-icon select. Decorative (aria-hidden),
-   and clicks fall through to the select underneath. */
-.input-icon svg.trailing-icon {
-  position: absolute; right: .85rem; top: 50%; transform: translateY(-50%);
-  color: var(--text-muted);
-  pointer-events: none;
-}
 /* The icons are a fixed 18px (their width attribute) while their offsets are
    rem, so the side that holds one reserves offset + 18px + a rem gap. A flat
    rem value over-reserves at the 24px font setting and under-reserves at 12px. */
-.input-icon input,
-.input-icon select {
+.input-icon input {
   width: 100%;
   padding: .7rem .85rem .7rem calc(.75rem + 18px + .35rem);
   border: 1.5px solid var(--border-control);
@@ -264,22 +256,8 @@
   color: var(--text-charcoal);
   transition: border-color var(--dur-1) var(--ease-out), background-color var(--dur-1) var(--ease-out);
 }
-/* appearance: none removes the native arrow, so svg.trailing-icon draws one
-   and padding-right keeps the text clear of it. The font-size restates the
-   iOS no-zoom floor from responsive.css: the inputs get it there (their
-   input[type] selectors tie `.input-icon input` and come later), but a bare
-   `select` loses to this rule, so without it the select stays at .95rem,
-   smaller and shorter than the fields beside it. */
-.input-icon select {
-  appearance: none;
-  padding-right: calc(.85rem + 18px + .25rem);
-  cursor: pointer;
-  font-size: max(1rem, 16px);
-}
-.input-icon input:hover,
-.input-icon select:hover { border-color: var(--text-charcoal); }
-.input-icon input:focus,
-.input-icon select:focus {
+.input-icon input:hover { border-color: var(--text-charcoal); }
+.input-icon input:focus {
   background: var(--canvas-white);
   border-color: var(--brand-blue);
 }

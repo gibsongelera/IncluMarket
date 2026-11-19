@@ -156,7 +156,6 @@ export function LandingClient({
       String(data.get("name") || ""),
       String(data.get("email") || ""),
       String(data.get("password") || ""),
-      String(data.get("role") || "buyer") as Role,
       data.get("consent") === "on"
     );
     setBusy(false);
@@ -166,7 +165,7 @@ export function LandingClient({
       return;
     }
     if (res.needsEmailConfirm) {
-      toast(res.message || "Check your email for a confirmation link and a code.", "success");
+      toast(res.message || "Check your email for a confirmation code.", "success");
       setEmail(String(data.get("email") || "").trim().toLowerCase());
       setTab("signin");
       setNeedsConfirm(true);
@@ -525,9 +524,13 @@ export function LandingClient({
               aria-labelledby="tab-signup"
               hidden={tab !== "signup"}
             >
-              <h2>Create your account</h2>
+              <h2>Create a buyer account</h2>
               <p className="muted">
-                Register as a buyer or PWD seller. You will need to confirm your email before signing in.
+                Create a buyer account to shop. We will email you a code to confirm your address before you sign in.
+              </p>
+              <p className="muted">
+                PWD trainee who wants to sell? Seller accounts are not made here — <a href="/contact">contact AVRC staff</a>{" "}
+                to set one up.
               </p>
 
               <form className="form" noValidate onSubmit={onSignup}>
@@ -542,36 +545,23 @@ export function LandingClient({
                     <label htmlFor="su-name">Full name</label>
                     <div className="input-icon">
                       <svg className="leading" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
-                      <input id="su-name" name="name" required maxLength={80} placeholder="Juan dela Cruz" />
+                      <input id="su-name" name="name" required maxLength={80} autoComplete="name" placeholder="Juan dela Cruz" />
                     </div>
                   </div>
                   <div className="field">
                     <label htmlFor="su-email">Email</label>
                     <div className="input-icon">
                       <svg className="leading" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2" /><path d="m3 7 9 6 9-6" /></svg>
-                      <input id="su-email" name="email" type="email" required placeholder="you@example.com" />
+                      <input id="su-email" name="email" type="email" required autoComplete="email" placeholder="you@example.com" />
                     </div>
                   </div>
                 </div>
 
-                <div className="row">
-                  <div className="field">
-                    <label htmlFor="su-password">Password</label>
-                    <div className="input-icon">
-                      <svg className="leading" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="10" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
-                      <input id="su-password" name="password" type="password" required minLength={8} autoComplete="new-password" placeholder="At least 8 characters" />
-                    </div>
-                  </div>
-                  <div className="field">
-                    <label htmlFor="su-role">Sign up as</label>
-                    <div className="input-icon">
-                      <svg className="leading" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 3h18v4H3zM3 10h18v11H3z" /><path d="M8 14h8" /></svg>
-                      <select id="su-role" name="role" required>
-                        <option value="buyer">Buyer</option>
-                        <option value="seller">PWD Seller</option>
-                      </select>
-                      <svg className="trailing-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false"><path d="m6 9 6 6 6-6" /></svg>
-                    </div>
+                <div className="field">
+                  <label htmlFor="su-password">Password</label>
+                  <div className="input-icon">
+                    <svg className="leading" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="10" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
+                    <input id="su-password" name="password" type="password" required minLength={8} autoComplete="new-password" placeholder="At least 8 characters" />
                   </div>
                 </div>
 

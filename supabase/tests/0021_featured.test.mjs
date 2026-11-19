@@ -1,7 +1,7 @@
 // 0021: featured order and window.
 export default async function ({ q, runSql, asUser, check }) {
   await runSql(`insert into auth.users (id, email, raw_user_meta_data) values
-    ('00000000-0000-0000-0000-0000000021a1','s21@test.invalid','{"role":"seller","name":"Seller 21"}');`);
+    ('00000000-0000-0000-0000-0000000021a1','s21@test.invalid','{"role":"seller","name":"Seller 21"}'); update im_profiles set role = 'seller' where auth_user_id in (select id from auth.users where raw_user_meta_data->>'role' = 'seller');`);
   const [s] = await q(`select id from im_profiles where email='s21@test.invalid'`);
   await runSql(`insert into im_products (id, seller_id, title, base_price, status, is_featured)
                 values (2101, ${s.id}, 'Featured thing', 100, 'approved', true)`);
