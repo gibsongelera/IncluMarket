@@ -122,9 +122,11 @@ the app's email provider. Set them up once in the Supabase dashboard:
 
 4. **Authentication → URL Configuration:** Site URL = your site
    (`https://inclumarket.vercel.app` in production, `http://localhost:3000` in
-   development). The templates build their links and logo from it, so a
-   localhost Site URL sends people to their own computer. Add `<site>/auth/confirm`
-   and `<site>/auth/callback` to the redirect URLs.
+   development). The templates build their button links from it, so a
+   localhost Site URL sends people to their own computer. (The logo always
+   loads from `https://inclumarket.vercel.app`, since an email can't fetch
+   from localhost; change it in both templates if the domain changes.) Add
+   `<site>/auth/confirm` and `<site>/auth/callback` to the redirect URLs.
 
 Everything else (order confirmations, seller notices, ticket replies,
 newsletter) goes through `EMAIL_PROVIDER`. With Brevo, a 401 "unrecognised IP
