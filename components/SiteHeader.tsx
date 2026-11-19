@@ -2,7 +2,6 @@ import Link from "next/link";
 import type { Role, SessionUser } from "@/lib/types";
 import { maskEmail } from "@/lib/format";
 import { getHeaderData } from "@/lib/header-data";
-import { CartBadge } from "./CartBadge";
 import { SearchBox } from "./SearchBox";
 import { ScopedSearchBox } from "./ScopedSearchBox";
 import { NotificationBell } from "./NotificationBell";
@@ -73,12 +72,14 @@ export async function SiteHeader({
           {variant === "buyer" ? <SearchBox /> : <ScopedSearchBox variant={variant} />}
 
           <nav className="header-nav" aria-label="Primary">
-            <HeaderNavLinks variant={variant} unreadMessages={unreadMessages} wishlistCount={wishlistCount} />
-            {variant === "buyer" ? (
-              <Link className="nav-link nav-link--cart" href="/buyer/cart" aria-label="Cart">
-                Cart <CartBadge count={cartCount} />
-              </Link>
-            ) : null}
+            {/* Cart is among these links (last, for a buyer). Its count reads
+                "2 in cart" and, like the others, shows only above zero. */}
+            <HeaderNavLinks
+              variant={variant}
+              unreadMessages={unreadMessages}
+              wishlistCount={wishlistCount}
+              cartCount={cartCount}
+            />
             <NotificationBell initialUnread={unread} initialNotifications={notifications} />
             <LogoutButton />
           </nav>

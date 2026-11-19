@@ -182,7 +182,7 @@ export function NotificationBell({
           onClick={toggleOpen}
         >
           <Icon name="bell" size={18} />
-          {unread > 0 ? <span className="icon-btn__count">{unread > 9 ? "9+" : unread}</span> : null}
+          {unread > 0 ? <span className="icon-btn__count">{unread > 99 ? "99+" : unread}</span> : null}
         </button>
       )}
       {presence.mounted ? (
