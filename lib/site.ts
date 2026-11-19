@@ -17,6 +17,15 @@ function email(value: string | undefined): string | null {
   return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v) && !/\.example$/i.test(v) ? v : null;
 }
 
+/** A tel: link only for a value that is a phone number, not office hours. */
+function tel(value: string | null): string | null {
+  return value && /^\+?[\d\s()-]+$/.test(value) && (value.match(/\d/g) ?? []).length >= 7
+    ? `tel:${value.replace(/[\s()-]/g, "")}`
+    : null;
+}
+
+const contactPhone = (process.env.NEXT_PUBLIC_CONTACT_PHONE ?? "").trim() || null;
+
 export const SITE = {
   name: "InclusiveMarket",
   tagline: "Products made by PWD trainees of AVRC Region IX",
@@ -26,10 +35,28 @@ export const SITE = {
   /** Public contact address, when the operator has confirmed one. */
   contactEmail: email(process.env.NEXT_PUBLIC_CONTACT_EMAIL),
   /** Phone or office hours, when confirmed. */
-  contactPhone: (process.env.NEXT_PUBLIC_CONTACT_PHONE ?? "").trim() || null,
+  contactPhone,
+  /** tel: link for contactPhone, or null when it is not a dialable number. */
+  contactPhoneHref: tel(contactPhone),
+  /** Postal address of the center, when confirmed. */
+  contactAddress: (process.env.NEXT_PUBLIC_CONTACT_ADDRESS ?? "").trim() || null,
+  /** Whose profiles the social links are: one name everywhere they appear. */
+  socialName: "AVRC III",
   social: {
     facebook: url(process.env.NEXT_PUBLIC_FACEBOOK_URL),
     instagram: url(process.env.NEXT_PUBLIC_INSTAGRAM_URL),
+  },
+  /** The DSWD center whose trainees sell here, and its official marks. */
+  partner: {
+    name: "Area Vocational Rehabilitation Center III (AVRC III)",
+    office: "DSWD Field Office IX – Zamboanga Peninsula",
+    website: url(process.env.NEXT_PUBLIC_DSWD_WEBSITE_URL),
+    facebook: url(process.env.NEXT_PUBLIC_DSWD_FACEBOOK_URL),
+    logos: [
+      // No alt: the office's name is the visible line beside it.
+      { src: "/assets/img/partners/dswd-fo9.png", alt: "", width: 190, height: 270 },
+      { src: "/assets/img/partners/crcf.png", alt: "DSWD Centers and Residential Care Facilities", width: 620, height: 218 },
+    ],
   },
 } as const;
 

@@ -256,7 +256,8 @@
   padding: 2rem 1rem 1rem;
   text-align: left;
 }
-.footer-grid h2 {
+.footer-grid h2,
+.footer-partner h2 {
   font-size: .85rem;
   text-transform: uppercase;
   letter-spacing: .04em;
@@ -278,9 +279,11 @@
   min-height: 2.75rem;
 }
 .newsletter-form { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .5rem; }
+/* Never wider than its column: with the "Follow us" column shown, Newsletter
+   sits in a 167px column at 375px and 12px text (F-06). */
 .newsletter-form input {
   flex: 1;
-  min-width: 180px;
+  min-width: min(180px, 100%);
   background: var(--canvas-white);
   color: var(--text-charcoal);
 }
@@ -298,6 +301,10 @@
   padding: .85rem 0;
 }
 .static-page { padding: 2rem 1rem 3rem; max-width: 760px; }
+/* "About InclusiveMarket" is one word wider than a 375px phone at 24px text;
+   .prose is a grid, so only "anywhere" lets the title shrink below that word
+   instead of pushing the page sideways (F-06). */
+.static-page h1 { overflow-wrap: anywhere; }
 
 /* Full-page states: error, not found, suspended account. A heading, one
    sentence that says what happened, and the next step — never a blank page. */
@@ -1684,3 +1691,48 @@ a.hero-slide:focus-visible { outline: var(--focus-ring); outline-offset: var(--f
 /* Width media queries live in styles/responsive.css. */
 .ticket-reply { display: grid; gap: var(--space-2); justify-items: start; }
 .ticket-reply .field { width: 100%; margin: 0; }
+
+/* "In partnership with" strip: the DSWD marks sit on a white tile so they
+   read the same in every theme; links meet the 44px target (F-06). The tile
+   wraps and its logos shrink, so at 320px with 24px text nothing is cut off
+   (body clips sideways overflow, so it would not show as a scrollbar). */
+.footer-partner {
+  padding-block: 1.25rem;
+  border-top: 1px solid color-mix(in srgb, var(--color-footer-text) 25%, transparent);
+}
+.footer-partner__body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem 1.5rem;
+}
+.footer-partner__logos {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  max-width: 100%;
+  min-width: 0;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  background: #fff;
+}
+.footer-partner__logos img {
+  height: 3.5rem;
+  width: auto;
+  min-width: 0;
+  max-width: 100%;
+  object-fit: contain;
+}
+.footer-partner__text { flex: 1 1 16rem; min-width: 0; }
+.footer-partner__text p { margin: 0 0 0.25rem; }
+.footer-partner__links { display: flex; flex-wrap: wrap; gap: 0 1rem; margin: 0; padding: 0; list-style: none; }
+.footer-partner__links a,
+.footer-partner__plain {
+  display: inline-flex;
+  align-items: center;
+  min-height: max(2.75rem, 44px);
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  color: inherit;
+}

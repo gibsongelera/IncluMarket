@@ -22,15 +22,43 @@ export default async function ContactPage() {
           replies there.
         </p>
       ) : null}
-      {SITE.contactEmail || SITE.contactPhone ? (
+      {SITE.contactEmail || SITE.contactPhone || SITE.contactAddress ? (
         <ul>
+          {SITE.contactAddress ? <li>Address: {SITE.contactAddress}</li> : null}
           {SITE.contactEmail ? (
             <li>
               Email: <a href={`mailto:${SITE.contactEmail}`}>{SITE.contactEmail}</a>
             </li>
           ) : null}
-          {SITE.contactPhone ? <li>Phone: {SITE.contactPhone}</li> : null}
+          {SITE.contactPhone ? (
+            <li>
+              Phone:{" "}
+              {SITE.contactPhoneHref ? <a href={SITE.contactPhoneHref}>{SITE.contactPhone}</a> : SITE.contactPhone}
+            </li>
+          ) : null}
         </ul>
+      ) : null}
+      {SITE.social.facebook || SITE.partner.website || SITE.partner.facebook ? (
+        <>
+          <h2>Find us online</h2>
+          <ul>
+            {SITE.social.facebook ? (
+              <li>
+                <a href={SITE.social.facebook} rel="noopener noreferrer">{SITE.socialName} on Facebook</a>
+              </li>
+            ) : null}
+            {SITE.partner.facebook ? (
+              <li>
+                <a href={SITE.partner.facebook} rel="noopener noreferrer">DSWD Field Office IX on Facebook</a>
+              </li>
+            ) : null}
+            {SITE.partner.website ? (
+              <li>
+                <a href={SITE.partner.website} rel="noopener noreferrer">DSWD Field Office IX website</a>
+              </li>
+            ) : null}
+          </ul>
+        </>
       ) : null}
 
       <h2>Send a message</h2>
