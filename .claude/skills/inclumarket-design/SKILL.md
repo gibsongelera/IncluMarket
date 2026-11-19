@@ -164,6 +164,7 @@ duplicated and get it wrong:
 | `components/ConsoleNav.tsx` | The console sidebar: sections, `aria-current="page"`, count badges with "n waiting" for screen readers. |
 | `components/StarInput.tsx` | The rating input: a radio group with arrow keys and a visible "n of 5". |
 | `components/MobileNav.tsx` | Bottom tab bar and More sheet. |
+| `components/EmailText.tsx` | Any email address with a `<wbr>` after the "@" and before each "." (`emailParts()` in `lib/format.ts`), so it wraps there and not at any letter. |
 | `components/Pill.tsx` | Status colour semantics in one place; an optional `label` for words other than the raw status. |
 | `components/RowActions.tsx` | A list row's "Actions for …" disclosure (ADR-04): `aria-expanded`, the row's own buttons in the flow under it (never a floating popover: `TableWrap` scrolls sideways), Escape returns focus. One action or none renders as is. |
 | `components/ListToolbar.tsx`, `components/Pagination.tsx` | The console lists: tabs with counts, a named search, paging that clamps; state lives in the URL (`lib/list-params.ts`). |
@@ -225,7 +226,9 @@ dash pattern per line (`SERIES_DASHES`).
   `product-list` (every product grid drops a column before a card goes
   under 7.5rem, so a "₱1,250.00" price is never cut), `promo` (the hero's
   side tile), `store-card` and `purchases` (the buyer's four tiles go four
-  or two to a row, never three and one).
+  or two to a row, never three and one). One more holds everywhere:
+  `details-list`, each `.details-list` itself, which puts every label above
+  its value under 18rem (a `--money` list under 14rem, amounts then left).
   Thresholds are rem of content: KPI row one column, two from 35rem, one row
   of equal columns from 58rem (three to a row for five or more), compact tile
   below 15rem; `.dash-grid` 12 columns from 58rem with

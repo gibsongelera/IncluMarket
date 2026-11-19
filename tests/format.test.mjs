@@ -5,7 +5,22 @@
 // "server-only" and supabase are not resolvable outside Next.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { formatDate, formatDateTime, initials, maskEmail, moneyWhole } from "../lib/format.ts";
+import { emailParts, formatDate, formatDateTime, initials, maskEmail, moneyWhole } from "../lib/format.ts";
+
+test("emailParts cuts after the @ and before each dot, and loses nothing", () => {
+  assert.deepEqual(emailParts("admin@gmail.com"), ["admin@", "gmail", ".com"]);
+  assert.deepEqual(emailParts("juan.dela.cruz@deped.gov.ph"), ["juan", ".dela", ".cruz@", "deped", ".gov", ".ph"]);
+  // The masked form AdminUsersClient shows: same cuts as the old MaskedEmail.
+  assert.deepEqual(emailParts(maskEmail("juana@mail.ph")), ["j***a@", "m***", ".ph"]);
+  // A leading dot, a dot after the @, two dots in a row: no empty part.
+  assert.deepEqual(emailParts(".a@.b..c"), [".a@", ".b", ".", ".c"]);
+  for (const a of ["admin@gmail.com", "juan.dela.cruz@deped.gov.ph", ".a@.b..c", "no-at-sign", "x@"]) {
+    assert.equal(emailParts(a).join(""), a);
+  }
+  assert.deepEqual(emailParts(""), []);
+  assert.deepEqual(emailParts(null), []);
+  assert.deepEqual(emailParts(undefined), []);
+});
 
 test("moneyWhole rounds to whole pesos for a KPI tile", () => {
   assert.equal(moneyWhole(128430.4), "₱128,430");

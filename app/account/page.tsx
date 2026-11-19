@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireRole } from "@/lib/session";
 import { getMyVerification } from "@/lib/pwd/data";
 import { VerificationStatus } from "@/components/VerificationStatus";
+import { EmailText } from "@/components/EmailText";
 import { getBuyerDashboard, type BuyerDashboard } from "@/lib/buyer-dashboard";
 import { KpiCard, type KpiIconTone } from "@/components/KpiCard";
 import { Icon } from "@/components/Icon";
@@ -36,7 +37,9 @@ export default async function AccountPage() {
             <dt>Name</dt>
             <dd>{session.name}</dd>
             <dt>Email</dt>
-            <dd>{session.email}</dd> {/* props-ok: the signed-in user reading their own address */}
+            <dd>
+              <EmailText address={session.email} />{/* props-ok: the signed-in user reading their own address; EmailText is no client component */}
+            </dd>
             <dt>Account type</dt>
             <dd>{ROLE_LABEL[session.role]}</dd>
           </dl>
@@ -45,7 +48,7 @@ export default async function AccountPage() {
         {my && session.role !== "admin" ? (
           <VerificationStatus my={my} role={session.role} compact />
         ) : (
-          <section className="card" aria-labelledby="acct-admin">
+          <section className="card account-admin" aria-labelledby="acct-admin">
             <h2 id="acct-admin">PWD verification</h2>
             <p>You review PWD IDs rather than submit one.</p>
             <p>

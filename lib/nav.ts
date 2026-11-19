@@ -16,6 +16,14 @@ export interface NavItem {
   match?: string[];
   /** Phone placement: one of the four tab-bar slots, or the "More" sheet. */
   mobile?: "primary" | "more";
+  /**
+   * The tab bar's text for a one-word label wider than its slot: the label
+   * with a soft hyphen (U+00AD) at a dictionary syllable. At 320px with 24px
+   * text a slot holds 58px of label and "Dashboard" is 82px, so it breaks as
+   * "Dash-/board" instead of being cut off or split at any letter. Shown
+   * aria-hidden; `label` stays the accessible name.
+   */
+  tabLabel?: string;
   /** Show among the header links (md+). */
   header?: boolean;
   /** Sidebar group heading (Seller Centre / Admin, lg+). */
@@ -35,7 +43,7 @@ export const NAV: Record<NavRole, NavItem[]> = {
   ],
   buyer: [
     { href: "/home", label: "Shop", icon: "grid", mobile: "primary", header: true, match: ["/buyer/product", "/search", "/shop"] },
-    { href: "/buyer/wishlist", label: "Wishlist", icon: "heart", mobile: "primary", header: true },
+    { href: "/buyer/wishlist", label: "Wishlist", tabLabel: "Wish\u00ADlist", icon: "heart", mobile: "primary", header: true },
     { href: "/buyer/cart", label: "Cart", icon: "cart", mobile: "primary", match: ["/buyer/checkout"] },
     { href: "/buyer/orders", label: "My orders", icon: "box", mobile: "primary", header: true },
     { href: "/buyer/messages", label: "Messages", icon: "message-circle", mobile: "more", header: true },
@@ -43,22 +51,22 @@ export const NAV: Record<NavRole, NavItem[]> = {
     { href: "/account", label: "Account", icon: "user", mobile: "more" },
   ],
   seller: [
-    { href: "/seller/dashboard", label: "Dashboard", icon: "chart", mobile: "primary", header: true, section: "Overview" },
-    { href: "/seller/products", label: "Products", icon: "box", mobile: "primary", header: true, section: "Shop" },
+    { href: "/seller/dashboard", label: "Dashboard", tabLabel: "Dash\u00ADboard", icon: "chart", mobile: "primary", header: true, section: "Overview" },
+    { href: "/seller/products", label: "Products", tabLabel: "Prod\u00ADucts", icon: "box", mobile: "primary", header: true, section: "Shop" },
     { href: "/seller/flash-sales", label: "Flash sales", icon: "sparkles", mobile: "more", section: "Shop" },
     { href: "/seller/shop", label: "Shop settings", icon: "edit", mobile: "more", section: "Shop" },
     { href: "/seller/orders", label: "Orders", icon: "truck", mobile: "primary", header: true, section: "Sales" },
     { href: "/seller/reviews", label: "Reviews", icon: "sparkles", mobile: "more", header: true, section: "Sales" },
     { href: "/seller/finance", label: "Finance", icon: "chart", mobile: "more", section: "Sales" },
-    { href: "/seller/messages", label: "Messages", icon: "message-circle", mobile: "primary", header: true, section: "Customers" },
+    { href: "/seller/messages", label: "Messages", tabLabel: "Mes\u00ADsages", icon: "message-circle", mobile: "primary", header: true, section: "Customers" },
     { href: "/seller/support", label: "Help", icon: "chat", mobile: "more", section: "Customers" },
     { href: "/account/verification", label: "PWD verification", icon: "shield", mobile: "more", section: "Account" },
   ],
   admin: [
-    { href: "/admin", label: "Overview", icon: "grid", mobile: "primary", header: true, section: "Overview", exact: true },
+    { href: "/admin", label: "Overview", tabLabel: "Over\u00ADview", icon: "grid", mobile: "primary", header: true, section: "Overview", exact: true },
     { href: "/admin/users", label: "Users", icon: "users", mobile: "primary", header: true, section: "People" },
     { href: "/admin/verifications", label: "Verifications", icon: "shield", mobile: "more", header: true, section: "People" },
-    { href: "/admin/products", label: "Products", icon: "box", mobile: "primary", header: true, section: "Catalog" },
+    { href: "/admin/products", label: "Products", tabLabel: "Prod\u00ADucts", icon: "box", mobile: "primary", header: true, section: "Catalog" },
     { href: "/admin/orders", label: "Orders", icon: "truck", mobile: "more", header: true, section: "Catalog" },
     { href: "/admin/categories", label: "Categories", icon: "grid", mobile: "more", section: "Catalog" },
     { href: "/admin/reviews", label: "Reviews", icon: "sparkles", mobile: "more", section: "Catalog" },

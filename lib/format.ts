@@ -78,6 +78,29 @@ export function maskEmail(email: string | null | undefined): string {
   return localMasked + "@" + hostMasked + (tld ? "." + tld : "");
 }
 
+/**
+ * An email address cut where a line may break: after the "@" and before
+ * each "." ("juan.cruz@gmail.com" → "juan", ".cruz@", "gmail", ".com").
+ * Joined, the parts are the address unchanged. components/EmailText.tsx puts
+ * a <wbr> between them.
+ */
+export function emailParts(address: string | null | undefined): string[] {
+  if (!address) return [];
+  const parts: string[] = [];
+  let start = 0;
+  for (let i = 0; i < address.length; i++) {
+    if (address[i] === "@") {
+      parts.push(address.slice(start, i + 1));
+      start = i + 1;
+    } else if (address[i] === "." && i > start) {
+      parts.push(address.slice(start, i));
+      start = i;
+    }
+  }
+  parts.push(address.slice(start));
+  return parts.filter((p) => p !== "");
+}
+
 // SVG data-URL placeholder derived from a product's emoji art (zero-dependency
 // fallback, identical to the original ui.svgPlaceholder).
 export function svgPlaceholder(emoji?: string | null, bg = "#F8F9FA"): string {

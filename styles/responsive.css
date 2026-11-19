@@ -469,10 +469,15 @@ body:not(:has(.site-footer)) {
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
+    /* Top, not centre: when one label wraps to two lines and its neighbours
+       do not, the icons still sit in one row. */
+    justify-content: flex-start;
     gap: 2px;
     min-height: 56px;
-    padding: var(--space-2) var(--space-1);
+    /* .125rem a side leaves a fifth of a 320px bar 58px of label at 24px
+       text: "Tickets" and "Orders" fit whole in the current tab's 800 weight,
+       which .25rem (52px) did not. */
+    padding: var(--space-2) 0.125rem;
     color: var(--text-muted);
     text-decoration: none;
     font-size: 0.6875rem;
@@ -485,11 +490,15 @@ body:not(:has(.site-footer)) {
     font-family: inherit;
   }
 
-  .mobile-nav__item > span:last-child {
+  /* The label is always shown whole, on up to two lines: it wraps at a space
+     ("My / orders") or at a long word's soft hyphen ("Dash-/board",
+     NavItem.tabLabel). It used to be cut with an ellipsis: at 320px with 24px
+     text "Dashboard", "Products" and "Messages" showed 52px of 82, 67 and
+     75. break-word is the last resort for a future label with no break point. */
+  .mobile-nav__label {
     max-width: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    overflow-wrap: break-word;
+    hyphens: manual;
   }
 
   .mobile-nav__item[aria-current="page"] {
@@ -1850,6 +1859,45 @@ h3 {
   .account-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     align-items: start;
+  }
+}
+
+/* Read-only details (.details-list, components.css): label beside value
+   while the list is wide, label above value when it is not. The list is its
+   own container, so every use (account details, the verification review and
+   the buyer's order) follows its own width, and in rem, so 24px text counts.
+   Beside, the label column is max-content and the value gets the rest: at
+   320px with 24px text that was 147px + 52px and split every word
+   ("Sell|er Acc|ount"). Measured on /account: 19.9–20.4rem (768px, 16px
+   text, with and without a scrollbar) and 21.4rem (1280px, 24px) read
+   cleanly beside; 15.9rem (320px, 16px) leaves the value 8.8rem; 12.1rem
+   and 9.3rem split. So it stacks under 18rem, clear of both: at 20rem a
+   scrollbar's 15px flipped it at 768px, and the taller stack kept the
+   scrollbar. At 18rem an 8rem label ("Tracking number") still leaves 9rem.
+   Each dt and dd spans both tracks rather than redefining the columns: a
+   container query cannot style the container itself. A money list's short
+   labels and amounts stay beside down to 14rem, then stack left-aligned
+   (like a number in a table card). The always-stacked variant is left as is. */
+.details-list {
+  container: details-list / inline-size;
+}
+@container details-list (width < 18rem) {
+  .details-list:not(.details-list--money, .details-list--stacked) > :is(dt, dd) {
+    grid-column: 1 / -1;
+  }
+  .details-list:not(.details-list--money, .details-list--stacked) > dd:not(:last-child) {
+    margin-bottom: var(--space-2);
+  }
+}
+@container details-list (width < 14rem) {
+  .details-list--money > :is(dt, dd) {
+    grid-column: 1 / -1;
+  }
+  .details-list--money > dd {
+    text-align: left;
+  }
+  .details-list--money > dd:not(:last-child) {
+    margin-bottom: var(--space-2);
   }
 }
 

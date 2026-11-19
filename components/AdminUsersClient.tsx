@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useRef, useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { formatDate, initials, maskEmail } from "@/lib/format";
@@ -22,37 +22,17 @@ import type { AdminUserRow } from "@/lib/admin-list-types";
 import type { Role } from "@/lib/types";
 import { TableWrap } from "./TableWrap";
 import { DeepLinkFocus } from "./DeepLinkFocus";
+import { EmailText } from "./EmailText";
 import { RowActions } from "./RowActions";
 import { useRowFocus } from "./useRowFocus";
 
 type UserRow = AdminUserRow;
 
-/** A masked email with line-break opportunities after the "@" and before
- *  each "." (<wbr> adds no character, so it reads and copies the same).
- *  Without them a narrow card (320px, 24px text) can only break the address
- *  mid-letter ("u***.invali/d"). Fragments, not spans: iOS VoiceOver can
- *  stop at every inline element's edge. */
+/** A masked email, with EmailText's break points after the "@" and before
+ *  each ".": without them a narrow card (320px, 24px text) can only break
+ *  the address mid-letter ("u***.invali/d"). */
 function MaskedEmail({ email }: { email: string | null | undefined }) {
-  const masked = maskEmail(email);
-  const at = masked.indexOf("@");
-  if (at < 0) return <>{masked}</>;
-  const domain = masked.slice(at + 1).split(".");
-  return (
-    <>
-      {masked.slice(0, at + 1)}
-      <wbr />
-      {domain.map((part, i) => (
-        <Fragment key={i}>
-          {i > 0 ? (
-            <>
-              <wbr />.
-            </>
-          ) : null}
-          {part}
-        </Fragment>
-      ))}
-    </>
-  );
+  return <EmailText address={maskEmail(email)} />;
 }
 
 /** An empty list's sentence, and a link out of it when there is one. */

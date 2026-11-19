@@ -525,12 +525,14 @@ does not yet have, and a privacy review; it was out of this build's scope.
    have none, so those rails have no "View all". This needs an on-sale and a
    featured filter on `/search` and a shop directory; that is the owner's
    call.
-6. **Older pages at 24 px text:** on a seller's or admin's `/account`, the
-   Account details list splits names and emails mid-word in a narrow card.
-   The phone tab bar cuts "Dashboard", "Products" and "Messages" to an
-   ellipsis at 320 px. The "Go to the admin console" link is 36 px tall.
-   Fix: stack the list in a narrow card, let tab labels wrap, and size the
-   link like a button.
+6. ~~**Older pages at 24 px text:**~~ fixed after the build. Every
+   `.details-list` is its own container and puts the label above the value
+   under 18rem (a money list under 14rem); emails break only after the "@"
+   and before a "." (`components/EmailText.tsx`). Tab labels wrap to two
+   lines, at a space or at a long word's syllable ("Dash-/board",
+   `NavItem.tabLabel`), since one word wider than a fifth of a 320 px bar
+   cannot fit whole on any number of lines. The admin console link is
+   `max(2.75rem, 44px)`.
 
 ## Open items that need the user, not a guess
 

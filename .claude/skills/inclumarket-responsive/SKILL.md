@@ -121,6 +121,14 @@ arc, every destination is a 56px target with no hidden state, and **labels stay
 visible** because icon-only navigation is a known barrier for cognitive
 disabilities.
 
+Labels are shown whole, never cut with an ellipsis: they wrap to two lines at
+a space ("My / orders"). A fifth of a 320px bar holds 58px of label at 24px
+text and "Dashboard" is 82px, so a one-word label that long gets a
+`tabLabel` in `lib/nav.ts` with a soft hyphen at a dictionary syllable
+("Dash\u00ADboard" → "Dash-/board"). It is rendered `aria-hidden` beside an
+`.sr-only` copy of `label`, so the accessible name has no soft hyphen. A new
+primary label over ~58px at 24px text needs one too.
+
 ### Header height and bottom inset
 
 Two measured custom properties, because both genuinely vary:
@@ -181,8 +189,11 @@ When something scrolls sideways, check in this order:
    `overflow-wrap: anywhere` as the last resort, but it breaks at any
    letter ("u***.invali/d" at 320px with 24px text). For an email, give it
    break points of its own: `<wbr />` after the "@" and before each "."
-   (`MaskedEmail` in `components/AdminUsersClient.tsx`; it adds no
-   character, so copy and screen readers are unchanged)
+   (`<EmailText address={…} />` in `components/EmailText.tsx`, masked or
+   not; it adds no character, so copy and screen readers are unchanged)
+   For label–value pairs, use `.details-list`: it is its own container and
+   stacks the label above the value when narrow, instead of squeezing the
+   value into what a `max-content` label column leaves
 6. A grid with more fixed columns than the viewport can hold
 7. `position: fixed` elements wider than the viewport
 

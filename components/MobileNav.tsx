@@ -54,8 +54,10 @@ export function MobileNav({
 
   // Reserve exactly the bar's height at the bottom of the page, so the last row
   // of content is never hidden behind it and the floating buttons can offset
-  // above it. Re-measured on resize and whenever the accessibility font size
-  // changes, since the bar is sized in rem.
+  // above it. Re-measured on resize, whenever the accessibility font size
+  // changes (the bar is sized in rem), and when the bar itself changes height:
+  // a label wraps to two lines at large text, and the current tab's bolder
+  // label can wrap where the others do not.
   useEffect(() => {
     const el = document.querySelector<HTMLElement>(".mobile-nav");
     const root = document.documentElement;
@@ -69,10 +71,13 @@ export function MobileNav({
     window.addEventListener("resize", measure);
     const observer = new MutationObserver(measure);
     observer.observe(root, { attributes: true, attributeFilter: ["data-font-px", "style"] });
+    const sized = el ? new ResizeObserver(measure) : null;
+    if (el) sized?.observe(el);
 
     return () => {
       window.removeEventListener("resize", measure);
       observer.disconnect();
+      sized?.disconnect();
       root.style.setProperty("--bottom-inset", "0px");
     };
   }, []);
@@ -118,7 +123,18 @@ export function MobileNav({
                   </span>
                 ) : null}
               </span>
-              <span>{item.label}</span>
+              {item.tabLabel ? (
+                <>
+                  {/* The soft hyphen stays out of the accessible name, so voice
+                      control still matches "Dashboard". */}
+                  <span className="mobile-nav__label" aria-hidden="true">
+                    {item.tabLabel}
+                  </span>
+                  <span className="sr-only">{item.label}</span>
+                </>
+              ) : (
+                <span className="mobile-nav__label">{item.label}</span>
+              )}
               {badge > 0 ? <span className="sr-only">, {badge} {badgeWords}</span> : null}
             </Link>
           );
@@ -134,7 +150,7 @@ export function MobileNav({
           <span className="mobile-nav__icon">
             <Icon name="grid" size={22} />
           </span>
-          <span>More</span>
+          <span className="mobile-nav__label">More</span>
         </button>
       </nav>
 
