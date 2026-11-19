@@ -121,6 +121,34 @@ arc, every destination is a 56px target with no hidden state, and **labels stay
 visible** because icon-only navigation is a known barrier for cognitive
 disabilities.
 
+Signed in, the bar is six tabs: four from `lib/nav.ts`, then **Alerts** (the
+notification bell, `NotificationBell variant="tab"`), then More. The phone
+header is then just the brand and the search (`.header-row--signed-in` hides
+its nav); Sign out is in the More sheet. The header's own bell still renders
+for 768px and up, so both copies are in the DOM: CSS shows one, and only the
+one with client rects polls. The tab's panel opens upward from the bar and
+ends above the floating buttons (`bottom: --bottom-inset + --commit-bar-h +
+--fab-clearance`: the buttons rise over a product, cart or checkout page's
+action bar, so the panel must too).
+
+**Fixed chrome stays under a third of the window.** The sticky header and the
+fixed tab bar together: HeaderMetrics makes the header static when its height
+plus `--bottom-inset` passes `clientHeight / 3`, and MobileNav takes the bar
+out of fixed position (`data-static`, in the page under the header,
+`--bottom-inset: 0px`) when the bar alone passes it. Without both, a 68px
+header over a two-row bar left 43px of a 320x256 window (400% zoom) and
+keyboard focus landed hidden. Check 320x256 and 568x320 at 16 and 24px.
+
+**Labels are never cut.** Each label is `.mobile-nav__label` (one line,
+ellipsis as a last resort). After layout, on resize, on a text-size change
+and after each navigation, MobileNav checks whether any label overflows and,
+if one does, sets `data-rows="2"`: two rows of three. That happens at 24px
+text on every phone and on a 320px phone at 16px; a seller's "Dashboard"
+(3.44rem) is what the tabs' 0.125rem side padding is sized for at 375px.
+Measure a tab-bar change at 320, 360, 375, 414 and 700px with 16 and 24px
+text: equal widths, no label cut, and the bell's wrapper is
+`display: contents` so its button is a flex item like the others.
+
 ### Header row
 
 The header never scrolls the page sideways, at any width or text size:
@@ -135,10 +163,11 @@ The header never scrolls the page sideways, at any width or text size:
   container: under 23rem the nav moves to a second row at the end, under
   13rem the Search button drops its icon. Brand, search, nav stays the DOM
   order and the visual order. A media query cannot do this: its rem ignores
-  the text-size toolbar.
-- **Panels under the header on phones** (the bell's panel, the scoped
-  search's suggestions) are `position: fixed` with `top: 100%` and 8px side
-  insets. That works only because the row has `contain: layout`, which makes
+  the text-size toolbar. Signed in, the nav is hidden and the grid is
+  `auto 1fr` (brand, search): the bell and Sign out live in the tab bar.
+- **Panels under the header on phones** (now only the scoped search's
+  suggestions; the bell's panel rises from the tab bar) are
+  `position: fixed` with `top: 100%` and 8px side insets. That works only because the row has `contain: layout`, which makes
   it their containing block; `container-type` alone does not, and the panel
   opened at the viewport's bottom edge. Check the panel's top against the
   row's bottom, not just that it is visible. A fixed child of a contained

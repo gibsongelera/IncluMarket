@@ -54,7 +54,10 @@ export async function SiteHeader({
   return (
     <>
       <header className={`site-header site-header--${variant}`} role="banner">
-        <div className="container header-row">
+        {/* --signed-in: on a phone this row is the brand and the search only.
+            Its nav (links, Cart, the bell, Sign out) is hidden there: the tab
+            bar has the links and the bell, its More sheet has Sign out. */}
+        <div className="container header-row header-row--signed-in">
           <Link className="brand" href={HOME_HREF[variant]} aria-label="InclusiveMarket home">
             <span className="brand-mark" aria-hidden="true">
               IM
@@ -107,6 +110,7 @@ export async function SiteHeader({
         cartCount={cartCount}
         unreadMessages={unreadMessages}
         wishlistCount={wishlistCount}
+        notifications={{ unread, items: notifications }}
       />
     </>
   );

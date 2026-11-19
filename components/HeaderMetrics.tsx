@@ -46,7 +46,12 @@ export function HeaderMetrics() {
         // on-screen keyboard shrinks the window, typing in the search would
         // otherwise make the header static and scroll the field away.
         // Leaving the header re-measures (focusout, below).
-        const tooTall = height > root.clientHeight / 3;
+        // The phone tab bar is fixed too, so the third is for both: a 68px
+        // header over a two-row bar left 43px of a 320x256 window (400%
+        // zoom). MobileNav writes --bottom-inset (0px when the bar is not
+        // fixed), which re-runs this through the style observer below.
+        const bottomInset = parseFloat(getComputedStyle(root).getPropertyValue("--bottom-inset")) || 0;
+        const tooTall = height + bottomInset > root.clientHeight / 3;
         if (
           root.hasAttribute("data-header-static") !== tooTall &&
           !header.contains(document.activeElement)

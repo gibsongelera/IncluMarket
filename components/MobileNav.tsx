@@ -4,8 +4,10 @@ import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Icon } from "./Icon";
+import { NotificationBell } from "./NotificationBell";
 import { logoutAction } from "@/lib/actions/auth";
 import { isCurrent, NAV, type NavItem, type NavRole } from "@/lib/nav";
+import type { Notification } from "@/lib/types";
 
 /**
  * Bottom tab bar for phones, plus a "More" sheet for the overflow.
@@ -27,6 +29,12 @@ import { isCurrent, NAV, type NavItem, type NavRole } from "@/lib/nav";
  * Rendered by SiteHeader so every page gets it without edits — guests too:
  * they used to get no phone navigation at all (N-31). Items come from
  * lib/nav.ts, shared with the header links and the console sidebar.
+ *
+ * Signed in, the notification bell is a tab here, between the last tab and
+ * More, and the phone header keeps only the brand and the search; Sign out
+ * is in More. Six tabs do not always fit a label each (24px text, a 320px
+ * phone, "Dashboard"), so when any label would be cut the bar becomes two
+ * rows of three (data-rows, measured below) rather than ellipsize a word.
  */
 
 function isCurrentItem(pathname: string, item: NavItem): boolean {
@@ -38,32 +46,55 @@ export function MobileNav({
   cartCount = 0,
   unreadMessages = 0,
   wishlistCount = 0,
+  notifications,
 }: {
   variant: NavRole;
   cartCount?: number;
   unreadMessages?: number;
   wishlistCount?: number;
+  /** Signed in only: the bell's first state, as SiteHeader read it. */
+  notifications?: { unread: number; items: Notification[] };
 }) {
   const pathname = usePathname() || "";
+  const navRef = useRef<HTMLElement>(null);
   const dialogRef = useRef<HTMLDialogElement>(null);
   const moreButtonRef = useRef<HTMLButtonElement>(null);
+  const measureRef = useRef<() => void>(() => {});
 
   const items = NAV[variant] ?? NAV.guest;
   const primary = items.filter((i) => i.mobile === "primary").slice(0, 4);
   const overflow = items.filter((i) => i.mobile === "more");
 
-  // Reserve exactly the bar's height at the bottom of the page, so the last row
-  // of content is never hidden behind it and the floating buttons can offset
-  // above it. Re-measured on resize and whenever the accessibility font size
-  // changes, since the bar is sized in rem.
+  // Lay the bar out, then reserve exactly its height at the bottom of the
+  // page, so the last row of content is never hidden behind it and the
+  // floating buttons can offset above it. Re-measured on resize and whenever
+  // the accessibility font size changes, since the bar is sized in rem.
   useEffect(() => {
-    const el = document.querySelector<HTMLElement>(".mobile-nav");
+    const el = navRef.current;
     const root = document.documentElement;
 
     const measure = () => {
       const visible = el && getComputedStyle(el).display !== "none";
-      root.style.setProperty("--bottom-inset", visible ? `${el.offsetHeight}px` : "0px");
+      let fixed = false;
+      if (el && visible) {
+        // One row first; two rows of three if any label is cut there. The
+        // attributes change layout synchronously, so nothing paints between.
+        el.removeAttribute("data-rows");
+        el.removeAttribute("data-static");
+        const cut = Array.from(el.querySelectorAll<HTMLElement>(".mobile-nav__label")).some(
+          (label) => label.scrollWidth > label.clientWidth + 1,
+        );
+        if (cut) el.setAttribute("data-rows", "2");
+        // A bar over a third of the window (two rows in a 320x256 window,
+        // 400% zoom) would leave too little page for focus to land in
+        // (WCAG 2.4.11): it sits in the page under the header instead and
+        // scrolls away with it. <html>'s clientHeight, as HeaderMetrics.
+        fixed = el.offsetHeight <= root.clientHeight / 3;
+        if (!fixed) el.setAttribute("data-static", "");
+      }
+      root.style.setProperty("--bottom-inset", fixed && el ? `${el.offsetHeight}px` : "0px");
     };
+    measureRef.current = measure;
 
     measure();
     window.addEventListener("resize", measure);
@@ -73,9 +104,16 @@ export function MobileNav({
     return () => {
       window.removeEventListener("resize", measure);
       observer.disconnect();
+      measureRef.current = () => {};
       root.style.setProperty("--bottom-inset", "0px");
     };
   }, []);
+
+  // The current tab's label is bolder, so it is wider: check again after
+  // every navigation.
+  useEffect(() => {
+    measureRef.current();
+  }, [pathname]);
 
   function openMore() {
     dialogRef.current?.showModal();
@@ -89,7 +127,7 @@ export function MobileNav({
 
   return (
     <>
-      <nav className="mobile-nav" aria-label="Primary">
+      <nav className="mobile-nav" aria-label="Primary" ref={navRef}>
         {primary.map((item) => {
           const current = isCurrentItem(pathname, item);
           const badge =
@@ -118,11 +156,19 @@ export function MobileNav({
                   </span>
                 ) : null}
               </span>
-              <span>{item.label}</span>
+              <span className="mobile-nav__label">{item.label}</span>
               {badge > 0 ? <span className="sr-only">, {badge} {badgeWords}</span> : null}
             </Link>
           );
         })}
+
+        {notifications ? (
+          <NotificationBell
+            variant="tab"
+            initialUnread={notifications.unread}
+            initialNotifications={notifications.items}
+          />
+        ) : null}
 
         <button
           type="button"
@@ -134,7 +180,7 @@ export function MobileNav({
           <span className="mobile-nav__icon">
             <Icon name="grid" size={22} />
           </span>
-          <span>More</span>
+          <span className="mobile-nav__label">More</span>
         </button>
       </nav>
 

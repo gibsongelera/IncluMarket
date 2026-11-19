@@ -226,13 +226,14 @@ dash pattern per line (`SERIES_DASHES`).
   under 7.5rem, so a "₱1,250.00" price is never cut), `promo` (the hero's
   side tile), `store-card` and `purchases` (the buyer's four tiles go four
   or two to a row, never three and one). On phones the site header's row is
-  one too (`header-row`, below 768px only): under 23rem the nav drops to a
-  second row, under 13rem the Search button loses its icon. That row also
-  has `contain: layout`, because `container-type` alone did not make it the
-  containing block of its fixed children (the bell's panel resolved
-  `top: 100%` against the viewport and opened off screen). With it, the
-  panel and the scoped search's suggestions sit at the row's bottom edge,
-  sticky or static. Safe only because that row is the whole phone header.
+  one too (`header-row`, below 768px only): under 23rem a guest's nav drops
+  to a second row (a signed-in phone header has no nav: the bell is a tab
+  bar tab, Sign out is in More), under 13rem the Search button loses its
+  icon. That row also has `contain: layout`, because `container-type` alone
+  did not make it the containing block of its fixed children (a panel at
+  `top: 100%` resolved against the viewport and opened off screen). With
+  it, the scoped search's suggestions sit at the row's bottom edge, sticky
+  or static. Safe only because that row is the whole phone header.
   Thresholds are rem of content: KPI row one column, two from 35rem, one row
   of equal columns from 58rem (three to a row for five or more), compact tile
   below 15rem; `.dash-grid` 12 columns from 58rem with
