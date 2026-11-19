@@ -32,7 +32,8 @@ cp .env.example .env.local        # fill in values; see "Environment" below
 npm run provision-users           # demo accounts from SEED_* variables
 # PWD demo accounts only: buyer with/without PWD, seller verified/unverified
 npm run provision-users -- --only-pwd-demo
-npm run seed-demo-products        # optional demo catalogue
+npm run seed-demo-products        # optional demo catalogue: prints the plan only
+SEED_CONFIRM=<project-ref> npm run seed-demo-products -- --apply   # then writes it
 npm run dev                       # http://localhost:3000
 ```
 

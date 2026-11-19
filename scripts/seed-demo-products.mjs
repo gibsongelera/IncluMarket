@@ -5,10 +5,19 @@
  *
  * Usage (from repo root, with .env.local loaded, AFTER migrations + provision-users):
  *   node --env-file=.env.local scripts/provision-users.mjs
- *   node --env-file=.env.local scripts/seed-demo-products.mjs
+ *   node --env-file=.env.local scripts/seed-demo-products.mjs          # dry run: the plan only
+ *   SEED_CONFIRM=<project-ref> node --env-file=.env.local \
+ *     scripts/seed-demo-products.mjs --apply                            # does it
  *
- * Idempotent: deletes and re-inserts products scoped to the 3 demo seller
- * emails only — never touches products created by real sellers.
+ * <project-ref> is the subdomain of NEXT_PUBLIC_SUPABASE_URL: typing it is
+ * the guard against running this on the wrong project.
+ *
+ * It deletes and re-inserts ITS OWN listings only, recognised by the SKUs
+ * below (a seller may have renamed one; the SKU stays). The demo seller
+ * accounts can also hold real listings, which it never touches: the
+ * production project's real catalogue lives on one of them. A demo listing
+ * that is in an order is kept as it is (deleting it would cut the order's
+ * link to it) and not inserted again.
  */
 
 import { createClient } from "@supabase/supabase-js";
@@ -18,6 +27,13 @@ const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!url || !serviceKey) {
   console.error("Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY");
+  process.exit(1);
+}
+
+const projectRef = new URL(url).hostname.split(".")[0];
+const apply = process.argv.includes("--apply");
+if (apply && process.env.SEED_CONFIRM !== projectRef) {
+  console.error(`Refusing to write: set SEED_CONFIRM=${projectRef} to confirm the target project.`);
   process.exit(1);
 }
 
@@ -213,32 +229,80 @@ async function getProfileIdByEmail(email) {
   return data.id;
 }
 
-async function wipeExistingDemoProducts(sellerIds) {
-  const { data: existing, error } = await db.from("im_products").select("id").in("seller_id", sellerIds);
+const SEED_SKUS = PRODUCTS.flatMap((p) => p.variants.map((v) => v.sku_code));
+
+/**
+ * This script's own listings: a demo seller's products that carry one of its
+ * SKUs. Split into those it may delete and those in an order, which it keeps.
+ * Every other listing, on any account, is not looked at again.
+ */
+async function findDemoProducts(sellerIds) {
+  const { data: variants, error } = await db
+    .from("im_product_variants")
+    .select("product_id, sku_code")
+    .in("sku_code", SEED_SKUS);
   if (error) throw error;
-  const ids = (existing || []).map((p) => p.id);
+  const candidateIds = [...new Set((variants || []).map((v) => v.product_id))];
+  if (!candidateIds.length) return { wipe: [], kept: [], keptSkus: new Set() };
+
+  const { data: products, error: pErr } = await db
+    .from("im_products")
+    .select("id, title, status")
+    .in("id", candidateIds)
+    .in("seller_id", sellerIds);
+  if (pErr) throw pErr;
+  const { data: ordered, error: oErr } = await db
+    .from("im_order_items")
+    .select("product_id")
+    .in("product_id", candidateIds);
+  if (oErr) throw oErr;
+  const inOrders = new Set((ordered || []).map((o) => o.product_id));
+
+  const wipe = (products || []).filter((p) => !inOrders.has(p.id));
+  const kept = (products || []).filter((p) => inOrders.has(p.id));
+  const keptIds = new Set(kept.map((p) => p.id));
+  const keptSkus = new Set((variants || []).filter((v) => keptIds.has(v.product_id)).map((v) => v.sku_code));
+  return { wipe, kept, keptSkus };
+}
+
+async function wipeDemoProducts(ids) {
   if (!ids.length) return;
-  await db.from("im_flash_sales").delete().in("product_id", ids);
-  await db.from("im_wishlists").delete().in("product_id", ids);
-  await db.from("im_product_reviews").delete().in("product_id", ids);
-  await db.from("im_product_variants").delete().in("product_id", ids);
-  await db.from("im_product_images").delete().in("product_id", ids);
-  await db.from("im_products").delete().in("id", ids);
-  console.log(`  wiped ${ids.length} previous demo product(s)`);
+  for (const table of ["im_flash_sales", "im_wishlists", "im_product_reviews", "im_product_variants", "im_product_images"]) {
+    const { error } = await db.from(table).delete().in("product_id", ids);
+    if (error) throw new Error(`${table}: ${error.message}`);
+  }
+  const { error } = await db.from("im_products").delete().in("id", ids);
+  if (error) throw new Error(`im_products: ${error.message}`);
+  console.log(`  deleted ${ids.length} previous demo product(s)`);
 }
 
 async function main() {
   const sellerIdByEmail = {};
   for (const email of SELLER_EMAILS) sellerIdByEmail[email] = await getProfileIdByEmail(email);
   const buyerId = await getProfileIdByEmail(BUYER_EMAIL);
+  const sellerIds = Object.values(sellerIdByEmail);
 
-  console.log("Wiping previous demo products...");
-  await wipeExistingDemoProducts(Object.values(sellerIdByEmail));
+  const { wipe, kept, keptSkus } = await findDemoProducts(sellerIds);
+  const toInsert = PRODUCTS.filter((p) => !p.variants.some((v) => keptSkus.has(v.sku_code)));
+  const { count: others } = await db
+    .from("im_products")
+    .select("id", { count: "exact", head: true })
+    .in("seller_id", sellerIds)
+    .not("id", "in", `(${[...wipe, ...kept].map((p) => p.id).join(",") || 0})`);
 
-  console.log(`Inserting ${PRODUCTS.length} demo products...`);
+  console.log(`seed-demo-products — project ${projectRef}${apply ? "" : " (dry run)"}`);
+  console.log(`  delete ${wipe.length} demo listing(s): ${wipe.map((p) => `${p.id} "${p.title}"`).join(", ") || "none"}`);
+  console.log(`  keep ${kept.length} demo listing(s) that are in orders: ${kept.map((p) => `${p.id} "${p.title}" (${p.status})`).join(", ") || "none"}`);
+  console.log(`  leave alone ${others ?? "?"} other listing(s) on the demo seller accounts`);
+  console.log(`  insert ${toInsert.length} demo listing(s)`);
+  if (!apply) return;
+
+  await wipeDemoProducts(wipe.map((p) => p.id));
+
+  console.log(`Inserting ${toInsert.length} demo products...`);
   let firstFeaturedId = null;
 
-  for (const p of PRODUCTS) {
+  for (const p of toInsert) {
     const sellerId = sellerIdByEmail[p.seller];
     const { data: product, error } = await db
       .from("im_products")
