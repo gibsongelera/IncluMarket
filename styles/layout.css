@@ -214,12 +214,19 @@
   min-height: 2.75rem;
 }
 .newsletter-form { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .5rem; }
+/* The input asks for 11.25rem beside "Subscribe" (the button wraps below
+   when they do not fit) but shrinks to its column: a footer column can be
+   160px (.footer-grid), and a fixed min-width of 180px stuck out of a 162px
+   column at 768px with a scrollbar and scrolled the page sideways. */
 .newsletter-form input {
-  flex: 1;
-  min-width: 180px;
+  flex: 1 1 11.25rem;
+  min-width: 0;
   background: var(--canvas-white);
   color: var(--text-charcoal);
 }
+/* A full-size target, beside the input or wrapped below it. Two classes, so
+   it beats responsive.css's later .btn--sm (36px from 768px). */
+.newsletter-form .btn--sm { min-height: max(2.75rem, 44px); }
 .footer-bottom {
   border-top: 1px solid color-mix(in srgb, var(--color-footer-text) 18%, transparent);
   padding: 1rem;
