@@ -20,8 +20,11 @@ const supabaseOrigin = (() => {
  *   cover the <style> block but not the attributes, so tightening this means
  *   first removing the inline style props — tracked as follow-up work.
  *   lib/theme.ts sanitises every value it emits into that block.
- * - `img-src` must allow `data:`: every product image is a base64 data URL
- *   stored in im_product_images (no Storage bucket).
+ * - `img-src` allows `data:` for product photos stored before migration 0023
+ *   moved them to Storage (until the backfill runs), and for previews.
+ * - In development only, `script-src` allows `unsafe-eval`: React's dev build
+ *   uses it for call stacks, which otherwise floods the console with
+ *   report-only notices that hide real violations. Production never gets it.
  * - `script-src` allows 'unsafe-inline' only as the documented fallback for
  *   browsers that honour it alongside a nonce; modern browsers ignore it when
  *   a nonce or 'strict-dynamic' is present.
@@ -35,15 +38,15 @@ const csp = [
   "object-src 'none'",
   "frame-ancestors 'none'",
   "form-action 'self'",
-  "script-src 'self' 'unsafe-inline'",
-  // fonts.googleapis.com serves the @import in styles/base.css; the font files
-  // themselves come from fonts.gstatic.com. Caught by the report-only policy
-  // on first run, which is exactly why it ships report-only first.
-  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-  "img-src 'self' data: blob:",
-  "font-src 'self' data: https://fonts.gstatic.com",
+  `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV === "production" ? "" : " 'unsafe-eval'"}`,
+  // Fonts are self-hosted by next/font (app/fonts.ts): no third-party hosts.
+  "style-src 'self' 'unsafe-inline'",
+  // The Supabase origin serves the 60-second signed URLs admins use to view
+  // PWD ID images (private bucket) and, later, product photos in Storage.
+  `img-src 'self' data: blob: ${supabaseOrigin}`.trim(),
+  "font-src 'self' data:",
   `connect-src 'self' ${supabaseOrigin}`.trim(),
-  "media-src 'self' data:",
+  "media-src 'self' data: blob:",
   "worker-src 'self' blob:",
 ]
   .filter(Boolean)
@@ -62,10 +65,12 @@ const securityHeaders = [
   { key: "X-Frame-Options", value: "DENY" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   // microphone stays self-enabled: the accessibility widget's voice commands
-  // use the Web Speech API and break without it.
+  // use the Web Speech API and break without it. camera is self-enabled for
+  // the PWD ID scan (Account → PWD verification); camera=() made getUserMedia
+  // fail before the browser ever asked the user (N-33).
   {
     key: "Permissions-Policy",
-    value: "camera=(), geolocation=(), payment=(), usb=(), microphone=(self)",
+    value: "camera=(self), geolocation=(), payment=(), usb=(), microphone=(self)",
   },
   { key: "X-DNS-Prefetch-Control", value: "on" },
 ];
@@ -78,6 +83,14 @@ const nextConfig = {
     ignoreDuringBuilds: true,
   },
   poweredByHeader: false,
+  experimental: {
+    serverActions: {
+      // The PWD ID submission carries three photos of at most 2 MB each
+      // (front, back, selfie) as multipart form data. The 1 MB default
+      // rejected it before the action ran.
+      bodySizeLimit: "7mb",
+    },
+  },
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },

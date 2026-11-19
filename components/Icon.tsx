@@ -167,6 +167,66 @@ const ICONS: Record<string, React.ReactNode> = {
       <path d="M9 20l3-6 3 6" />
     </>
   ),
+  // KPI cards (01 §6.1): the trend arrows and the tile icons. Drawn for this
+  // set, not taken from Lucide or Apex.
+  "arrow-up": (
+    <>
+      <path d="M12 19.5V5" />
+      <path d="M6.5 10.5L12 5l5.5 5.5" />
+    </>
+  ),
+  "arrow-down": (
+    <>
+      <path d="M12 4.5V19" />
+      <path d="M6.5 13.5L12 19l5.5-5.5" />
+    </>
+  ),
+  wallet: (
+    <>
+      <path d="M6 6.5l9.5-3.2 1.4 3.2" />
+      <rect x="3" y="6.5" width="18" height="13.5" rx="2" />
+      <path d="M21 11h-3.5a2.25 2.25 0 0 0 0 4.5H21" />
+    </>
+  ),
+  receipt: (
+    <>
+      <path d="M6 3h12v18l-2-1.5-2 1.5-2-1.5-2 1.5-2-1.5-2 1.5z" />
+      <path d="M9 8h6" />
+      <path d="M9 11.5h6" />
+      <path d="M9 15h3.5" />
+    </>
+  ),
+  undo: (
+    <>
+      <path d="M8.5 4.5L4 9l4.5 4.5" />
+      <path d="M4 9h11a5 5 0 0 1 0 10h-4" />
+    </>
+  ),
+  // Admin overview (03 §2): the "View all" arrow and the privacy queue.
+  "arrow-right": (
+    <>
+      <path d="M4.5 12H19" />
+      <path d="M13.5 6.5L19 12l-5.5 5.5" />
+    </>
+  ),
+  lock: (
+    <>
+      <rect x="5" y="10.5" width="14" height="10" rx="2" />
+      <path d="M8 10.5V7.5a4 4 0 0 1 8 0v3" />
+    </>
+  ),
+  // The buyer dashboard's Addresses shortcut (P4-06).
+  "map-pin": (
+    <>
+      <path d="M19 10c0 5.5-7 11-7 11s-7-5.5-7-11a7 7 0 0 1 14 0z" />
+      <circle cx="12" cy="10" r="2.5" />
+    </>
+  ),
+  // Row actions (ADR-04): the disclosure's chevron, turned up when open.
+  "chevron-down": <path d="M6 9l6 6 6-6" />,
+  // RailScroller's Previous / Next (P4-02, ADR-06): the "‹ ›" of 05 §2.
+  "chevron-left": <path d="M15 6l-6 6 6 6" />,
+  "chevron-right": <path d="M9 6l6 6-6 6" />,
 };
 
 export function Icon({

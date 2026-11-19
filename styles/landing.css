@@ -1,5 +1,5 @@
 /* ============================================================================
-   IncluMarket — Landing / Auth redesign
+   InclusiveMarket — Landing / Auth redesign
    DSWD palette compliant. WCAG AA contrast preserved.
    Load order note: this stylesheet is loaded LAST on the landing page and only
    there, so it can override earlier defaults without affecting other pages.
@@ -38,55 +38,10 @@
   justify-content: space-between;
   isolation: isolate;
   min-height: 100vh;
-}
-.landing-hero__bg {
-  position: absolute; inset: 0; z-index: -2;
-  background:
-    radial-gradient(1200px 600px at 15% 10%, #3A3EA8 0%, transparent 60%),
-    radial-gradient(900px 500px at 90% 90%, #1C1E5C 0%, transparent 55%),
-    linear-gradient(155deg, #23256F 0%, #2E3192 45%, #1B1E7A 100%);
-}
-.landing-hero__bg::after {
-  /* subtle grid pattern for texture */
-  content: "";
-  position: absolute; inset: 0;
-  background-image:
-    linear-gradient(rgba(255,255,255,.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255,255,255,.05) 1px, transparent 1px);
-  background-size: 32px 32px;
-  mask-image: radial-gradient(ellipse at center, black 40%, transparent 80%);
-  -webkit-mask-image: radial-gradient(ellipse at center, black 40%, transparent 80%);
-  opacity: .5;
+  background: var(--brand-blue-800);
+  --focus-ring: 3px solid #FFFFFF; /* dark surface: see the focus-ring notes in tokens.css */
 }
 
-.landing-hero__blob {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(60px);
-  opacity: .55;
-  z-index: -1;
-  pointer-events: none;
-  animation: blobFloat 14s ease-in-out infinite alternate;
-}
-.landing-hero__blob--red    {
-  width: 380px; height: 380px;
-  right: -80px; top: 10%;
-  background: rgba(238, 28, 37, .55);
-}
-.landing-hero__blob--yellow {
-  width: 300px; height: 300px;
-  left: -60px; bottom: 12%;
-  background: rgba(254, 242, 0, .40);
-  animation-delay: -6s;
-}
-@keyframes blobFloat {
-  0%   { transform: translate3d(0,0,0) scale(1); }
-  50%  { transform: translate3d(20px,-30px,0) scale(1.05); }
-  100% { transform: translate3d(-20px,20px,0) scale(0.97); }
-}
-@media (prefers-reduced-motion: reduce) {
-  .landing-hero__blob { animation: none; }
-}
 
 .landing-hero__content { position: relative; max-width: 640px; }
 
@@ -100,39 +55,24 @@
 .landing-brand__mark {
   width: 44px; height: 44px;
   display: grid; place-items: center;
-  background: var(--brand-yellow);
-  color: var(--text-charcoal); /* Guardrail 1: dark text on yellow */
+  padding: 4px;
+  background: #fff;
   border-radius: 12px;
-  font-weight: 900;
-  box-shadow: 0 6px 18px rgba(0,0,0,.25), inset 0 -3px 0 var(--brand-yellow-800);
+  box-shadow: 0 6px 18px rgba(0,0,0,.25);
 }
+.landing-brand__mark img { display: block; width: 100%; height: 100%; }
 
 .landing-eyebrow {
   margin: 2.5rem 0 1rem;
-  display: inline-flex; align-items: center; gap: .5rem;
+  display: flex; width: fit-content; align-items: center; gap: .5rem;
   padding: .3rem .75rem .3rem .5rem;
   background: rgba(255,255,255,.08);
   border: 1px solid rgba(255,255,255,.15);
-  backdrop-filter: blur(6px);
   border-radius: 999px;
   font-size: .8rem;
   letter-spacing: .04em;
   text-transform: uppercase;
 }
-.landing-eyebrow .dot--live {
-  width: 8px; height: 8px; border-radius: 999px;
-  background: #4ADE80;
-  box-shadow: 0 0 0 4px rgba(74,222,128,.25);
-  animation: pulseDot 2s infinite;
-}
-@keyframes pulseDot {
-  0%,100% { transform: scale(1);  }
-  50%     { transform: scale(1.25); }
-}
-@media (prefers-reduced-motion: reduce) {
-  .landing-eyebrow .dot--live { animation: none; }
-}
-
 .landing-hero__title {
   font-family: var(--font-display);
   font-size: clamp(2rem, 3.6vw, 3.4rem);
@@ -177,22 +117,6 @@
 }
 .landing-benefits svg { flex: 0 0 22px; color: var(--brand-yellow); }
 
-.landing-badges {
-  display: flex; flex-wrap: wrap; gap: .5rem;
-  margin: 0 0 2rem;
-}
-.landing-badges .chip {
-  display: inline-flex; align-items: center; gap: .4rem;
-  padding: .4rem .7rem;
-  background: rgba(255,255,255,.08);
-  border: 1px solid rgba(255,255,255,.18);
-  border-radius: 999px;
-  font-size: .78rem;
-  font-weight: 600;
-  color: rgba(255,255,255,.95);
-}
-.landing-badges .chip svg { color: var(--brand-yellow); }
-
 .landing-metrics {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -201,21 +125,22 @@
   background: rgba(255,255,255,.06);
   border: 1px solid rgba(255,255,255,.14);
   border-radius: var(--radius-lg);
-  backdrop-filter: blur(8px);
-  max-width: 520px;
+  max-width: 32rem;
+  margin: 0;
 }
 .landing-metrics > div {
   text-align: left;
-  display: grid; gap: .1rem;
+  display: flex; flex-direction: column-reverse; gap: .1rem;
 }
-.landing-metrics strong {
+.landing-metrics dd {
+  margin: 0;
   font-family: var(--font-display);
   font-size: 1.75rem;
   font-weight: 800;
   color: var(--brand-yellow);
   line-height: 1;
 }
-.landing-metrics span {
+.landing-metrics dt {
   font-size: .78rem;
   text-transform: uppercase;
   letter-spacing: .06em;
@@ -277,7 +202,10 @@
   color: var(--text-muted);
   font-weight: 600;
   font-size: .9rem;
-  transition: all var(--transition-base) ease;
+  transition:
+    background-color var(--dur-1) var(--ease-out),
+    color var(--dur-1) var(--ease-out),
+    box-shadow var(--dur-1) var(--ease-out);
 }
 .auth-tabs [role="tab"][aria-selected="true"] {
   background: var(--canvas-white);
@@ -315,22 +243,23 @@
   color: var(--text-muted);
   pointer-events: none;
 }
+/* The icons are a fixed 18px (their width attribute) while their offsets are
+   rem, so the side that holds one reserves offset + 18px + a rem gap. A flat
+   rem value over-reserves at the 24px font setting and under-reserves at 12px. */
 .input-icon input {
   width: 100%;
-  padding: .7rem .85rem .7rem 2.55rem;
-  border: 1.5px solid var(--border);
+  padding: .7rem .85rem .7rem calc(.75rem + 18px + .35rem);
+  border: 1.5px solid var(--border-control);
   background: var(--surface-gray);
   border-radius: var(--radius-md);
   font-size: .95rem;
   color: var(--text-charcoal);
-  transition: border-color var(--transition-fast) ease, background-color var(--transition-fast) ease;
+  transition: border-color var(--dur-1) var(--ease-out), background-color var(--dur-1) var(--ease-out);
 }
-.input-icon input:hover { border-color: #C4C9D0; }
+.input-icon input:hover { border-color: var(--text-charcoal); }
 .input-icon input:focus {
-  outline: none;
   background: var(--canvas-white);
   border-color: var(--brand-blue);
-  box-shadow: 0 0 0 3px rgba(46, 49, 146, .12);
 }
 .input-icon .trailing {
   position: absolute; right: .3rem; top: 50%; transform: translateY(-50%);
@@ -362,10 +291,6 @@
   font-weight: 700;
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-sm);
-}
-.auth-panel .btn--primary:hover {
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-md);
 }
 
 .auth-divider {
@@ -402,7 +327,9 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   cursor: pointer;
-  transition: all var(--transition-fast) ease;
+  transition:
+    border-color var(--dur-1) var(--ease-out),
+    background-color var(--dur-1) var(--ease-out);
   text-align: left;
 }
 .landing-auth .quick-account::before {
@@ -417,8 +344,6 @@
 }
 .landing-auth .quick-account:hover {
   border-color: var(--brand-blue);
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-sm);
 }
 .landing-auth .quick-account .qa-body {
   display: grid; gap: 0;
@@ -446,8 +371,7 @@
   font-size: .78rem;
   margin: 1.5rem 0 0;
 }
-.landing-legal a { color: var(--brand-blue); text-decoration: none; }
-.landing-legal a:hover { text-decoration: underline; }
+.landing-legal a { color: var(--brand-blue); text-decoration: underline; }
 
 /* Small screens: stack + tighter spacing */
 @media (max-width: 960px) {
@@ -459,15 +383,19 @@
 @media (max-width: 520px) {
   .landing-auth .quick-accounts { grid-template-columns: 1fr; }
   .landing-metrics { grid-template-columns: repeat(3, 1fr); padding: .75rem; }
-  .landing-metrics strong { font-size: 1.3rem; }
+  .landing-metrics dd { font-size: 1.3rem; }
   .landing-hero__title { font-size: 2rem; }
   .auth-card { border: 0; box-shadow: none; padding: 0; }
 }
 
-/* Row utility used in signup form */
+/* Row utility used in signup form. Two columns only while each can be 13
+   times the fields' font size, so the row stacks at large accessibility font
+   sizes instead of squeezing the fields until their text is cut off. That
+   size is max(1rem, 16px), the floor responsive.css gives the fields: a bare
+   13rem would let columns shrink at the 12px setting while the text did not. */
 .auth-panel .row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 13 * max(1rem, 16px)), 1fr));
   gap: .75rem;
 }
 @media (max-width: 520px) {

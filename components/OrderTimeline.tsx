@@ -6,7 +6,7 @@ export function OrderTimeline({
   order,
   history,
 }: {
-  order: Order;
+  order: Pick<Order, "id" | "order_status" | "created_at">;
   history: OrderStatusHistoryEntry[];
 }) {
   const entries: OrderStatusHistoryEntry[] = history.length

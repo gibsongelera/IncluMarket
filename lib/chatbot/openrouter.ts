@@ -87,7 +87,7 @@ export class OpenRouterResponder implements ChatResponder {
           "Content-Type": "application/json",
           // OpenRouter uses these for attribution and free-tier allocation.
           "HTTP-Referer": process.env.OPENROUTER_SITE_URL || "http://localhost:3000",
-          "X-Title": process.env.OPENROUTER_APP_NAME || "IncluMarket",
+          "X-Title": process.env.OPENROUTER_APP_NAME || "InclusiveMarket",
         },
         body: JSON.stringify({
           model,

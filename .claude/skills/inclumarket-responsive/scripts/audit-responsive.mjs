@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * IncluMarket static responsive audit.
+ * InclusiveMarket static responsive audit.
  *
  * Flags the patterns that have actually broken this layout on phones:
  *   - width media queries declared outside styles/responsive.css

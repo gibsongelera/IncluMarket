@@ -1,5 +1,4 @@
 /* Reset + typography + a11y utilities */
-@import url('https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;600;700;800&family=Rubik:wght@500;600;700;800&display=swap');
 
 *, *::before, *::after { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
@@ -42,14 +41,11 @@ h1, h2, h3, h4 {
  */
 main > h1,
 .page-head > h1,
+.page-head__text > h1,
 .page-head > h2,
-#feed-title,
-.category-strip > h2 {
+#feed-title {
   color: var(--text-on-canvas, var(--text-heading, var(--text-charcoal)));
   
-}
-.category-folder-hint {
-  color: var(--text-on-canvas-muted, var(--text-muted));
 }
 h1 { font-size: var(--step-5); }
 h2 { font-size: var(--step-3); }
@@ -76,7 +72,7 @@ hr {
 }
 
 /* Focus states — visible for all interactive elements */
-:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
   outline: var(--focus-ring);
   outline-offset: var(--focus-ring-offset);
   border-radius: var(--radius-xs);
@@ -104,6 +100,10 @@ hr {
   z-index: 1000;
   border-radius: 0 0 var(--radius-sm) 0;
   text-decoration: none;
+  /* It opens over the dark header, so its ring is white and drawn inside
+     its own edge, on its own blue (tokens.css focus-ring notes). */
+  --focus-ring: 3px solid #FFFFFF;
+  --focus-ring-offset: -5px;
 }
 .skip-link:focus { left: 0; }
 
@@ -125,33 +125,68 @@ hr {
   margin: 0 0 .5rem;
 }
 
-/* Toast region */
+/* Toast region (components/Toaster.tsx). Bottom offset lives in
+   responsive.css with the other floating layers. */
 .toast-region {
   position: fixed;
-  right: 1rem;
-  bottom: 1rem;
+  right: var(--space-4);
+  bottom: var(--space-4);
   display: flex;
   flex-direction: column;
-  gap: .5rem;
+  align-items: flex-end;
+  gap: var(--space-2);
+  width: min(24rem, calc(100vw - 2 * var(--space-4)));
   z-index: 100;
   pointer-events: none;
 }
 .toast {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  width: 100%;
   background: var(--text-charcoal);
   color: #FFFFFF;
-  padding: .75rem 1rem;
+  padding: var(--space-1) var(--space-1) var(--space-1) var(--space-4);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-md);
-  min-width: 220px;
   pointer-events: auto;
-  animation: toast-in 180ms ease-out;
+  animation: toast-in var(--dur-2) var(--ease-out);
 }
+.toast[data-leaving] {
+  animation: toast-out var(--dur-1) var(--ease-in) forwards;
+}
+.toast__message {
+  flex: 1;
+  margin: 0;
+  padding-block: .625rem;
+  overflow-wrap: anywhere;
+}
+.toast__close {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+.toast__close:hover { background: rgb(255 255 255 / .16); }
+.toast__close:focus-visible { outline: 3px solid currentColor; outline-offset: -3px; }
 .toast--success { background: var(--success); color: #FFFFFF; }
 .toast--error   { background: var(--brand-red); color: #FFFFFF; }
 .toast--warning { background: var(--brand-yellow); color: var(--text-charcoal); } /* Guardrail 1 */
+.toast--warning .toast__close:hover { background: rgb(0 0 0 / .08); }
+/* Enter rises 8px; exit is shorter and subtler (M-03). */
 @keyframes toast-in {
-  from { transform: translateY(6px); opacity: 0; }
-  to   { transform: translateY(0);   opacity: 1; }
+  from { transform: translateY(.5rem); opacity: 0; }
+  to   { transform: translateY(0);     opacity: 1; }
+}
+@keyframes toast-out {
+  to { transform: translateY(-.25rem); opacity: 0; }
 }
 
 /* Reduced motion */

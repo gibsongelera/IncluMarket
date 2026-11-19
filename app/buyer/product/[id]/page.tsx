@@ -1,25 +1,64 @@
 import Link from "next/link";
-import { getSession } from "@/lib/session";
+import { notFound } from "next/navigation";
+import type { Metadata } from "next";
+import { getRenderSession } from "@/lib/session";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { ProductDetailClient } from "@/components/ProductDetailClient";
-import { StarRating } from "@/components/StarRating";
-import { formatDate } from "@/lib/format";
 import {
-  getCategories,
+  getActiveSaleForProduct,
+  getAllCategories,
+  getDisplayNames,
   getProductById,
-  getProfileById,
-  getProfiles,
-  getReviewsByProduct,
+  getPublicProductById,
   getVariantsByProduct,
+  getWishlistProductIds,
 } from "@/lib/data";
+import type { Product } from "@/lib/types";
+import type { SessionUser } from "@/lib/types";
+import { isVerifiedPwd } from "@/lib/pwd/data";
+import { getReviewsLite, summarize } from "@/lib/reviews";
+import { ReviewsSection } from "@/components/ReviewsSection";
+import { StorefrontGrid } from "@/components/StorefrontGrid";
+import { getAlsoBought, recordProductView } from "@/lib/recommend";
+import { getStorefrontItems, searchStorefront } from "@/lib/storefront";
+import { getPublicShop } from "@/lib/shops";
+import { Icon } from "@/components/Icon";
+import { StarRating } from "@/components/StarRating";
+import { after } from "next/server";
 
 export const dynamic = "force-dynamic";
 
-function reviewerName(name: string | undefined): string {
-  if (!name) return "Buyer";
-  const parts = name.split(" ");
-  return parts[0] + " " + (parts[1] || "").charAt(0) + ".";
+/**
+ * Resolve what this visitor may see.
+ *
+ * The public sees only approved listings from active sellers. The listing's
+ * own seller and admins may additionally open it in any status, as a clearly
+ * labelled preview — that is how a seller checks a pending listing and how an
+ * admin moderates one. Everyone else gets a real 404, not a 200 page that says
+ * "not found".
+ */
+async function resolveProduct(
+  id: number,
+  session: SessionUser | null
+): Promise<{ product: Product; preview: boolean } | null> {
+  const product = await getPublicProductById(id);
+  if (product) return { product, preview: false };
+  if (!session || (session.role !== "admin" && session.role !== "seller")) return null;
+  const any = await getProductById(id);
+  if (!any) return null;
+  if (session.role === "admin" || any.seller_id === session.user_id) return { product: any, preview: true };
+  return null;
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const product = await getPublicProductById(Number(id));
+  return { title: product ? product.title : "Product" };
 }
 
 export default async function ProductPage({
@@ -27,12 +66,45 @@ export default async function ProductPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  // Catalog product pages are public (guests + any role can view).
-  // Cart / wishlist / messaging still gate at the action level.
-  const session = await getSession();
+  const session = await getRenderSession();
   const { id } = await params;
-  const productId = Number(id);
-  const product = await getProductById(productId);
+  const resolved = await resolveProduct(Number(id), session);
+  if (!resolved) notFound();
+  const { product, preview } = resolved;
+
+  const [variants, reviews, categories, sale] = await Promise.all([
+    getVariantsByProduct(product.id),
+    getReviewsLite([product.id]),
+    getAllCategories(),
+    getActiveSaleForProduct(product.id),
+  ]);
+  const [names, sellerVerified, wishlistIds] = await Promise.all([
+    getDisplayNames([product.seller_id]),
+    isVerifiedPwd(product.seller_id),
+    session?.role === "buyer" ? getWishlistProductIds(session.user_id) : Promise.resolve([] as number[]),
+  ]);
+  const cat = categories.find((c) => c.id === product.category);
+  const catFolder = cat ? cat.folder || cat.label : product.category || "Uncategorized";
+  const summary = summarize(reviews);
+  const [live, shop] = preview
+    ? [null, null]
+    : await Promise.all([getStorefrontItems([product.id]).then((r) => r[0] ?? null), getPublicShop(product.seller_id)]);
+
+  // "Customers also bought" from shared orders; the same category otherwise.
+  let alsoBought = preview ? [] : await getAlsoBought(product.id);
+  let alsoTitle = "Customers also bought";
+  if (!preview && alsoBought.length < 3 && product.category) {
+    alsoBought = (await searchStorefront({ category: product.category, sort: "top_sales", pageSize: 7 })).items
+      .filter((i) => i.id !== product.id)
+      .slice(0, 6);
+    alsoTitle = `More in ${catFolder}`;
+  }
+  // Recommendations signal (signed-in buyers, unless they opted out), after
+  // the response so it never slows the page.
+  if (session?.role === "buyer" && !preview) {
+    const buyerId = session.user_id;
+    after(() => recordProductView(buyerId, product.id));
+  }
 
   return (
     <>
@@ -40,74 +112,76 @@ export default async function ProductPage({
       <main id="main" tabIndex={-1} className="container main--product">
         <nav className="breadcrumbs" aria-label="Breadcrumb">
           <Link href="/home">Shop</Link> <span aria-hidden="true">/</span>{" "}
-          <span id="crumb-title">{product ? product.title : "Product"}</span>
+          <span id="crumb-title">{product.title}</span>
         </nav>
 
-        {!product ? (
-          <p className="empty">
-            Product not found. <Link href="/home">Back to shop.</Link>
+        {preview ? (
+          <p className="notice notice--warning" role="status">
+            Preview — this listing is <strong>{product.status}</strong> and is not visible to buyers.
           </p>
-        ) : (
-          <ProductDetail
-            productId={productId}
-            userId={session?.role === "buyer" ? session.user_id : undefined}
-          />
-        )}
+        ) : null}
+
+        <ProductDetailClient
+          product={product}
+          variants={variants}
+          sellerName={names[product.seller_id] || "PWD Seller"}
+          sellerVerified={sellerVerified}
+          wishlisted={wishlistIds.includes(product.id)}
+          soldCount={live?.soldCount ?? 0}
+          categoryFolder={catFolder}
+          userId={session?.role === "buyer" ? session.user_id : undefined}
+          rating={summary.average}
+          ratingCount={summary.count}
+          salePercent={sale ? Number(sale.discount_percent) : null}
+        />
+
+        {shop ? (
+          <section className="card shop-card" aria-labelledby="shop-card-title">
+            <span className="shop-head__logo" aria-hidden="true">
+              {shop.name.charAt(0).toUpperCase()}
+            </span>
+            <div className="shop-card__body">
+              <h2 id="shop-card-title" className="shop-card__name">
+                {shop.name}
+              </h2>
+              <p className="shop-head__meta">
+                {shop.verified ? (
+                  <span className="badge badge--verified">
+                    <Icon name="check" size={12} /> Verified PWD seller
+                  </span>
+                ) : null}
+                {shop.rating.count ? (
+                  <span>
+                    <StarRating score={shop.rating.average} /> {shop.rating.average.toFixed(1)}
+                    <span className="sr-only"> out of 5</span>
+                  </span>
+                ) : null}
+                <span>
+                  {shop.productCount} product{shop.productCount === 1 ? "" : "s"}
+                </span>
+              </p>
+              {shop.story ? <p className="shop-card__story">{shop.story}</p> : null}
+            </div>
+            <Link className="btn btn--outline btn--sm" href={`/shop/${shop.id}`}>
+              Visit shop<span className="sr-only">: {shop.name}</span>
+            </Link>
+          </section>
+        ) : null}
+
+        <ReviewsSection reviews={reviews} summary={summary} />
+
+        {alsoBought.length ? (
+          <section className="rail" aria-labelledby="also-title">
+            <h2 id="also-title">{alsoTitle}</h2>
+            <StorefrontGrid
+              items={alsoBought}
+              wishlistIds={wishlistIds}
+              showWishlist={session?.role === "buyer"}
+            />
+          </section>
+        ) : null}
       </main>
       <SiteFooter />
-    </>
-  );
-}
-
-async function ProductDetail({
-  productId,
-  userId,
-}: {
-  productId: number;
-  userId?: number;
-}) {
-  const product = (await getProductById(productId))!;
-  const [variants, reviews, categories, seller, profiles] = await Promise.all([
-    getVariantsByProduct(productId),
-    getReviewsByProduct(productId),
-    getCategories(),
-    getProfileById(product.seller_id),
-    getProfiles(),
-  ]);
-  const cat = categories.find((c) => c.id === product.category);
-  const catFolder = cat ? cat.folder || cat.label : product.category || "Uncategorized";
-  const nameById: Record<number, string> = {};
-  profiles.forEach((p) => (nameById[p.id] = p.name));
-
-  return (
-    <>
-      <ProductDetailClient
-        product={product}
-        variants={variants}
-        sellerName={seller?.name || "PWD Seller"}
-        categoryFolder={catFolder}
-        userId={userId}
-      />
-
-      <section className="reviews" aria-labelledby="reviews-title">
-        <h2 id="reviews-title">Customer reviews</h2>
-        <div className="reviews-list">
-          {reviews.length === 0 ? (
-            <p className="empty">No reviews yet.</p>
-          ) : (
-            reviews.map((r) => (
-              <article className="review" key={r.id}>
-                <header>
-                  <strong>{reviewerName(nameById[r.buyer_id])}</strong>
-                  <span className="muted small">{formatDate(r.created_at)}</span>
-                </header>
-                <StarRating score={r.rating_score} />
-                <p>{r.comment_text}</p>
-              </article>
-            ))
-          )}
-        </div>
-      </section>
     </>
   );
 }

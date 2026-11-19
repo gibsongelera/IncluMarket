@@ -1,49 +1,15 @@
 import Link from "next/link";
 import type { Role, SessionUser } from "@/lib/types";
 import { maskEmail } from "@/lib/format";
-import { getCartCount } from "@/lib/actions/cart";
-import { getMyNotifications, getMyUnreadCount } from "@/lib/actions/notifications";
-import { getMyUnreadMessageCount } from "@/lib/actions/messages";
-import { CartBadge } from "./CartBadge";
+import { getHeaderData } from "@/lib/header-data";
 import { SearchBox } from "./SearchBox";
 import { ScopedSearchBox } from "./ScopedSearchBox";
 import { NotificationBell } from "./NotificationBell";
-import { ContrastToggle, LogoutButton } from "./HeaderActions";
+import { LogoutButton } from "./HeaderActions";
 import { MobileNav } from "./MobileNav";
-
-type NavItem = { href: string; label: string; key: string };
-
-const NAV: Record<Role, NavItem[]> = {
-  buyer: [
-    { href: "/home", label: "Shop", key: "home" },
-    { href: "/buyer/wishlist", label: "Wishlist", key: "wishlist" },
-    { href: "/buyer/orders", label: "My Orders", key: "orders" },
-    { href: "/buyer/messages", label: "Messages", key: "messages" },
-    { href: "/buyer/support", label: "Support", key: "support" },
-  ],
-  seller: [
-    { href: "/seller/dashboard", label: "Dashboard", key: "dashboard" },
-    { href: "/seller/products", label: "Products", key: "products" },
-    { href: "/seller/orders", label: "Orders", key: "orders" },
-    { href: "/seller/messages", label: "Messages", key: "messages" },
-    { href: "/seller/reviews", label: "Reviews", key: "reviews" },
-  ],
-  admin: [
-    { href: "/admin/users", label: "Users", key: "users" },
-    { href: "/admin/products", label: "Products", key: "products" },
-    { href: "/admin/tickets", label: "Tickets", key: "tickets" },
-    { href: "/admin/compliance", label: "Compliance", key: "compliance" },
-    { href: "/admin/reports", label: "Reports", key: "reports" },
-    { href: "/admin/payments", label: "Payments", key: "payments" },
-    { href: "/admin/theme", label: "Theme", key: "theme" },
-  ],
-};
-
-const BRAND_HREF: Record<Role, string> = {
-  buyer: "/home",
-  seller: "/seller/dashboard",
-  admin: "/admin/users",
-};
+import { HeaderNavLinks } from "./HeaderNavLinks";
+import { HOME_HREF } from "@/lib/nav";
+import { BrandMark } from "./BrandMark";
 
 export async function SiteHeader({
   variant,
@@ -51,50 +17,63 @@ export async function SiteHeader({
   session,
 }: {
   variant: Role;
-  active: string;
+  /** @deprecated The current page is read from the URL; kept so callers compile. */
+  active?: string;
   session: SessionUser | null;
 }) {
   if (!session) {
     return (
+      <>
       <header className="site-header site-header--buyer" role="banner">
         <div className="container header-row">
-          <Link className="brand" href="/home" aria-label="IncluMarket home">
-            <span className="brand-mark" aria-hidden="true">
-              IM
-            </span>
-            <span className="brand-word">IncluMarket</span>
+          <Link className="brand" href="/home" aria-label="InclusiveMarket home">
+            <BrandMark />
+            <span className="brand-word">InclusiveMarket</span>
           </Link>
 
           <SearchBox />
 
           <nav className="header-nav" aria-label="Primary">
-            <ContrastToggle />
             <Link className="btn btn--primary btn--sm" href="/login">
               Sign in
             </Link>
           </nav>
         </div>
       </header>
+      <MobileNav variant="guest" />
+      </>
     );
   }
 
-  const cartCount = variant === "buyer" ? await getCartCount() : 0;
-  const [unread, notifications, unreadMessages] = await Promise.all([
-    getMyUnreadCount(),
-    getMyNotifications(),
-    variant === "buyer" || variant === "seller" ? getMyUnreadMessageCount() : Promise.resolve(0),
-  ]);
+  // One batch, with the session the page already resolved (memoised per
+  // request): the public actions would each resolve it again (finding 71).
+  const { cartCount, wishlistCount, unread, notifications, unreadMessages } = await getHeaderData(variant);
+  const roleLabel = variant === "admin" ? "Admin" : variant === "seller" ? "Seller" : null;
 
   return (
     <>
       <header className={`site-header site-header--${variant}`} role="banner">
-        <div className="container header-row">
-          <Link className="brand" href={BRAND_HREF[variant]} aria-label="IncluMarket home">
-            <span className="brand-mark" aria-hidden="true">
-              IM
-            </span>
+        {/* --signed-in: on a phone this row is the brand and the search only.
+            Its nav (links, Cart, the bell, Sign out) is hidden there: the tab
+            bar has the links and the bell, its More sheet has Sign out. */}
+        <div className="container header-row header-row--signed-in">
+          {/* The name carries the visible "Seller"/"Admin" too (label in name,
+              WCAG 2.5.3); it is an aria-label because on a phone only the
+              mark shows. The space before <small> keeps the words apart. */}
+          <Link
+            className="brand"
+            href={HOME_HREF[variant]}
+            aria-label={`InclusiveMarket${roleLabel ? ` ${roleLabel}` : ""} home`}
+          >
+            <BrandMark />
             <span className="brand-word">
-              IncluMarket{variant !== "buyer" ? <small>{variant === "admin" ? "Admin" : "Seller"}</small> : null}
+              InclusiveMarket
+              {roleLabel ? (
+                <>
+                  {" "}
+                  <small>{roleLabel}</small>
+                </>
+              ) : null}
             </span>
           </Link>
 
@@ -104,25 +83,15 @@ export async function SiteHeader({
           {variant === "buyer" ? <SearchBox /> : <ScopedSearchBox variant={variant} />}
 
           <nav className="header-nav" aria-label="Primary">
-            {NAV[variant].map((item) => (
-              <Link
-                key={item.key}
-                className={`nav-link${active === item.key ? " nav-link--active" : ""}`}
-                href={item.href}
-              >
-                {item.label}
-                {item.key === "messages" && unreadMessages > 0 ? (
-                  <CartBadge count={unreadMessages} />
-                ) : null}
-              </Link>
-            ))}
-            {variant === "buyer" ? (
-              <Link className="nav-link nav-link--cart" href="/buyer/cart" aria-label="Cart">
-                Cart <CartBadge count={cartCount} />
-              </Link>
-            ) : null}
+            {/* Cart is among these links (last, for a buyer). Its count reads
+                "2 in cart" and, like the others, shows only above zero. */}
+            <HeaderNavLinks
+              variant={variant}
+              unreadMessages={unreadMessages}
+              wishlistCount={wishlistCount}
+              cartCount={cartCount}
+            />
             <NotificationBell initialUnread={unread} initialNotifications={notifications} />
-            <ContrastToggle />
             <LogoutButton />
           </nav>
         </div>
@@ -134,6 +103,9 @@ export async function SiteHeader({
               <span className="role-tag">{session.role}</span> &middot;{" "}
               <span title="Email masked in shared views">{maskEmail(session.email)}</span>
             </span>
+            <Link className="user-strip__link" href="/account">
+              Your account
+            </Link>
           </div>
         </div>
       </header>
@@ -149,6 +121,8 @@ export async function SiteHeader({
         variant={variant}
         cartCount={cartCount}
         unreadMessages={unreadMessages}
+        wishlistCount={wishlistCount}
+        notifications={{ unread, items: notifications }}
       />
     </>
   );

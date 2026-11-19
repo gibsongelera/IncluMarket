@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * IncluMarket interactive-control inventory.
+ * InclusiveMarket interactive-control inventory.
  *
  * Turns "verify every button works" from an unbounded job into a finite
  * checklist, and finds the two failure modes you cannot see by clicking around:
@@ -252,7 +252,7 @@ const totals = controls.reduce(
   { buttons: 0, links: 0, forms: 0 }
 );
 
-console.log("\n=== IncluMarket interactive inventory ===\n");
+console.log("\n=== InclusiveMarket interactive inventory ===\n");
 console.log(
   `  ${routes.length} routes, ${actions.length} server actions, ` +
     `${totals.buttons} buttons, ${totals.links} links, ${totals.forms} forms\n`

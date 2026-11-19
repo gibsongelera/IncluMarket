@@ -1,4 +1,4 @@
-/* IncluMarket — responsive layer
+/* InclusiveMarket — responsive layer
    ===========================================================================
    Imported LAST, so it can adjust anything above it without a specificity war.
 
@@ -35,6 +35,9 @@
 html {
   /* In-page anchors and the skip link must not land under the sticky header. */
   scroll-padding-top: calc(var(--header-total) + var(--space-2));
+  /* ...and focus scrolling must not park a control under a floating button
+     or the commit bar (WCAG 2.4.11 Focus Not Obscured). */
+  scroll-padding-bottom: calc(var(--fab-clearance) + var(--commit-bar-h) + var(--bottom-inset));
 }
 
 body {
@@ -49,6 +52,40 @@ body {
 .thread .msg,
 .ticket-list button {
   overflow-wrap: anywhere;
+}
+
+/* A table drawn as a table (768px up; below that .data-table--cards turns
+   rows into cards) inside TableWrap's sideways scroller. `anywhere` lets
+   the browser shrink a column to one letter, so at 24px text the admin
+   lists broke names, sums and the Actions button mid-word ("Buye/r",
+   "₱26/0.00") instead of scrolling. `break-word` wraps the same long
+   strings but keeps whole words as each column's minimum, so a table that
+   no longer fits scrolls inside .table-wrap (WCAG 1.4.10 allows that for
+   data tables). The role select (a compressible control with
+   max-width: 100%) and the Actions button keep their own width too. */
+@media (min-width: 768px) {
+  .table-wrap .data-table td,
+  .table-wrap .data-table .cell-identity__text,
+  .table-wrap .data-table .row-menu > .row-menu__panel > * {
+    overflow-wrap: break-word;
+  }
+  .table-wrap .data-table .row-menu > .row-menu__toggle {
+    white-space: nowrap;
+  }
+  /* A status pill stays one line in a table ("On sale" broke in two at
+     24px text); the table scrolls inside its wrapper if it must. Cards
+     (below 768px) still let a long status wrap between words. */
+  .table-wrap .data-table .pill {
+    white-space: nowrap;
+  }
+  /* The menu's minmax(0, 1fr) track (components.css) gives the Actions
+     column no minimum, so the toggle hung out of a narrower cell. */
+  .table-wrap .data-table .row-menu {
+    grid-template-columns: minmax(min-content, 1fr);
+  }
+  .table-wrap .data-table .role-sel {
+    min-width: max-content;
+  }
 }
 
 img,
@@ -146,6 +183,19 @@ body {
   }
 }
 
+/* A table in a dashboard card (the admin overview) fits its card instead:
+   a span-8 card holds about 38rem of table at 1280px and under 45rem at
+   the widest console, so 720px (45rem) scrolled it sideways at every
+   desktop width. Its text wraps between words (break-word from 768px up,
+   section 1), so at 20-24px text it can scroll inside its .table-wrap
+   rather than cut a name mid-word; its figures stay whole. */
+.chart-card .data-table {
+  min-width: 0;
+}
+.chart-card .data-table .num {
+  white-space: nowrap;
+}
+
 @media (max-width: 767px) {
   .data-table--cards,
   .data-table--cards tbody,
@@ -172,6 +222,16 @@ body {
     padding: var(--space-3);
   }
 
+  /* components.css gives a table row a 3rem minimum and right-aligns
+     figures. A card is a block, where that height would be fixed, and its
+     figures read under their label like every other value. */
+  .data-table--cards tbody tr {
+    height: auto;
+  }
+  .data-table--cards .num {
+    text-align: left;
+  }
+
   .data-table--cards td {
     display: grid;
     grid-template-columns: minmax(6rem, 40%) 1fr;
@@ -185,6 +245,23 @@ body {
   .data-table--cards td:last-child {
     border-bottom: 0;
     padding-bottom: 0;
+  }
+
+  /* Everything in a cell is its value: a second element (an order's date
+     under its number, a note under a status pill, "Running low" after the
+     stock) goes on in the value column, never under the label. The
+     unlabelled cells below have one column and undo this. */
+  .data-table--cards td > * {
+    grid-column: 2;
+  }
+  /* A status pill keeps its own width, as in the table, rather than
+     stretching across the value column like a bar. */
+  .data-table--cards td > .pill {
+    justify-self: start;
+  }
+  .data-table--cards td[data-label=""] > *,
+  .data-table--cards td.cell-actions > * {
+    grid-column: auto;
   }
 
   /* The label comes from data-label on each <td>. */
@@ -202,6 +279,29 @@ body {
   .data-table--cards td[data-label=""]::before {
     content: none;
   }
+  /* An Actions cell under a visually hidden header: TableWrap copies the
+     header's text, so its data-label is "Actions", which would sit beside
+     the Actions button. It is full width with no label, like an
+     empty-headed cell. A row with no action leaves the cell empty: it is
+     not drawn, and the cell above it closes the card. */
+  .data-table--cards td.cell-actions {
+    grid-template-columns: 1fr;
+  }
+  .data-table--cards td.cell-actions::before {
+    content: none;
+  }
+  .data-table--cards td.cell-actions:empty {
+    display: none;
+  }
+  /* An order number that is a 44px link (components.css) sits level with
+     its "Order" label, not below it. */
+  .data-table--cards td.cell-code {
+    align-items: center;
+  }
+  .data-table--cards td:has(+ td.cell-actions:empty) {
+    border-bottom: 0;
+    padding-bottom: 0;
+  }
 
   .data-table--cards .row-actions {
     display: flex;
@@ -211,6 +311,32 @@ body {
   .data-table--cards .row-actions .btn {
     flex: 1 1 auto;
     min-height: 44px;
+  }
+  /* A row with a single action: RowActions (P2-06) renders that one
+     button bare in the action cell, with no menu around it. */
+  .data-table--cards td[data-label=""] > .btn,
+  .data-table--cards td.cell-actions > .btn {
+    min-height: max(2.75rem, 44px);
+  }
+  /* In a card the action has the card's full width: its label may wrap
+     again rather than run past a 320px screen at 24px text. */
+  .data-table--cards td.cell-actions > .btn {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  /* In a dashboard card the rows are divided by a rule, not each drawn as
+     a card inside the card (01 §9). No stripes there: a grey band hugging
+     the text, with no padding beside it, read as a mistake. */
+  .chart-card .data-table--cards tbody tr {
+    margin-bottom: 0;
+    padding: var(--space-3) 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+  .chart-card .data-table--cards tbody tr + tr {
+    border-top: 1px solid var(--border);
   }
 }
 
@@ -246,9 +372,19 @@ body {
   bottom: calc(var(--space-3) + var(--bottom-inset) + env(safe-area-inset-bottom, 0px));
 }
 
+/* Toasts stack above the chat button rather than over it. */
 .toast-region {
   z-index: var(--z-toast);
-  bottom: calc(var(--space-4) + var(--bottom-inset) + env(safe-area-inset-bottom, 0px));
+  bottom: calc(var(--fab-clearance) + var(--bottom-inset) + env(safe-area-inset-bottom, 0px));
+}
+
+/* The last thing on a page (footer links, Subscribe) scrolls clear of the
+   floating buttons instead of ending underneath them (N-14). */
+.site-footer {
+  padding-bottom: var(--fab-clearance);
+}
+body:not(:has(.site-footer)) {
+  padding-bottom: calc(var(--bottom-inset) + var(--fab-clearance));
 }
 
 .site-header {
@@ -282,7 +418,7 @@ body {
   }
   body:has(.cart-summary--sticky) .toast-region {
     bottom: calc(
-      var(--commit-bar-h) + 64px + var(--space-4) + var(--bottom-inset) +
+      var(--commit-bar-h) + var(--fab-clearance) + var(--bottom-inset) +
         env(safe-area-inset-bottom, 0px)
     );
   }
@@ -317,6 +453,8 @@ body {
     bottom: 0;
     z-index: var(--z-fab);
     display: flex;
+    /* Two rows of three when MobileNav finds a label cut (data-rows). */
+    flex-wrap: wrap;
     justify-content: stretch;
     gap: 0;
     background: var(--canvas-white);
@@ -336,7 +474,9 @@ body {
     justify-content: center;
     gap: 2px;
     min-height: 56px;
-    padding: var(--space-2) var(--space-1);
+    /* 0.125rem a side, not --space-1: with six tabs a seller's "Dashboard"
+       (3.44rem) then fits a 375px phone on one row. */
+    padding: var(--space-2) 0.125rem;
     color: var(--text-muted);
     text-decoration: none;
     font-size: 0.6875rem;
@@ -349,11 +489,40 @@ body {
     font-family: inherit;
   }
 
-  .mobile-nav__item > span:last-child {
+  /* The bell's tab (NotificationBell variant="tab") wraps a
+     .mobile-nav__item; `contents` makes that button a flex item of the bar
+     like its neighbours. A wrapper item without their padding came out 8px
+     narrower (flex-basis 0 still counts padding). Its panel is fixed, so the
+     wrapper never needed a box. */
+  .notification-bell--tab {
+    display: contents;
+  }
+
+  /* One line, never wrapped mid-word. The ellipsis is a last resort that
+     should not show: MobileNav measures this overflow and, if any label is
+     cut, sets data-rows="2" so each tab gets a third of the bar instead of
+     a sixth (24px text, 320px phones, "Dashboard"). A class, not
+     span:last-child: a tab with a badge ends in its screen-reader text. */
+  .mobile-nav__label {
     max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+  .mobile-nav[data-rows="2"] .mobile-nav__item {
+    flex-basis: 30%;
+  }
+  /* Taller than a third of the window (MobileNav): in the page, under the
+     header, scrolling away with it; --bottom-inset is 0px. z-index auto:
+     <body> is a flex column, so a static item keeps its z-index, and at 60
+     it slid over the sticky header (40) as the page scrolled. */
+  .mobile-nav[data-static] {
+    position: static;
+    z-index: auto;
+    border-top: 0;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0;
+    box-shadow: none;
   }
 
   .mobile-nav__item[aria-current="page"] {
@@ -376,7 +545,7 @@ body {
   .mobile-nav__badge {
     position: absolute;
     transform: translate(14px, -10px);
-    background: var(--brand-red);
+    background: var(--brand-brown);
     color: #ffffff;
     border-radius: 999px;
     font-size: 0.625rem;
@@ -385,7 +554,8 @@ body {
     min-width: 16px;
   }
 
-  /* The header keeps brand, search and the bell; the tab bar owns navigation. */
+  /* The header keeps brand and search (and a guest's Sign in); the tab bar
+     owns navigation and, signed in, the bell (§11). */
   .site-header .header-nav .nav-link {
     display: none;
   }
@@ -396,9 +566,6 @@ body {
     gap: var(--space-2);
     padding-top: var(--space-2);
     padding-bottom: var(--space-2);
-  }
-  .brand-word small {
-    display: none;
   }
 }
 
@@ -453,19 +620,30 @@ body {
    6. Forms and dense editors
    ------------------------------------------------------------------------ */
 .variant-row {
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-3);
 }
 
 @media (min-width: 768px) {
   .variant-row {
-    grid-template-columns: 1fr 1fr 90px 1fr auto;
+    grid-template-columns:
+      minmax(0, 1fr) minmax(0, 1fr) 6rem minmax(0, 1fr) auto;
     gap: var(--space-2);
+  }
+}
+
+/* Dialogs get a roomier gutter once there is room for one. Phones keep the
+   base --space-4 so the sticky action bar does not swallow a short viewport. */
+@media (min-width: 768px) {
+  .modal-form {
+    --modal-pad: var(--space-5);
+    gap: var(--space-5);
   }
 }
 
 /* Inputs at least 44px tall and 16px text — anything under 16px makes iOS
    Safari zoom the viewport on focus, which strands the user mid-form. */
+input:not([type]),
 input[type="text"],
 input[type="email"],
 input[type="password"],
@@ -527,8 +705,8 @@ textarea {
   margin-top: var(--space-6);
 }
 
+/* .kpi is flat in components.css. */
 .card,
-.kpi,
 .chart-card {
   box-shadow: none;
   border: 1px solid var(--border);
@@ -550,35 +728,134 @@ textarea {
   max-width: var(--measure);
 }
 
-.kpis {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: var(--space-4);
+/* --- Console content: container queries (01 §5, D-06) --------------------
+   .console__content is the `console` query container (layout.css). These
+   query its width, not the window's, and in rem, so the sidebar and the
+   24px text setting both leave fewer columns. Every container query in the
+   project lives in this file, like the width media queries. Widths below
+   are in rem of console content; at 16px text the content is the window
+   minus 2rem below lg, and minus the sidebar and gap (19.5rem) from lg.
+
+   KPI row: one column; two from 35rem (a 592px window at 16px text); from
+   58rem every card in one row, in equal columns: four as quarters, two as
+   halves, never 3 + 1. Measured in Rubik 800 at --step-4, with --space-4
+   padding and gap:
+     - 58rem is where a quarter holds a money() figure with centavos up to
+       ₱99,999.99 (6.06em); ₱128,430 (5.08em, a KpiCard figure) fits from
+       50rem. The content beside the sidebar at 1280px is 60.5rem, so 1280px
+       gets four across. "Four at lg" would not fit: at 1024px it is 44.5rem,
+       a quarter of 10.4rem against the 11.5rem that ₱128,430 needs. In a
+       quarter, ₱128,430.00 runs into the tile's padding but stays inside its
+       border; a seven-figure sum with centavos would cross it, so a KPI card
+       shows whole pesos (₱128,430, as in 01 §6.1).
+     - 35rem: a half then holds ₱1,284,300.50 (7.75em) at any text size. At
+       29rem a half held ₱12,345.67, and a seven-figure balance crossed the
+       tile's border at 768px with 24px text.
+     - A row of five or more (the finance balance) goes three to a row
+       instead: even at the widest console (70.5rem) a fifth does not hold
+       ₱24,780.00.
+   Below 15rem (a phone with 22-24px text) the tile keeps the old phone
+   sizes, --space-3 and --step-2, so ₱1,284,300.50 still fits at 320px. */
+.console__content .kpis {
+  grid-template-columns: minmax(0, 1fr);
+}
+@container console (width < 15rem) {
+  .console__content .kpi {
+    padding: var(--space-3);
+  }
+  .console__content .kpi__value {
+    font-size: var(--step-2);
+  }
+}
+/* Table cards (section 3) put each label beside its value. Below 18rem of
+   console content (a phone with 20-24px text) that left the value about
+   76px at 320px, so ₱1,250.00 overflowed and the table scrolled sideways
+   (1.4.10). The label goes above its value instead; at 18rem a value line
+   holds ₱1,284,300.50 at 24px text. */
+@container console (width < 18rem) {
+  .console__content .data-table--cards td {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-1);
+  }
+  /* One column here: the value goes under its label, not into a second
+     column (section 3's "value column" rule would make an implicit one and
+     squeeze the label to a letter a line). */
+  .console__content .data-table--cards td > * {
+    grid-column: auto;
+  }
+}
+@container console (min-width: 35rem) {
+  .console__content .kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+/* .dash-grid: 12 columns from the same 58rem, where a 4-column span is
+   18.7rem, room for a donut and its legend. */
+@container console (min-width: 58rem) {
+  .console__content .kpis:not(:has(> :nth-child(5))) {
+    grid-template-columns: none;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
+  }
+  .console__content .kpis:has(> :nth-child(5)) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .dash-grid {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+  }
+  .dash-grid > *,
+  .dash-grid > .span-12 {
+    grid-column: 1 / -1;
+  }
+  .dash-grid > .span-8 {
+    grid-column: span 8;
+  }
+  .dash-grid > .span-6 {
+    grid-column: span 6;
+  }
+  .dash-grid > .span-4 {
+    grid-column: span 4;
+  }
 }
 
-.kpi {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  justify-content: space-between;
-  padding: var(--space-4);
-  border-radius: var(--radius-md);
-  background: var(--canvas-white);
+/* List pagination (components/Pagination.tsx, P2-05). Its base layout in
+   components.css is the narrowest: "Page 3 of 20" on its own line over
+   Previous and Next. Widths in rem of console content, measured in Nunito
+   Sans 600 with the 2.75rem targets and --space-2 gaps:
+     - 18rem (a 320px phone at 16px text): "Page 3 of 20" goes between
+       Previous (about 5.6rem) and Next (3.6rem); the row is about 17rem.
+       It does not wrap there: a longer "Page 120 of 400" wraps its own
+       words instead, so nothing can push the row wider than the content.
+       At 320px with 24px text the content is 11.3rem, under this.
+     - 32rem: the numbers. The widest row, Previous 1 … 99 100 101 … 400
+       Next, is about 30rem; a row with four-digit pages wraps rather than
+       scroll. Below 32rem (a phone, or 768px with 24px text) the numbers
+       give way to "Page 3 of 20". */
+@container console (min-width: 18rem) {
+  .pagination__pages {
+    flex-wrap: nowrap;
+  }
+  .pagination__status {
+    order: 0;
+    flex: 0 1 auto;
+  }
 }
-
-.kpi__label {
-  color: var(--text-muted);
-  font-size: 0.875rem;
-  font-weight: 600;
-}
-
-.kpi__value {
-  /* Neutral, not brand blue: a saturated hue at 30px across a row of tiles is
-     what makes a dashboard tiring. Colour is reserved for status meaning. */
-  color: var(--text-charcoal);
-  font-size: var(--step-4);
-  font-weight: 800;
-  line-height: 1.1;
+@container console (min-width: 32rem) {
+  .pagination__nav {
+    flex: 0 1 auto;
+  }
+  .pagination__pages {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+  .pagination__num,
+  .pagination__gap {
+    display: block;
+  }
+  .pagination__status {
+    display: none;
+  }
 }
 
 h1 {
@@ -607,6 +884,18 @@ h3 {
   width: 100%;
   height: auto;
   display: block;
+}
+
+/* Two charts side by side once the console content holds two cards of about
+   20rem (a donut beside its legend, a line chart with readable labels); one
+   column below (layout.css). In rem of console content, like the KPI row,
+   so the 24px text setting stacks them on a laptop too: at 768px with 24px
+   text two cards were 14rem each. This was two columns with a max-width:
+   900px undo in the legacy block. */
+@container console (min-width: 40rem) {
+  .chart-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .chart-data-table {
@@ -645,6 +934,22 @@ h3 {
   }
 }
 
+/* The Seller Centre and admin console are wider than the storefront:
+   --console-max (90rem) instead of --container-max (01 §5). After the rule
+   above, which it overrides at every width. */
+.console {
+  max-width: var(--console-max);
+}
+/* On a console page the header and footer rows follow, so their edges line
+   up with the sidebar and the content. Not by header variant: /account,
+   /search and the static pages show the seller and admin headers above a
+   storefront-width page. A separate rule, so a browser without :has()
+   still widens the console. */
+.site-header:has(~ .console) .container,
+.console ~ .site-footer .container {
+  max-width: var(--console-max);
+}
+
 /* ---------------------------------------------------------------------------
    10. Legacy breakpoints, relocated
    These two blocks were the only width media queries serving the entire
@@ -654,26 +959,18 @@ h3 {
    ------------------------------------------------------------------------ */
 @media (max-width: 900px) {
   .main--buyer { grid-template-columns: 1fr; }
-  .filters { position: static; }
+  .filters { position: static; max-height: none; overflow: visible; }
   .product-detail { grid-template-columns: 1fr; }
   .checkout-grid { grid-template-columns: 1fr; }
-  .chart-grid { grid-template-columns: 1fr; }
   .support-grid { grid-template-columns: 1fr; }
   .ticket-workspace { grid-template-columns: 1fr; }
   .hero { grid-template-columns: 1fr; }
-  .row { grid-template-columns: 1fr; }
-  .variant-row { grid-template-columns: 1fr 1fr; }
-  .cart-item { grid-template-columns: 60px 1fr; gap: .5rem; }
-  .cart-item > *:nth-child(n+3) { grid-column: 1 / -1; }
+  .row { grid-template-columns: minmax(0, 1fr); }
+  .variant-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .cart-item { grid-template-columns: auto 60px 1fr; gap: .5rem; }
+  .cart-item > *:nth-child(n+4) { grid-column: 1 / -1; }
 }
 
-@media (max-width: 480px) {
-  .product-grid { grid-template-columns: repeat(2, 1fr); gap: .5rem; }
-  .product-card__title { font-size: .85rem; }
-  .product-card__price { font-size: .95rem; }
-  .header-row { flex-wrap: wrap; }
-  .search { order: 3; width: 100%; }
-}
 
 /* ---------------------------------------------------------------------------
    11. Shopee-style phone layout
@@ -682,7 +979,7 @@ h3 {
    where possible, cards instead of tables, and a fixed action bar for the
    primary commitment on each screen.
 
-   Two IncluMarket-specific departures from that reference, both deliberate:
+   Two InclusiveMarket-specific departures from that reference, both deliberate:
      - every tab bar item keeps a visible text label, because icon-only
        navigation is a barrier for cognitive disabilities
      - targets are 44px minimum and 48-56px for primary actions, rather than
@@ -702,15 +999,22 @@ h3 {
     gap: var(--space-2);
     padding: var(--space-2) var(--space-3);
     min-height: 0;
+    /* The query below moves the nav to a second row (a guest's Sign in; a
+       signed-in row has no nav on a phone). A container query, not a media
+       query, because its rem follows the 12-24px text scale.
+       `contain: layout` (which container-type does not imply) makes this row
+       the containing block of its fixed children, the scoped search's
+       suggestions (§14), so `top: 100%` is the header's bottom edge whether
+       the header is sticky or scrolls away (data-header-static). The row is
+       the whole header on a phone (the user strip is hidden). */
+    container: header-row / inline-size;
+    contain: layout;
   }
 
   /* Brand collapses to the mark so the search field can take the width, the
      way the Shopee app bar is laid out. */
   .brand-word {
     display: none;
-  }
-  .brand-mark {
-    font-size: 1rem;
   }
 
   .search {
@@ -730,30 +1034,80 @@ h3 {
   }
 }
 
-/* --- Category chips: one horizontal scroll row -------------------------- */
-@media (max-width: 767px) {
-  .category-chips {
-    display: flex;
-    flex-wrap: nowrap;
-    gap: var(--space-2);
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scroll-snap-type: x proximity;
-    padding-bottom: var(--space-2);
-    /* Bleed to the screen edges so the row reads as scrollable. */
-    margin-inline: calc(var(--space-3) * -1);
-    padding-inline: var(--space-3);
-    scrollbar-width: none;
+/* Below 23rem of bar (measured: under it the input is narrower than 4rem, and
+   at 24px text the "Search" button slides under the bell and Sign out), the
+   search takes the rest of the first row and the nav moves to a second row,
+   at the end: phones up to ~390px at 16px text, every phone at 24px. Brand,
+   search, nav is the DOM order, so what you see is still the focus order. */
+@container header-row (max-width: 23rem) {
+  .header-row > .search {
+    grid-column: 2 / -1;
+    grid-row: 1;
   }
-  .category-chips::-webkit-scrollbar {
+  .header-row > .header-nav {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    justify-self: end;
+  }
+}
+/* Signed in, a phone's header is the brand and the search: its nav (links,
+   Cart, the bell, Sign out) is hidden, because the tab bar carries the links
+   and the bell and its More sheet has Sign out (MobileNav). One row, so
+   more of a phone screen is page. */
+@media (max-width: 767px) {
+  .header-row--signed-in {
+    grid-template-columns: auto 1fr;
+  }
+  .header-row--signed-in > .header-nav {
     display: none;
   }
-  .category-chips > * {
-    flex: 0 0 auto;
-    scroll-snap-align: start;
-    min-height: 44px;
+
+  /* The bell's tab (MobileNav) opens its panel upward from the bar, the
+     full width less 8px a side, ending above the floating buttons so
+     "Settings" and "See all" are never under the chat button. The buttons
+     also rise over a page's fixed action bar (product, cart, checkout:
+     --commit-bar-h), so the panel does too. It stops under a sticky header;
+     where that leaves under 10rem (a landscape phone at 24px text) it takes
+     10rem and covers the header instead, but never more than the window
+     above the buttons. The vh lines are for browsers without svh. */
+  .notification-bell--tab .notification-panel {
+    position: fixed;
+    top: auto;
+    bottom: calc(var(--bottom-inset) + var(--commit-bar-h) + var(--fab-clearance));
+    left: var(--space-2);
+    right: var(--space-2);
+    width: auto;
+    max-height: min(calc(100vh - var(--bottom-inset) - var(--commit-bar-h) - var(--fab-clearance) - var(--space-2)), max(10rem, calc(100vh - var(--header-total) - var(--bottom-inset) - var(--commit-bar-h) - var(--fab-clearance) - 2 * var(--space-2))));
+    max-height: min(calc(100svh - var(--bottom-inset) - var(--commit-bar-h) - var(--fab-clearance) - var(--space-2)), max(10rem, calc(100svh - var(--header-total) - var(--bottom-inset) - var(--commit-bar-h) - var(--fab-clearance) - 2 * var(--space-2))));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    transform-origin: bottom center;
   }
-  .category-folder-hint {
+  /* One scroller, not a 360px one inside it: a swipe in the list would not
+     reach the foot until the list ran out. */
+  .notification-bell--tab .notification-list {
+    max-height: none;
+    overflow: visible;
+  }
+}
+/* It rises from the bar, so it fades in from below rather than above. */
+@media (max-width: 767px) and (prefers-reduced-motion: no-preference) {
+  @starting-style {
+    .notification-bell--tab .notification-panel { transform: translateY(4px) scale(0.98); }
+  }
+  .notification-bell--tab .notification-panel[data-state="closing"] {
+    transform: translateY(4px) scale(0.98);
+  }
+}
+/* The narrowest bars (13rem: a 320-350px phone at 24px text; never at 16px)
+   still leave the input under 3rem beside a 146px "Search" button. The
+   button keeps its word and loses the magnifier (aria-hidden) and some
+   padding. */
+@container header-row (max-width: 13rem) {
+  .header-row > .search button[type="submit"] {
+    padding-inline: var(--space-2);
+  }
+  .header-row > .search button[type="submit"] > svg {
     display: none;
   }
 }
@@ -818,73 +1172,367 @@ h3 {
   }
 }
 
-/* --- Product grid: 2-up from the smallest screen ------------------------ */
-@media (max-width: 767px) {
-  .product-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: var(--space-2);
-  }
-  .product-card__body {
-    padding: var(--space-2);
-    gap: 2px;
-  }
-  .product-card__title {
-    font-size: 0.85rem;
-    line-height: 1.3;
-    /* Two lines then ellipsis: Shopee card behaviour, and it keeps every card
-       in a row the same height. */
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-  }
-  .product-card__price {
-    font-size: 0.95rem;
-  }
-  .product-card__cat {
-    font-size: 0.62rem;
-  }
-  .product-card__meta {
-    font-size: 0.7rem;
-  }
-}
-
-/* Three across once there is room, before the desktop grid takes over. */
-@media (min-width: 480px) and (max-width: 767px) {
-  .product-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
-
-/* --- Section rails: horizontal scroll ----------------------------------- */
-@media (max-width: 767px) {
-  /* ONLY .seller-rail scrolls. .rail is the section WRAPPER around a heading
-     plus a grid — turning it into a horizontal flex track laid the <h2> and
-     the grid side by side at 78% each, which is what pushed the cards off to
-     the right with an empty column beside the heading. */
-  .seller-rail {
+/* --- Seller Centre / Admin links (md): one scrolling row ---------------
+   Between the phone tab bar and the lg sidebar the console links used to sit
+   in the header — twelve of them for an admin, and pages without a header
+   link were unreachable. The sidebar's links show as one row instead. */
+@media (min-width: 768px) {
+  .console-nav {
     display: flex;
-    flex-wrap: nowrap;
-    gap: var(--space-3);
+    gap: var(--space-1);
     overflow-x: auto;
-    scroll-snap-type: x proximity;
-    margin-inline: calc(var(--space-3) * -1);
-    padding-inline: var(--space-3);
-    padding-bottom: var(--space-2);
-    scrollbar-width: none;
+    margin-top: 1rem;
+    padding: var(--space-2);
+    background: var(--canvas-white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
   }
-  .seller-rail::-webkit-scrollbar {
+  .console-nav__title,
+  .console-nav__section {
     display: none;
   }
-  .seller-rail > * {
-    flex: 0 0 78%;
+  .console-nav__group + .console-nav__group {
+    margin-top: 0;
+  }
+  .console-nav ul {
+    display: flex;
+    gap: var(--space-1);
+  }
+  .console-nav__link {
+    white-space: nowrap;
+    border-left: 0;
+    border-bottom: 3px solid transparent;
+  }
+  .console-nav__link.is-current {
+    border-bottom-color: var(--brand-blue);
+  }
+  .site-header--seller .header-nav .nav-link,
+  .site-header--admin .header-nav .nav-link {
+    display: none;
+  }
+}
+
+/* --- Seller Centre / Admin sidebar (lg): dark (01 §2.5) ---------------
+   The nav tokens, so every preset and high contrast cover it. Hover and the
+   current page mix 8% and 14% of the text colour into the nav (#143985 and
+   #24468D on the default preset); the current page adds a 3px bar, weight
+   800 and aria-current. Section labels keep the full text colour: dimmed
+   text is not checked across presets. 16rem, at most a quarter of the
+   viewport: 256px at 1024px with 24px text, where a long label wraps
+   (hyphenated where the browser can) instead of running out of the
+   sidebar. */
+@media (min-width: 1024px) {
+  .console-nav__title,
+  .console-nav__section {
+    display: block;
+    color: var(--color-nav-text);
+  }
+  .console-nav__group + .console-nav__group {
+    margin-top: var(--space-4);
+  }
+  .console-nav ul {
+    display: grid;
+    gap: 2px;
+  }
+  .console-nav__link {
+    white-space: normal;
+    border-left: 3px solid transparent;
+    border-bottom: 0;
+    color: var(--color-nav-text);
+  }
+  /* base.css lets an svg shrink (max-width: 100%), so a long label
+     squeezed the icon; it keeps its size and the label wraps instead. */
+  .console-nav__icon {
+    flex-shrink: 0;
+  }
+  .console-nav__link:hover {
+    background: color-mix(in srgb, var(--color-nav-text) 8%, var(--color-nav));
+    color: var(--color-nav-text);
+  }
+  .console-nav__link.is-current {
+    background: color-mix(in srgb, var(--color-nav-text) 14%, var(--color-nav));
+    color: var(--color-nav-text);
+    border-left-color: var(--color-nav-text);
+    font-weight: 800;
+  }
+  /* Inverted on the dark sidebar: a light pill with nav-coloured digits. */
+  .console-nav__badge {
+    background: var(--color-nav-text);
+    color: var(--color-nav);
+  }
+  .console {
+    grid-template-columns: min(16rem, 25vw) minmax(0, 1fr);
+    align-items: start;
+  }
+  .console-nav {
+    display: block;
+    overflow-wrap: anywhere;
+    hyphens: auto; /* html lang="en"; overflow-wrap is the fallback */
+    position: sticky;
+    top: calc(var(--header-total) + var(--space-4));
+    /* Taller than the window (17 admin links pass 1,000px even at 16px
+       text), the sticky sidebar kept its lower links off screen while they
+       had focus. It scrolls on its own instead, ends above the accessibility
+       button (--fab-clearance), and scroll-padding keeps a focused link's
+       ring inside it. */
+    max-height: calc(100vh - var(--header-total) - var(--space-4) - var(--fab-clearance));
+    overflow: auto;
+    scroll-padding-block: var(--space-3);
+    scrollbar-color: var(--color-nav-text) var(--color-nav);
+    margin-top: 1.5rem;
+    padding: var(--space-3);
+    background: var(--color-nav);
+    color: var(--color-nav-text);
+    --focus-ring: var(--focus-ring-nav); /* dark surface: tokens.css focus-ring notes */
+    border: 1px solid var(--color-nav);
+    border-radius: var(--radius-md);
+  }
+}
+
+/* --- Loading skeleton: two columns for the product-page skeleton -------- */
+@media (min-width: 768px) {
+  .skeleton__split { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+}
+/* The home skeleton's hero: the carousel's 2/3 at 16:6 is about 4:1 of the row. */
+@media (min-width: 1024px) {
+  .skeleton__hero { aspect-ratio: 4 / 1; }
+}
+
+/* --- The product grid: its ONLY definition (B-17) -----------------------
+   It was defined five times across three files, and `auto-fill` kept empty
+   tracks, which is the "large empty area" the client saw. Explicit column
+   counts, mobile-first:
+     < 480px  2 columns
+     480px+   3 columns (large phone, tablet portrait)
+     1024px+  4 columns beside the filter panel
+              5 columns when the panel is collapsed or there is none
+              (.product-grid--wide; /search with its filters collapsed)
+   minmax(0, 1fr) lets a long title wrap instead of widening its track.
+   scripts/check-grid.mjs fails the build on any other definition.
+
+   Never a column under 7.5rem (P4-05, 1.4.10): the narrowest card that
+   keeps a "₱1,250.00" price on one line at any text size, the rule the
+   rails' phone wrap uses (.rail__track, components.css). At 320px with 24px
+   text two columns left a 92px card body that cut the price. So each count
+   above is a ceiling: inside StorefrontGrid's .product-list (the query
+   container), the grid drops columns while its box is under
+   n × 7.5rem + (n − 1) gaps, with the gap of that width (container queries
+   in rem follow the text setting; a media query would not). At 16px text no
+   page changes; at 24px a phone gets one column, 480px two, /search
+   beside its filters fewer. A grid outside a .product-list (the loading
+   skeleton, the wishlist) keeps the ceilings. Explicit counts only: no
+   auto-fill here (check-grid.mjs). */
+.product-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+@media (min-width: 480px) {
+  .product-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--space-3);
+  }
+}
+@media (min-width: 1024px) {
+  .product-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--space-4);
+  }
+  .product-grid--wide,
+  .search-layout--collapsed .product-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+.product-list {
+  container: product-list / inline-size;
+}
+/* After the ceilings. Each width's rules come after the narrower width's,
+   and within a width the smaller box comes last, so the last match wins. */
+@container product-list (width < 15.5rem) {
+  .product-grid,
+  .product-grid--wide,
+  .search-layout--collapsed .product-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (min-width: 480px) {
+  @container product-list (width < 24rem) {
+    .product-grid,
+    .product-grid--wide,
+    .search-layout--collapsed .product-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+  @container product-list (width < 15.75rem) {
+    .product-grid,
+    .product-grid--wide,
+    .search-layout--collapsed .product-grid {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+}
+@media (min-width: 1024px) {
+  @container product-list (width < 41.5rem) {
+    .product-grid--wide,
+    .search-layout--collapsed .product-grid {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+  }
+  @container product-list (width < 33rem) {
+    .product-grid,
+    .product-grid--wide,
+    .search-layout--collapsed .product-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+  @container product-list (width < 24.5rem) {
+    .product-grid,
+    .product-grid--wide,
+    .search-layout--collapsed .product-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+  @container product-list (width < 16rem) {
+    .product-grid,
+    .product-grid--wide,
+    .search-layout--collapsed .product-grid {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+}
+
+/* --- RailScroller rails (P4-02, ADR-06, 05 §2, 01 §6.5) -----------------
+   components/RailScroller.tsx; the phone wrap, the buttons and the hero are
+   in components.css. Phones: the 2-column wrap, no sideways scroll, no
+   buttons. From 768px: one row of whole cards, 3 / 4 / 5 to a view at
+   768 / 1024 / 1280, snapping to a card's start; Previous / Next in the
+   header row. The cards are a fraction of the track's content box, so at
+   24px text a view is still whole cards; only their width changes. The
+   tracks here are .rail__track, never .product-grid (check-grid.mjs). */
+@media (min-width: 480px) {
+  .rail-scroller--rail .rail__track {
+    --rail-gap: var(--space-3); /* as .product-grid */
+  }
+}
+@media (min-width: 768px) {
+  .rail-scroller--rail .rail__track {
+    --rail-gap: calc(var(--rail-pad) * 2);
+    grid-template-columns: none;
+    grid-auto-flow: column;
+    grid-auto-columns: calc((100% - (var(--rail-per-view) - 1) * var(--rail-gap)) / var(--rail-per-view));
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x mandatory;
+    /* A card focused out of view scrolls in with its ring inside the bleed. */
+    scroll-padding-inline: var(--rail-pad);
+    padding: var(--rail-pad);
+    margin: calc(var(--rail-pad) * -1);
+  }
+  .rail-scroller--rail .rail__item {
     scroll-snap-align: start;
   }
+  .rail-scroller--rail .rail__controls {
+    display: flex;
+  }
+  /* The scrollbar goes only once the buttons replace it; without JavaScript
+     the row keeps it. */
+  .rail-scroller--rail.has-controls .rail__track {
+    scrollbar-width: none;
+  }
+  .rail-scroller--rail.has-controls .rail__track::-webkit-scrollbar {
+    display: none;
+  }
+}
+@media (min-width: 1024px) {
+  .rail-scroller--rail .rail__track {
+    --rail-per-view: 4;
+  }
+}
+@media (min-width: 1280px) {
+  .rail-scroller--rail .rail__track {
+    --rail-per-view: 5;
+  }
+}
 
-  /* The wrapper stays a plain block. */
-  .rail {
-    display: block;
+/* --- Category tiles from 768px (P4-04, 05 #4, 01 §6.5) -------------------
+   components/CategoryChips.tsx; the phone grid and the tile are in
+   shopee.css. One row of 7.5rem tiles instead of 3 / 4 / 5 cards to a
+   view: a fixed rem width, so a wide screen shows more of them and the 24px
+   setting fewer, each name still on one or two whole-word lines. After the
+   block above, so it wins at equal specificity. */
+@media (min-width: 768px) {
+  .rail-scroller--rail .rail__track--tiles {
+    grid-auto-columns: 7.5rem;
+  }
+}
+
+/* --- Home product rails and store cards (P4-05, 05 §2, 01 §6.5) ---------
+   ProductRail shows four cards on phones (layout.css); from 768px every
+   card, in the scrolling row (display: flex, as .rail__item). The store
+   grid (components/StoreCards.tsx): one column, two from 600px, four from
+   1024px (two rows of four); card padding --space-5 from lg (01 §4). */
+@media (min-width: 600px) {
+  .store-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (min-width: 768px) {
+  .product-rail--capped .rail__item:nth-child(n + 5) {
+    display: flex;
+  }
+}
+@media (min-width: 1024px) {
+  .store-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  .store-card {
+    padding: var(--space-5);
+  }
+}
+/* A store card 17rem wide or more (its own width, in rem, so 24px text
+   needs a wider card): the logo on the left, the words beside it. A
+   narrower card (four to a row at 1024px, or 24px text) keeps the logo
+   above the name, so a name or the badge is never squeezed into a sliver. */
+@container store-card (min-width: 17rem) {
+  .store-card__body {
+    grid-template-columns: 3rem minmax(0, 1fr);
+    align-items: start;
+    column-gap: var(--space-3);
+  }
+}
+
+/* --- Home hero (P4-03, 05 #3, 01 §6.5) ----------------------------------
+   components/BannerStrip.tsx and PromoTile.tsx; the one-column base is in
+   layout.css. From 1024px a split hero sets the carousel and the tile side
+   by side, 2/3 and 1/3. The row is as tall as the taller of the two and the
+   tile stretches to it (grid's default), its content centred in the spare
+   height. The carousel keeps one slide per view (components.css). */
+@media (min-width: 1024px) {
+  .home-hero--split {
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  }
+  .promo-tile {
+    padding: var(--space-5); /* card padding from lg (01 §4) */
+  }
+}
+/* The tile's wide form, by its own width (the `promo` container) in rem, so
+   at 24px text it needs a wider tile: the picture on the left (30% of the
+   tile, 7rem to 12rem; a shop's logo keeps its 3rem), the words beside it.
+   A full-width tile (no banners; or under the carousel below 1024px) is
+   then a wide horizontal card, while the 1/3 column (about 21rem at 16px
+   text, under 29rem at 12px) keeps the picture above the words. */
+@container promo (min-width: 34rem) {
+  .promo-tile__body {
+    grid-template-columns: clamp(7rem, 30%, 12rem) minmax(0, 1fr);
+    align-items: center;
+    column-gap: var(--space-5);
+  }
+  .promo-tile__media--product {
+    inline-size: 100%;
+  }
+  .promo-tile--shop .promo-tile__body {
+    grid-template-columns: 3rem minmax(0, 1fr);
+    align-items: start;
   }
 }
 
@@ -959,13 +1607,14 @@ h3 {
 /* --- Cart: Shopee-style rows plus a commit bar -------------------------- */
 @media (max-width: 767px) {
   .cart-item {
-    grid-template-columns: 64px 1fr;
+    /* checkbox · photo · title; price, quantity and remove line up under the title */
+    grid-template-columns: auto 64px 1fr;
     gap: var(--space-2);
     align-items: start;
     padding: var(--space-3) 0;
   }
-  .cart-item > *:nth-child(n + 3) {
-    grid-column: 2 / -1;
+  .cart-item > *:nth-child(n + 4) {
+    grid-column: 3 / -1;
   }
   .cart-item__thumb {
     width: 64px;
@@ -1032,21 +1681,9 @@ h3 {
 
 /* --- Dashboards: seller and admin --------------------------------------- */
 @media (max-width: 767px) {
-  /* Two KPI tiles per row still reads as a dashboard. One per row reads as a
-     list and buries the charts three screens down. */
-  .kpis {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: var(--space-2);
-  }
-  .kpi {
-    padding: var(--space-3);
-  }
-  .kpi__value {
-    font-size: var(--step-2);
-  }
-  .kpi__label {
-    font-size: 0.75rem;
-  }
+  /* The KPI row is sized by the console content, not the window (section 7,
+     container queries). The two tiles per row that were here spilled a
+     seller's money figure out of its tile at 320px. */
 
   .page-head {
     gap: var(--space-2);
@@ -1063,13 +1700,18 @@ h3 {
     flex: 1 1 auto;
   }
 
-  /* Tabs scroll sideways instead of wrapping into three cramped rows. */
+  /* Tabs scroll sideways instead of wrapping into three cramped rows. A
+     scroller clips whatever lies outside its box, the tabs' focus ring
+     included (the strip in a chart card has no padding at all), so the ring
+     is drawn inside each tab, on its own light fill, as the skip link's is
+     (base.css). */
   .tabs {
     flex-wrap: nowrap;
     overflow-x: auto;
     scrollbar-width: none;
     margin-inline: calc(var(--space-3) * -1);
     padding-inline: var(--space-3);
+    --focus-ring-offset: -5px;
   }
   .tabs::-webkit-scrollbar {
     display: none;
@@ -1077,6 +1719,16 @@ h3 {
   .tab {
     flex: 0 0 auto;
     min-height: 44px;
+  }
+  /* A chart card's strip of two or three tabs wraps instead: scrolling, it
+     showed half of "Orders" on the overview's sales card at 320px with
+     24px text, behind a hidden scrollbar. The ring stays inside each tab.
+     An admin list's status tabs too: five tabs with counts ran off the
+     screen behind the same hidden scrollbar (1.4.10). */
+  .chart-card__head .tabs,
+  .list-toolbar > .tabs {
+    flex-wrap: wrap;
+    overflow-x: visible;
   }
 
   /* The ticket workspace is a two-pane layout; on a phone each pane gets the
@@ -1125,17 +1777,16 @@ h3 {
     max-height: 92dvh;
     margin: auto auto 0;
     border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-    padding: var(--space-4);
-    padding-bottom: calc(var(--space-4) + env(safe-area-inset-bottom, 0px));
     overflow-y: auto;
   }
-  .modal-form .form-actions {
-    position: sticky;
-    bottom: 0;
-    background: var(--canvas-white);
-    padding-top: var(--space-3);
-    margin-top: var(--space-3);
-    border-top: 1px solid var(--border);
+  /* The sheet's gutter belongs to .modal-form, not to the dialog. The sticky
+     title and action bands cancel the form padding with a negative margin to
+     reach the sheet edge; a second padding on the dialog itself would leave a
+     strip of scrolling content showing above and below them. components.css
+     already makes both bands sticky at every width, so the phone-only copy of
+     that rule is gone -- only the safe-area inset is width-specific. */
+  .modal-form > .form-actions {
+    padding-bottom: calc(var(--space-3) + env(safe-area-inset-bottom, 0px));
   }
 }
 
@@ -1150,7 +1801,7 @@ h3 {
   }
   body:has(.pd__actions) .toast-region {
     bottom: calc(
-      var(--commit-bar-h) + 64px + var(--space-4) + var(--bottom-inset) +
+      var(--commit-bar-h) + var(--fab-clearance) + var(--bottom-inset) +
         env(safe-area-inset-bottom, 0px)
     );
   }
@@ -1177,7 +1828,7 @@ h3 {
   width: 100%;
   min-height: 40px;
   padding: 0 var(--space-3);
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-control);
   border-radius: 999px;
   background: var(--canvas-white);
   color: var(--text-charcoal);
@@ -1268,17 +1919,18 @@ h3 {
 
 @media (prefers-reduced-motion: no-preference) {
   .is-deeplinked {
-    animation: deeplink-pulse 2.4s ease-out 1;
+    animation: deeplink-pulse 1.2s var(--ease-out) 1;
   }
 }
 
 @keyframes deeplink-pulse {
-  0%,
-  22% {
-    background: var(--brand-yellow);
+  from {
+    outline: 3px solid var(--brand-blue);
+    outline-offset: 2px;
   }
-  100% {
-    background: var(--brand-blue-100);
+  to {
+    outline: 3px solid transparent;
+    outline-offset: 2px;
   }
 }
 
@@ -1288,17 +1940,192 @@ h3 {
 @media (max-width: 767px) {
   .search--scoped .search__suggestions {
     /* Full width of the header rather than the input, so two-line results are
-       readable on a narrow screen. */
+       readable on a narrow screen. Fixed children of .header-row resolve
+       against it on phones (`contain: layout`, §11), so 100% is the
+       header's bottom edge, sticky or not. Its height is capped like the
+       bell's panel (§11): above the tab bar and the floating buttons. */
     position: fixed;
     left: var(--space-2);
     right: var(--space-2);
-    top: var(--header-total);
-    max-height: 60vh;
+    top: 100%;
+    max-height: max(min(10rem, calc(100vh - var(--header-block) - var(--space-2) - var(--bottom-inset))), calc(100vh - var(--header-block) - var(--space-2) - var(--bottom-inset) - var(--fab-clearance)));
+    max-height: max(min(10rem, calc(100svh - var(--header-block) - var(--space-2) - var(--bottom-inset))), calc(100svh - var(--header-block) - var(--space-2) - var(--bottom-inset) - var(--fab-clearance)));
     overflow-y: auto;
     z-index: var(--z-header);
+  }
+  :root[data-header-static] .search--scoped .search__suggestions {
+    max-height: max(10rem, calc(100vh - var(--header-block) - var(--space-2) - var(--bottom-inset) - var(--fab-clearance)));
+    max-height: max(10rem, calc(100svh - var(--header-block) - var(--space-2) - var(--bottom-inset) - var(--fab-clearance)));
   }
 
   .search--scoped .search__suggestion {
     min-height: 52px;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Account area (/account)
+   ------------------------------------------------------------------------ */
+@media (min-width: 768px) {
+  .account-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+}
+
+/* Read-only details (.details-list, components.css): label beside value
+   while the list is wide, label above value when it is not. The list is its
+   own container, so every use (account details, the verification review and
+   the buyer's order) follows its own width, and in rem, so 24px text counts.
+   Beside, the label column is max-content and the value gets the rest: at
+   320px with 24px text that was 147px + 52px and split every word
+   ("Sell|er Acc|ount"). Measured on /account: 19.9–20.4rem (768px, 16px
+   text, with and without a scrollbar) and 21.4rem (1280px, 24px) read
+   cleanly beside; 15.9rem (320px, 16px) leaves the value 8.8rem; 12.1rem
+   and 9.3rem split. So it stacks under 18rem, clear of both: at 20rem a
+   scrollbar's 15px flipped it at 768px, and the taller stack kept the
+   scrollbar. At 18rem an 8rem label ("Tracking number") still leaves 9rem.
+   Each dt and dd spans both tracks rather than redefining the columns: a
+   container query cannot style the container itself. A money list's short
+   labels and amounts stay beside down to 14rem, then stack left-aligned
+   (like a number in a table card). The always-stacked variant is left as is. */
+.details-list {
+  container: details-list / inline-size;
+}
+@container details-list (width < 18rem) {
+  .details-list:not(.details-list--money, .details-list--stacked) > :is(dt, dd) {
+    grid-column: 1 / -1;
+  }
+  .details-list:not(.details-list--money, .details-list--stacked) > dd:not(:last-child) {
+    margin-bottom: var(--space-2);
+  }
+}
+@container details-list (width < 14rem) {
+  .details-list--money > :is(dt, dd) {
+    grid-column: 1 / -1;
+  }
+  .details-list--money > dd {
+    text-align: left;
+  }
+  .details-list--money > dd:not(:last-child) {
+    margin-bottom: var(--space-2);
+  }
+}
+
+/* The buyer dashboard (P4-06, 05 §3; layout.css). The purchase tiles go
+   four to a row once four of 7.5rem fit, else two or one; from 600px the
+   wishlist's cards go four to a row, still never under 7.5rem (fewer to a
+   row at 24px text). From 1024px two columns: the wider one
+   holds the recent orders and the wishlist's four cards, the narrower one
+   PWD verification and the shortcuts; My purchases and Picked for you span
+   both. */
+/* Four tiles of 7.5rem and three --space-4 (1rem) gaps: 33rem. In rem, so
+   at 24px text it takes a wider box (container queries cannot read var()). */
+@container purchases (min-width: 33rem) {
+  .purchase-tiles {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+@media (min-width: 600px) {
+  .dash-cards {
+    grid-template-columns: repeat(
+      auto-fill,
+      minmax(min(100%, max(7.5rem, calc((100% - 3 * var(--space-3)) / 4))), 1fr)
+    );
+  }
+}
+@media (min-width: 1024px) {
+  .buyer-dash {
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  }
+  .buyer-dash__wide {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (min-width: 768px) {
+  /* Progress reads across once there is room for four labels. */
+  .steps {
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
+  }
+}
+
+/* /search: the filter panel sits beside the results from md up; collapsed,
+   it becomes a bar above them and the grid takes the full width. */
+@media (min-width: 768px) {
+  .search-layout {
+    grid-template-columns: 16rem minmax(0, 1fr);
+  }
+  .search-layout--collapsed {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .search-layout--collapsed .filters {
+    position: static;
+  }
+}
+
+@media (min-width: 768px) {
+  /* Product page reviews: the breakdown beside the list. */
+  .reviews__layout {
+    grid-template-columns: 16rem minmax(0, 1fr);
+    align-items: start;
+  }
+}
+
+@media (min-width: 1024px) {
+  /* Order detail: seller, delivery and payment side by side. */
+  .order-detail {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: start;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Print: the packing slip (and any page) without the site's chrome, on A4.
+   Sizes in pt so the accessibility font setting does not push the slip onto
+   a second page.
+   ------------------------------------------------------------------------ */
+@media print {
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+  .site-header,
+  .mobile-nav,
+  .console-nav,
+  .site-footer,
+  .a11y-widget,
+  .chat-widget,
+  .toast-region,
+  .skip-link,
+  .no-print {
+    display: none !important;
+  }
+  html,
+  body,
+  main {
+    background: #FFFFFF !important;
+    padding: 0 !important;
+  }
+  /* Black on white: printers and photocopies drop colour and light tints. */
+  .slip,
+  .slip * {
+    color: #000000 !important;
+  }
+  .console {
+    display: block !important;
+  }
+  .slip {
+    border: 0;
+    padding: 0;
+    max-width: none;
+    font-size: 11pt;
+    gap: 10pt;
+    break-inside: avoid;
+  }
+  .slip__shop,
+  .slip__order h1 {
+    font-size: 16pt;
   }
 }

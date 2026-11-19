@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { usePresence } from "@/lib/a11y/use-presence";
 import { sendChatMessage, escalateChat, fetchChatHistory } from "@/lib/actions/chat";
 import { toast } from "@/lib/toast";
 import { flashVisualAlert } from "./VisualAlert";
@@ -16,10 +17,11 @@ const LEGACY_KEYS = ["im_chat_session_id", "im_chat_guest_id"];
 
 export function ChatWidget() {
   const [open, setOpen] = useState(false);
+  const presence = usePresence(open);
   const [messages, setMessages] = useState<ChatEntry[]>([
     {
       role: "bot",
-      body: "Hi! I'm the IncluMarket assistant. Ask me about orders, shipping, returns, accessibility, or selling on IncluMarket.",
+      body: "Hi! I'm the InclusiveMarket assistant. Ask me about orders, shipping, returns, accessibility, or selling on InclusiveMarket.",
     },
   ]);
   const [input, setInput] = useState("");
@@ -108,10 +110,17 @@ export function ChatWidget() {
 
   return (
     <div className="chat-widget" ref={panelRef}>
-      {open ? (
-        <div className="chat-panel" role="dialog" aria-label="IncluMarket assistant" aria-modal="false">
+      {presence.mounted ? (
+        <div
+          className="chat-panel"
+          data-state={presence.closing ? "closing" : "open"}
+          inert={presence.closing}
+          role="dialog"
+          aria-label="InclusiveMarket assistant"
+          aria-modal="false"
+        >
           <div className="chat-panel__head">
-            <strong>IncluMarket Assistant</strong>
+            <strong>InclusiveMarket Assistant</strong>
             <button
               type="button"
               className="icon-btn"
@@ -147,7 +156,7 @@ export function ChatWidget() {
 
           <form className="chat-form" onSubmit={send}>
             <label htmlFor="chat-input" className="sr-only">
-              Message the IncluMarket assistant
+              Message the InclusiveMarket assistant
             </label>
             <input
               id="chat-input"

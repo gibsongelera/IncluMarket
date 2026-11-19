@@ -19,7 +19,12 @@ export type EmailKind =
   | "seller_new_order"
   | "seller_decision"
   | "ticket_reply"
-  | "newsletter_welcome";
+  | "newsletter_welcome"
+  | "account_status"
+  | "pwd_verification"
+  | "flash_sale"
+  | "privacy_request"
+  | "privacy_response";
 
 export type TemplateData = Record<string, unknown>;
 
@@ -74,7 +79,7 @@ function shell(headline: string, bodyHtml: string, ctaLabel?: string, ctaHref?: 
                 border:1px solid ${BORDER};border-radius:12px">
     <tr>
       <td style="padding:20px 24px;background:${BRAND_DEEP};border-radius:12px 12px 0 0">
-        <span style="color:#FFFFFF;font-size:20px;font-weight:800">IncluMarket</span>
+        <span style="color:#FFFFFF;font-size:20px;font-weight:800">InclusiveMarket</span>
       </td>
     </tr>
     <tr><td style="padding:24px 24px 8px">
@@ -83,7 +88,7 @@ function shell(headline: string, bodyHtml: string, ctaLabel?: string, ctaHref?: 
     </td></tr>
     ${cta}
     <tr><td style="padding:16px 24px 24px;border-top:1px solid ${BORDER};color:${MUTED};font-size:14px">
-      IncluMarket — a livelihood marketplace for Persons with Disabilities.<br>
+      InclusiveMarket — a livelihood marketplace for Persons with Disabilities.<br>
       <a href="${esc(siteUrl())}" style="color:${BRAND_DEEP}">${esc(siteUrl())}</a>
     </td></tr>
   </table>
@@ -102,7 +107,7 @@ export function renderTemplate(kind: EmailKind, d: TemplateData): RenderedEmail 
       const id = d.orderId;
       const total = peso(d.total);
       return {
-        subject: `Order #${id} received — IncluMarket`,
+        subject: `Order #${id} received — InclusiveMarket`,
         html: shell(
           `Thank you, ${esc(d.buyerName)}`,
           p(`We have received your order <strong>#${esc(id)}</strong>.`) +
@@ -131,7 +136,7 @@ export function renderTemplate(kind: EmailKind, d: TemplateData): RenderedEmail 
       const id = d.orderId;
       const total = peso(d.total);
       return {
-        subject: `Payment received for order #${id} — IncluMarket`,
+        subject: `Payment received for order #${id} — InclusiveMarket`,
         html: shell(
           "Your payment went through",
           p(`Order <strong>#${esc(id)}</strong> is now paid.`) +
@@ -151,7 +156,7 @@ export function renderTemplate(kind: EmailKind, d: TemplateData): RenderedEmail 
     case "seller_new_order": {
       const id = d.orderId;
       return {
-        subject: `New order #${id} — IncluMarket`,
+        subject: `New order #${id} — InclusiveMarket`,
         html: shell(
           "You have a new order",
           p(`Order <strong>#${esc(id)}</strong> includes one or more of your products.`) +
@@ -172,8 +177,8 @@ export function renderTemplate(kind: EmailKind, d: TemplateData): RenderedEmail 
       const approved = d.status === "approved";
       return {
         subject: approved
-          ? `"${d.productTitle}" is now live — IncluMarket`
-          : `"${d.productTitle}" needs changes — IncluMarket`,
+          ? `"${d.productTitle}" is now live — InclusiveMarket`
+          : `"${d.productTitle}" needs changes — InclusiveMarket`,
         html: shell(
           approved ? "Your listing is approved" : "Your listing needs changes",
           p(`<strong>${esc(d.productTitle)}</strong>`) +
@@ -204,8 +209,9 @@ export function renderTemplate(kind: EmailKind, d: TemplateData): RenderedEmail 
     }
 
     case "ticket_reply": {
+      const support = `${url}${String(d.supportPath ?? "/buyer/support")}`;
       return {
-        subject: `Reply to your support request — IncluMarket`,
+        subject: `Reply to your support request — InclusiveMarket`,
         html: shell(
           "Our support team replied",
           p(`Re: <strong>${esc(d.subject)}</strong>`) +
@@ -214,30 +220,206 @@ export function renderTemplate(kind: EmailKind, d: TemplateData): RenderedEmail 
                ${esc(d.message)}</blockquote>` +
             p("You can reply from your support page."),
           "Open support",
-          `${url}/buyer/support`
+          support
         ),
         text:
           `Our support team replied.\n\n` +
           `Re: ${d.subject}\n\n${d.message}\n\n` +
-          `Reply from your support page: ${url}/buyer/support\n`,
+          `Reply from your support page: ${support}\n`,
       };
     }
 
     case "newsletter_welcome": {
+      // The unsubscribe link carries the subscriber's own token (C-42); the
+      // page asks for one click, so a mail scanner cannot unsubscribe anyone.
+      const unsub = d.unsubscribeToken ? `${url}/newsletter/unsubscribe?token=${encodeURIComponent(String(d.unsubscribeToken))}` : null;
       return {
-        subject: "You are subscribed — IncluMarket",
+        subject: "You are subscribed — InclusiveMarket",
         html: shell(
           "Thanks for subscribing",
           p("You will hear from us when new PWD-made products and flash sales go live.") +
-            p("We send rarely, and you can unsubscribe from any email."),
+            p("We send rarely.") +
+            (unsub
+              ? p(`Changed your mind? <a href="${esc(unsub)}" style="color:${BRAND_DEEP}">Unsubscribe</a> at any time.`)
+              : ""),
           "Browse the marketplace",
           `${url}/home`
         ),
         text:
           `Thanks for subscribing.\n\n` +
-          `You will hear from us when new PWD-made products and flash sales go live.\n` +
-          `We send rarely, and you can unsubscribe from any email.\n\n` +
-          `Browse the marketplace: ${url}/home\n`,
+          `You will hear from us when new PWD-made products and flash sales go live. We send rarely.\n\n` +
+          `Browse the marketplace: ${url}/home\n` +
+          (unsub ? `\nUnsubscribe: ${unsub}\n` : ""),
+      };
+    }
+
+    case "privacy_request": {
+      const kinds: Record<string, string> = {
+        access: "a copy of your personal data",
+        correction: "a correction to your personal data",
+        deletion: "deletion of your personal data",
+        objection: "to stop a use of your personal data",
+      };
+      const what = kinds[String(d.kind)] ?? "a privacy request";
+      return {
+        subject: `We received your privacy request #${d.requestId} — InclusiveMarket`,
+        html: shell(
+          "We received your privacy request",
+          p(`Hello${d.name ? ` ${esc(d.name)}` : ""}.`) +
+            p(`You asked for ${esc(what)}. Your request number is <strong>#${esc(d.requestId)}</strong>.`) +
+            p("We will reply within 15 days, as the Data Privacy Act (RA 10173) requires. You can follow it in your account."),
+          "View my requests",
+          `${url}/account/privacy`
+        ),
+        text:
+          `We received your privacy request #${d.requestId}.\n\n` +
+          `You asked for ${what}. We will reply within 15 days (RA 10173).\n\n` +
+          `Follow it in your account: ${url}/account/privacy\n`,
+      };
+    }
+
+    case "privacy_response": {
+      const outcome =
+        d.status === "done"
+          ? "We have completed your request."
+          : d.status === "rejected"
+            ? "We could not carry out your request."
+            : "We are working on your request.";
+      return {
+        subject: `Update on your privacy request #${d.requestId} — InclusiveMarket`,
+        html: shell(
+          "Update on your privacy request",
+          p(`Hello${d.name ? ` ${esc(d.name)}` : ""}.`) +
+            p(`${esc(outcome)} Request <strong>#${esc(d.requestId)}</strong>.`) +
+            (d.response
+              ? `<blockquote style="margin:0 0 12px;padding:12px 16px;background:${SURFACE};
+                 border-left:4px solid ${BRAND_DEEP};border-radius:6px;color:${TEXT}">
+                 ${esc(d.response)}</blockquote>`
+              : "") +
+            p("If you disagree with this answer, you may reply through the Contact page or complain to the National Privacy Commission."),
+          "View my requests",
+          `${url}/account/privacy`
+        ),
+        text:
+          `Update on your privacy request #${d.requestId}.\n\n${outcome}\n\n` +
+          (d.response ? `${d.response}\n\n` : "") +
+          `If you disagree, reply through the Contact page or complain to the National Privacy Commission.\n\n` +
+          `Your requests: ${url}/account/privacy\n`,
+      };
+    }
+
+    case "account_status": {
+      const suspended = d.status === "suspended";
+      return {
+        subject: suspended
+          ? "Your InclusiveMarket account is suspended"
+          : "Your InclusiveMarket account is active again",
+        html: shell(
+          suspended ? "Your account is suspended" : "Your account is active again",
+          p(`Hello${d.name ? ` ${esc(d.name)}` : ""}.`) +
+            (suspended
+              ? p("An administrator has suspended your account, so you cannot sign in for now.") +
+                p(`Reason: <strong>${esc(d.reason)}</strong>`) +
+                p("If you think this is a mistake, reply through the Contact page and tell us your account email.")
+              : p("An administrator has restored your account. You can sign in again.")),
+          suspended ? "Contact us" : "Sign in",
+          suspended ? `${url}/contact` : `${url}/login`
+        ),
+        text: suspended
+          ? `Your account is suspended.\n\nReason: ${d.reason}\n\nIf you think this is a mistake, contact us: ${url}/contact\n`
+          : `Your account is active again. Sign in: ${url}/login\n`,
+      };
+    }
+
+    case "flash_sale": {
+      // A product in the buyer's wishlist went on sale. Optional: the buyer
+      // can turn these off in Account → Notifications.
+      const page = `${url}/buyer/product/${esc(d.productId)}`;
+      const settings = `${url}/account/notifications`;
+      return {
+        subject: `${d.percent}% off "${d.productTitle}" — InclusiveMarket`,
+        html: shell(
+          "Something you saved is on sale",
+          p(`<strong>${esc(d.productTitle)}</strong> is ${esc(d.percent)}% off for the next ${esc(d.hours)} hour${Number(d.hours) === 1 ? "" : "s"}.`) +
+            p(`You get this because the item is in your wishlist. <a href="${esc(settings)}" style="color:${BRAND_DEEP}">Change your email settings</a>.`),
+          "See the deal",
+          page
+        ),
+        text:
+          `${d.productTitle} is ${d.percent}% off for the next ${d.hours} hour(s).\n\n` +
+          `See the deal: ${page}\n\n` +
+          `You get this because the item is in your wishlist. Change your email settings: ${settings}\n`,
+      };
+    }
+
+    case "pwd_verification": {
+      // status: submitted | approved | rejected | revoked | reminder | expired
+      const s = String(d.status || "");
+      const page = `${url}/account/verification`;
+      const hello = p(`Hello${d.name ? ` ${esc(d.name)}` : ""}.`);
+      const copy: Record<string, { subject: string; head: string; lines: string[]; cta: string }> = {
+        submitted: {
+          subject: "We received your PWD ID — InclusiveMarket",
+          head: "We received your PWD ID",
+          lines: [
+            `Our team at AVRC Region IX will review it within about ${esc(d.reviewDays || 2)} business days.`,
+            "We will email you when we have decided. You do not need to do anything else for now.",
+          ],
+          cta: "View my verification",
+        },
+        approved: {
+          subject: "You are verified — InclusiveMarket",
+          head: "Your PWD ID is verified",
+          lines: [
+            d.expiresOn ? `Your verification is valid until <strong>${esc(d.expiresOn)}</strong>.` : "Your verification is now active.",
+            d.role === "seller"
+              ? "Your listings can now appear in the shop with a Verified PWD seller badge."
+              : "You can now get PWD discounts on items where one applies.",
+            "We delete the photos of your ID after review, as we told you when you sent them.",
+          ],
+          cta: "View my verification",
+        },
+        rejected: {
+          subject: "We could not verify your PWD ID — InclusiveMarket",
+          head: "We could not verify your PWD ID",
+          lines: [
+            `Reason: <strong>${esc(d.reason)}</strong>`,
+            ...(d.note ? [esc(d.note)] : []),
+            "You can send your ID again from your account. Clear, well-lit photos help us decide quickly.",
+          ],
+          cta: "Send my ID again",
+        },
+        revoked: {
+          subject: "Your PWD verification was withdrawn — InclusiveMarket",
+          head: "Your PWD verification was withdrawn",
+          lines: [
+            `Reason: <strong>${esc(d.reason)}</strong>`,
+            "If you think this is a mistake, reply through the Contact page. You can also send your ID again.",
+          ],
+          cta: "View my verification",
+        },
+        reminder: {
+          subject: "Your PWD ID expires soon — InclusiveMarket",
+          head: "Your PWD ID expires soon",
+          lines: [
+            `Your verified PWD ID expires on <strong>${esc(d.expiresOn)}</strong> (in ${esc(d.days)} days).`,
+            "Renew it at your city or municipal PDAO, then send us the new ID so you stay verified.",
+          ],
+          cta: "Send my renewed ID",
+        },
+        expired: {
+          subject: "Your PWD verification has expired — InclusiveMarket",
+          head: "Your PWD verification has expired",
+          lines: ["Your PWD ID has passed its expiry date. Send us your renewed ID to be verified again."],
+          cta: "Send my renewed ID",
+        },
+      };
+      const c = copy[s] ?? copy.submitted;
+      const strip = (h: string) => h.replace(/<[^>]+>/g, "");
+      return {
+        subject: c.subject,
+        html: shell(c.head, hello + c.lines.map((l) => p(l)).join(""), c.cta, page),
+        text: `${c.head}\n\n` + c.lines.map(strip).join("\n") + `\n\n${c.cta}: ${page}\n`,
       };
     }
   }

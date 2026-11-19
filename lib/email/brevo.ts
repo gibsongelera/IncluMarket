@@ -66,7 +66,7 @@ export async function deliverViaBrevo(payload: DeliveryPayload): Promise<Deliver
       body: JSON.stringify({
         sender: {
           email: from,
-          name: process.env.EMAIL_FROM_NAME || process.env.BREVO_SENDER_NAME || "IncluMarket",
+          name: process.env.EMAIL_FROM_NAME || process.env.BREVO_SENDER_NAME || "InclusiveMarket",
         },
         to: [{ email: payload.to.email, ...(payload.to.name ? { name: payload.to.name } : {}) }],
         subject: payload.subject,

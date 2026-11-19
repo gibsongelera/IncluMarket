@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * IncluMarket server-action guard audit.
+ * InclusiveMarket server-action guard audit.
  *
  * Every export of a "use server" module is a public, unauthenticated HTTP
  * endpoint. This lists them and reports any that touch the service-role client
@@ -37,10 +37,10 @@ const GUARD_PATTERNS = [
 const ALLOWED_UNGUARDED = new Map([
   ["search.ts:suggestProducts", "public catalog typeahead; rate-limited, approved products only"],
   ["newsletter.ts:subscribeNewsletter", "public signup; rate-limited, writes only an email"],
+  ["newsletter.ts:unsubscribeNewsletter", "the email link's per-subscriber random token is the credential; rate-limited, can only set unsubscribed_at"],
   ["chat.ts:sendChatMessage", "public support chat; rate-limited, ownership-checked per session"],
   ["chat.ts:fetchChatHistory", "public support chat; ownership-checked per session"],
   ["chat.ts:escalateChat", "public support chat; ownership-checked per session"],
-  ["payments.ts:listEnabledPaymentProviders", "checkout needs the method list; narrow projection, no keys"],
   ["auth.ts:loginAction", "authentication entry point; rate-limited"],
   ["auth.ts:signupAction", "authentication entry point; rate-limited"],
   ["auth.ts:resendConfirmationAction", "authentication entry point; rate-limited"],

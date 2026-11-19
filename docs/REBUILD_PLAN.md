@@ -1,8 +1,10 @@
-# IncluMarket — Growth Rebuild Plan
+# InclusiveMarket — Growth Rebuild Plan
 
 Status tracker for the feature-expansion rebuild agreed on 2026-08-04. This is
 an **evolve-in-place** rebuild: the existing schema, auth, RLS, and WCAG-2.1-AA
 accessibility foundation is kept and extended — nothing working is thrown away.
+
+> **Superseded in part by the client revision (October 2026)** — see "Client revision v3" at the end. Phases 1–17 below are kept as history; where they disagree with the code or the README, the code and README are right.
 
 **Status: all 14 phases + final verification complete.** `npm run build` is
 clean. See "Final phase" at the bottom for the ship-gate summary and "Open
@@ -283,7 +285,7 @@ workbook (users, products, orders, reviews, tickets, audit_logs — or `"all"`).
 Exports resolve **real display names** (seller/buyer/product/category/assignee/
 actor) beside IDs, use **ISO 8601 UTC** date cells (`yyyy-mm-dd hh:mm:ss`),
 **ISO 4217** PHP amounts as numeric cells (`#,##0.00` + Currency column), and
-download as `IncluMarket_<Report>_Report_YYYY-MM-DD.xlsx`. Emails stay masked;
+download as `InclusiveMarket_<Report>_Report_YYYY-MM-DD.xlsx`. Emails stay masked;
 `assistive_needs` is still omitted from exports.
 
 - `npm install exceljs` (first non-Supabase/Next dependency — flagged).
@@ -450,12 +452,101 @@ login only gates the transaction.
   it; a full dev-server restart (not just a browser refresh) is needed on
   the user's side for the same reason.
 
+## Client revision v3 (October 2026) ✅ done
+
+Driven by `docs/prompts/CLIENT_REVISION_PROMPT.md`: a Stage A plan (ADRs,
+baseline findings B-/N-, change items C-01–C-48 and D-01–D-09, a motion audit
+M-01–M-13), approved with every default, then steps S0–S10, each verified with
+`tsc` and `npm run verify` and committed under its step id
+(`git log --grep "^S[0-9]"`).
+
+| Step | What changed |
+|---|---|
+| S0 | Repository hygiene: pending work committed, LF line endings, `.agents` ignored, before-screenshots kept, `npm test` |
+| S1 | Correctness and security: database failures surfaced, only approved listings from active sellers public, one pricing pipeline, seller writes scoped, reviews need a delivery, Surface B closed (0013), suspend/anonymise with reasons |
+| S2 | Schema 0014–0020: order state machine, one order per seller, moderation/stats/search view, PWD verification, discount rules, buyer/seller/support tables, earnings and payouts |
+| S3 | Brand (InclusiveMarket), blue and brown palette, one product grid and card, console sidebars, 404/error/loading states, self-hosted fonts, toasts and live regions |
+| S4 | Account area and PWD verification end to end (scan, submit, admin queue, expiry, reminders, retention) |
+| S5 | Server-side storefront (home, search, sort), wishlist, reviews, featured windows (0021), recommendations, order tracking, account-synced accessibility (0022), shop pages, notifications, product page, cart selection and addresses, PWD discount engine, account pages |
+| S6 | Seller Centre: to-dos and setup, product wizard, photos to Storage (0023), packing slip, flash-sale rules (0024), finance and payouts, shop logo and banner, seller support |
+| S7 | Admin console: overview, orders and refunds, users, moderation reasons, categories, reviews, banners, newsletter, settings, privacy and contact inboxes, read-only payments, ticket notifications both ways |
+| S8 | Truthful static pages, contact form, `lib/site.ts`, footer without placeholders, web app manifest |
+| S9 | Motion polish and the motion audit report (`motion-audits/`, local) |
+| S10 | README, CLAUDE.md, ERD, system diagrams, skills, this section; proposal Markdown regenerated from the .docx |
+
+## Dashboard and storefront build (November 2026) ✅ done
+
+Driven by `docs/agent-build/` (00 master prompt; 01 design system, 02
+architecture, 03 admin, 04 seller, 05 storefront, 06 skills and agents). A
+Stage A plan was approved with its defaults, then steps P0–P5 ran in order,
+each with `npx tsc --noEmit` and `npm run verify` at exit 0 and committed under
+its step id (`git log --grep "^P[0-5]-"`). The four build subagents
+(`.claude/agents/`) reviewed every step: security-reviewer for actions,
+server-only reads and migrations, a11y-checker for UI, qa-verifier at each
+phase end in a real browser. No migration, no new dependency.
+
+| Phase | Steps | What changed |
+|---|---|---|
+| P0 | 01–03 | The build spec and guest before-screenshots, the four subagents, the feature-review skill's stale gaps replaced |
+| P1 | 01–10 | Contrast measured under every theme preset and high contrast; chart series and warning colours; status pills; a 3:1 field outline; dark console sidebar with count badges; the KPI card; dashboard layout pieces; Canvas charts with "View as table"; the design skill updated |
+| P2 | 01–11 | Manila-time windows and sums (`lib/analytics/`); the admin overview (queue tiles, KPIs, sales, status, top products, categories, recent orders); sidebar badges; list building blocks (tabs with counts, search, paging in the URL); the row actions menu; admin orders, products and users lists |
+| P3 | 01–07 | The seller dashboard (setup, to-dos, KPIs, 12-week sales, best sellers, running low, recent orders and reviews, plain words); `?new=1` opens the product wizard; seller sidebar badges; seller orders and products lists |
+| P4 | 01–07 | Home data (shop cards, category best-sellers, hero promo); `RailScroller`; the hero (banner carousel plus a side promo); round category tiles; `/home` in the 05 §2 order; the buyer dashboard on `/account`. `/home` p95: 1.31 s in dev, 0.74 s in a production build |
+| P5 | 01–02 | qa-verifier as buyer, seller and admin (320–1280 px, 24 px text, high contrast, keyboard only), one fix (masked emails on `/admin/users` break at "@" and ".", not mid-letter); after-screenshots; README, this section and the design skill |
+
+Screenshots: `docs/screenshots/before-dashboards/` (guest, from P0-01) and
+`docs/screenshots/after-dashboards/` (guest `/home`; buyer `/account` and
+`/home`; seller dashboard, orders and products; admin overview, orders and
+products; each at 375, 768 and 1280 px, demo data only).
+
+**AI recommendations: a gap, stated honestly.** The proposal promises
+"AI-based recommendations". `lib/recommend.ts` is rule-based: category
+affinity from what a signed-in buyer viewed, saved and bought, "customers also
+bought" from shared orders, and "Popular this week" for guests and buyers who
+turned personalisation off. Every personalised rail says why it is shown, and
+nothing is labelled AI. Closing the gap needs a model, training data the shop
+does not yet have, and a privacy review; it was out of this build's scope.
+
+**Open from this build** (none blocks use; each is a change outside the plan):
+
+1. ~~**Signed-in header is slow**~~ **Fixed in F-01:** `SiteHeader` awaited
+   four public actions that each repeated the uncached session read (about
+   1.3 s per page). It now reads its badges through `lib/header-data.ts` in
+   one `Promise.all` with the request's memoised session.
+2. ~~**Signed-in header is too wide**~~ **Fixed in F-02:** it scrolled the
+   page sideways at 768 px with 16 px text and at 1024 px with 24 px text,
+   and the search slid under the bell at 320 px with 24 px text. The row now
+   wraps (the nav takes its own line) and phones use a container query.
+3. **Unpaged counts:** `getSellerProductIndex`, `getListingCountsBySeller` and
+   `getCategoryCounts` read unpaged, so PostgREST's 1,000-row cap would
+   undercount past 1,000 rows. Fix: head counts or an RPC.
+4. **Sweep gates fail open:** they let a sweep run when the rate-limit RPC
+   errors. Fix: fail closed for sweeps only.
+5. **No "View all" pages:** Today's deals, Featured products and PWD shops
+   have none, so those rails have no "View all". This needs an on-sale and a
+   featured filter on `/search` and a shop directory; that is the owner's
+   call.
+6. ~~**Older pages at 24 px text:**~~ fixed after the build. Every
+   `.details-list` is its own container and puts the label above the value
+   under 18rem (a money list under 14rem); emails break only after the "@"
+   and before a "." (`components/EmailText.tsx`). The admin console link
+   and the footer's Subscribe button are `max(2.75rem, 44px)`. The tab bar's
+   cut labels were fixed by F-03: when any label would be cut, the bar
+   becomes two rows of three, so "Dashboard" stays one word.
+
 ## Open items that need the user, not a guess
 
-1. **Chatbot API key/provider** — ships on the mock responder until supplied.
-2. **Real social media URLs** for the footer — placeholders until supplied.
-3. **Legal copy** for Privacy Policy / Terms — drafted generically for a PH
-   PWD marketplace; a lawyer should review before real launch.
-4. Running `scripts/seed-demo-products.mjs` and the Supabase migrations
-   requires the user's live Supabase project credentials — I cannot execute
-   this myself without `.env.local`.
+1. **Apply migrations 0013–0024** — to a development Supabase project first,
+   then production. Rollbacks are in `supabase/rollback/`. Then run
+   `npm run backfill-product-images` (dry run first).
+2. **Set `PWD_ID_HASH_KEY` and `PWD_ID_ENC_KEY`** in production (and
+   `RATE_LIMIT_SALT`); PWD verification refuses to run without them.
+3. **Legal answers** — which discount rules apply (RA 10754, DTI-DA JMC
+   01-2022, voluntary), and a lawyer's review of the Privacy Policy and Terms.
+   Every discount rule stays off until then.
+4. **Contact details and social URLs** — set `NEXT_PUBLIC_CONTACT_*` and the
+   social URL variables; nothing shows until they exist.
+5. **Signed-in checks** — the buyer, seller and admin journeys need a real
+   sign-in against the migrated development project (and a phone for the ID
+   camera).
+6. **Chatbot provider** — optional; the rule-based responder works without one.

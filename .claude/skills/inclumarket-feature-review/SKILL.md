@@ -1,13 +1,13 @@
 ---
 name: inclumarket-feature-review
-description: Verify that every button, form and feature in IncluMarket actually works end to end — not just that it compiles. Use when asked to "review the app", "does everything work", "test all the buttons", "check every feature", "QA pass", "verify my changes", or before a demo or capstone submission. Builds a route and control inventory, finds dead controls and orphan actions, then drives the real app in a browser.
+description: Verify that every button, form and feature in InclusiveMarket actually works end to end — not just that it compiles. Use when asked to "review the app", "does everything work", "test all the buttons", "check every feature", "QA pass", "verify my changes", or before a demo or capstone submission. Builds a route and control inventory, finds dead controls and orphan actions, then drives the real app in a browser.
 license: MIT
 metadata:
   project: inklumarket-next
   version: "1.0"
 ---
 
-# IncluMarket Feature Review
+# InclusiveMarket Feature Review
 
 ## When to Use This Skill
 
@@ -174,12 +174,33 @@ Then two sections that matter more than the table:
 
 ## Known gaps to check against
 
-Still unimplemented at the time of writing — do not report these as new:
+These stay open because they need a decision or access from the client, not
+code. Do not report them as new bugs; do check that the app degrades the way
+it says it does. Source: `docs/REBUILD_PLAN.md`, "Open items that need the
+user, not a guess". When that list changes, change this one.
 
-- Seller payouts: `im_payouts` has a full schema and RLS, zero application code
-- PWD ID upload and verification: `pwd_id_url` is never read or written
-- Server-synced accessibility prefs: `im_ui_prefs` is never touched;
-  preferences are localStorage-only and do not follow a user across devices
-- Newsletter unsubscribe: subscribe works, there is no way out
-- Order-status transitions are unordered: a seller can jump `pending` straight
-  to `delivered`
+1. **Migrations 0013–0024 are not applied everywhere yet.** A page that needs
+   a newer migration falls back (`isMissingObject`) and names the migration it
+   needs; check for that message instead of reporting the missing feature.
+   Product photos can still be data URLs until
+   `npm run backfill-product-images` runs.
+2. **`PWD_ID_HASH_KEY`, `PWD_ID_ENC_KEY` and `RATE_LIMIT_SALT` may be unset.**
+   PWD verification refuses to run without the two PWD keys; that refusal is
+   correct behaviour.
+3. **Legal answers are pending.** Every discount rule (RA 10754, DTI-DA JMC
+   01-2022, voluntary) stays off until a lawyer answers, and the Privacy
+   Policy and Terms await review.
+4. **Contact details and social links** come from `NEXT_PUBLIC_CONTACT_*` and
+   the social URL variables through `lib/site.ts`. With none set, nothing
+   shows: a missing contact block is not a bug, a placeholder address would be.
+5. **Signed-in journeys** need a real sign-in against a migrated development
+   project, and a phone for the ID camera.
+6. **The chatbot provider** is optional; the rule-based responder is the
+   default.
+
+Shipped since the first version of this list, so no longer gaps: seller
+payouts (`lib/actions/payouts.ts`, `lib/finance.ts`), PWD ID upload and
+verification (`lib/pwd/`, `lib/actions/verification.ts`), synced
+accessibility preferences (migration `0022`), newsletter unsubscribe
+(`app/newsletter/unsubscribe/`) and ordered status transitions
+(`im_transition_order`, migration `0014`).

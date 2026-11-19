@@ -1,41 +1,46 @@
 import { StaticPageLayout } from "@/components/StaticPageLayout";
 
-export const metadata = { title: "Accessibility Statement — IncluMarket" };
+export const metadata = { title: "Accessibility statement" };
 
+/** Accessibility statement (N-26): what works, what does not yet, how to tell us. */
 export default function AccessibilityPage() {
   return (
-    <StaticPageLayout title="Accessibility Statement">
+    <StaticPageLayout title="Accessibility statement">
       <p>
-        IncluMarket is built for a PWD seller and buyer community, so
-        accessibility isn't an add-on — it's a build requirement. We target
-        WCAG 2.1 Level AA today and are actively closing gaps toward WCAG 2.2.
+        InclusiveMarket is made for PWD sellers and buyers, so it has to work for them. We aim to meet the Web Content
+        Accessibility Guidelines (WCAG) 2.2 at level AA. We test with a keyboard, the NVDA screen reader, text enlarged
+        to 24 pixels and screens 320 pixels wide. This is our own testing, not an independent audit.
       </p>
-      <h2>What's already in place</h2>
+
+      <h2>What you can do</h2>
       <ul>
-        <li>A "Skip to main content" link on every page, and a page-specific "Skip to sign in" link on the homepage, for keyboard and screen-reader users.</li>
-        <li>Semantic landmarks (banner, main, contentinfo, search) so assistive technology can navigate the page structure directly.</li>
-        <li>Visible focus rings on every interactive element via <code>:focus-visible</code>, never suppressed.</li>
-        <li>A persisted <strong>high-contrast mode</strong>, toggled from the header and remembered across visits.</li>
-        <li><code>prefers-reduced-motion</code> support — animations and transitions are disabled site-wide for users who request it, including the landing page's animated elements.</li>
-        <li>Native <code>&lt;dialog&gt;</code> elements for modals, which give correct focus-trapping and Escape-to-close behavior for free.</li>
-        <li>Live regions (<code>aria-live</code>) for toast notifications, search results, and other content that updates without a page reload.</li>
-        <li>Fully keyboard-operable custom controls (star ratings, tabs, search suggestions) using the appropriate ARIA roles and arrow-key navigation.</li>
+        <li>
+          Use the <strong>accessibility button</strong> in the bottom corner of every page to: make text larger (up to
+          twice the normal size), turn on high contrast, reduce motion, make the cursor larger, have text read aloud, flash
+          the screen for alerts instead of relying on sound, and try voice commands. Your choices are remembered.
+        </li>
+        <li>Move through every page with a keyboard. A &ldquo;Skip to main content&rdquo; link is the first thing on each page.</li>
+        <li>Find your way with a screen reader: pages have headings, landmarks and labelled buttons, and messages such
+          as &ldquo;Added to cart&rdquo; are announced.</li>
+        <li>Nothing needs dragging: putting photos or lists in order uses buttons such as &ldquo;Move earlier&rdquo;.</li>
+        <li>Choose products with features that help, such as one-handed use, easy grip or seated fit, using the filters on
+          the search page.</li>
       </ul>
-      <h2>Known limitations</h2>
+
+      <h2>Known problems</h2>
+      <ul>
+        <li>Some administrator tables are long and easier to scan visually than by screen reader.</li>
+        <li>Voice commands depend on your browser&rsquo;s speech recognition and work best in Chrome and Edge.</li>
+        <li>PayMongo&rsquo;s payment page is run by PayMongo, so we cannot fix problems on it directly — tell us and we
+          will report them.</li>
+        <li>The site is in English only for now. Filipino is planned.</li>
+      </ul>
+
+      <h2>Tell us</h2>
       <p>
-        We're aware some data-dense admin tables are easier to scan visually
-        than with a screen reader, and we're working through a full WCAG 2.2
-        audit as part of an ongoing accessibility pass. If you hit a
-        limitation, please tell us — see below.
-      </p>
-      <h2>Feedback</h2>
-      <p>
-        If any part of IncluMarket is difficult to use with a screen reader,
-        keyboard, switch device, or magnification software, contact{" "}
-        <a href="mailto:accessibility@inclumarket.example">
-          accessibility@inclumarket.example
-        </a>
-        . We treat accessibility reports as bugs, not feature requests.
+        If something is hard to use with your screen reader, keyboard, switch, voice control or magnifier, use the{" "}
+        <a href="/contact">contact form</a> and choose &ldquo;Something hard to use&rdquo;. Tell us the page and what
+        happened. We treat accessibility reports as bugs.
       </p>
     </StaticPageLayout>
   );

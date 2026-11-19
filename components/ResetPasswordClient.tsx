@@ -59,7 +59,7 @@ export function ResetPasswordClient({
         <p>You are signed in already — there is no need to enter it again right now.</p>
         <p>
           <Link className="btn btn--primary" href="/home">
-            Continue to IncluMarket
+            Continue to InclusiveMarket
           </Link>
         </p>
       </>

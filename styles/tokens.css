@@ -1,13 +1,28 @@
-/* IncluMarket Design Tokens
-   Default brand: DSWD Blue / Red / Yellow-Gold / White (accessibility-first).
+/* InclusiveMarket Design Tokens
+   Default brand: InclusiveMarket blue & brown (client decision, 2026-10-09).
+
+   COLOUR ROLES — each colour has one job, so it keeps its meaning:
+     blue   (--brand-blue*)   navigation, links, primary buttons, focus ring
+     brown  (--brand-brown*)  commerce accent: prices, discount and sale
+                              badges, verified-PWD badge, section accents,
+                              count badges; the footer is deep brown
+     yellow (--brand-yellow)  rating stars only, always next to a number
+     red    (--danger)        errors and destructive actions ONLY
+     green / olive            success / warning status, with a text label
+   Surfaces are neutral. Swap the values (not the structure) if the client
+   sends logo colours.
 
    CONTRAST GUARDRAILS
      1) Dark text on LIGHT and GOLD surfaces.
-        Applies to: --canvas-white, --surface-gray, --brand-yellow,
-        --palette-primary, and every *-100 tint.
+        Applies to: --canvas-white, --surface-gray, --brand-yellow, and every
+        *-100 tint. Text on --palette-primary uses --palette-primary-text,
+        because five event presets make the primary dark enough to need white.
      2) WHITE text on DARK surfaces.
-        Applies to: --brand-blue, --brand-blue-800, --brand-red, --success,
-        --color-nav, --color-footer.
+        Applies to: --brand-blue, --brand-blue-800, --brand-brown,
+        --brand-brown-800, --brand-red, --success, --color-nav,
+        --color-footer.
+        Brown on white and on --brand-brown-100 is also fine for text
+        (7.4:1 and 6.2:1).
 
      Red is a Guardrail 2 surface. --text-charcoal on --brand-red measures
      2.64:1 and fails AA at every size. Three rules had it, commented
@@ -34,6 +49,9 @@
 :root {
   /* DSWD-aligned core palette */
   --palette-primary: #F5C518; /* gold warmth / badges */
+  /* Text on --palette-primary (the brand mark). Dark here; the event presets
+     whose primary is too dark for dark text set it to white (lib/theme.ts). */
+  --palette-primary-text: var(--text-charcoal);
   --palette-primary-dark: #0038A8; /* DSWD blue */
   --palette-deep: #00287A; /* nav / deep blue */
   --palette-olive: #B8860B; /* gold dark */
@@ -47,6 +65,9 @@
   /* Extended accents */
   --palette-plum: #6B2357;
   --palette-teal: #0E5C63;
+  /* Shipped pill fill. Fixed, like --palette-teal: no preset and no
+     high-contrast rule sets either. */
+  --palette-teal-100: #E0F0F1;
   --palette-rose: #C41E3A; /* compassion / heart red */
 
   /* Compat aliases */
@@ -59,21 +80,67 @@
   --brand-yellow: #F5C518;
   --brand-yellow-800: #B8860B;
 
+  /* Commerce accent. White on #7A4A21 measures 7.4:1. */
+  --brand-brown: #7A4A21;
+  --brand-brown-800: #5C3618;
+  --brand-brown-100: #F3E8DC;
+  --price-color: var(--brand-brown);
+  --accent: var(--brand-brown);
+  --accent-100: var(--brand-brown-100);
+
   --text-charcoal: #212529;
   --text-muted: #5A6169;
   --canvas-white: #FFFFFF;
   --border: #DEE2E6;
+  /* Outlines of form fields and of the controls drawn with them (stepper
+     buttons, colour swatch, upload zone); --border stays for containers,
+     dividers and controls that their words, icon or image identify. */
+  --border-control: #7C838B;
   --surface-gray: #F5F7FA;
   --surface-gray-2: #EEF0F3;
 
   --success: var(--palette-forest);
   --success-100: var(--palette-forest-100);
+  /* --warning (#B8860B by default, 3.25:1 on white) is for graphics only:
+     dots, chart segments, borders. Warning TEXT uses --warning-text (6.38:1
+     on white). That one is a fixed neutral, not a theme token, so it is not
+     in the presets in lib/theme.ts. */
   --warning: var(--palette-olive);
   --warning-100: var(--palette-olive-100);
+  --warning-text: #7A5A00;
   --danger: var(--brand-red);
   --danger-100: var(--brand-red-100);
   --info: var(--brand-blue);
   --info-100: var(--brand-blue-100);
+
+  /* Status pill colours (.pill--* in components.css). Fixed: these are not
+     in THEME_VAR_KEYS (lib/theme.ts), so no preset sets them and a status
+     reads the same in every event theme. The values are the default
+     theme's. High contrast overrides them below, where it sets the token
+     each one was copied from. check-contrast.mjs fails a .pill-- rule that
+     references a token a preset can set. */
+  --status-text: #212529; /* dark text on warning and neutral fills */
+  --status-neutral: #5A6169; /* neutral borders, archived text */
+  --status-info: #0038A8;
+  --status-info-100: #E8EEF9;
+  --status-ok: #0B5C3B;
+  --status-ok-100: #D8EDE3;
+  --status-warn: #B8860B; /* borders only, like --warning: 3.25:1 on white */
+  --status-warn-100: #FFF4D1;
+  --status-error: #C41E3A;
+  --status-error-text: #8E1529;
+  --status-error-100: #FCE8EC;
+
+  /* Chart series. Aliases, so each takes whatever the presets and high
+     contrast set for its source token. Graphics only, each at least 3:1 on
+     white. --chart-6 is for segments only, never text. A chart uses at most
+     four series. */
+  --chart-1: var(--brand-blue);
+  --chart-2: var(--brand-brown);
+  --chart-3: var(--palette-teal);
+  --chart-4: var(--palette-forest);
+  --chart-5: var(--palette-plum);
+  --chart-6: var(--brand-yellow-800);
 
   /* Soft blue→white atmosphere (not purple AI gradient) */
   --bg-rainbow: linear-gradient(
@@ -87,9 +154,12 @@
   --color-nav: var(--brand-blue-800);
   --color-nav-text: #FFFFFF;
   --color-body: #F5F7FA;
-  --color-body-bg: var(--bg-rainbow);
-  --color-footer: #00205B;
-  --color-footer-text: #F5F7FA;
+  /* Neutral page background. The blue-to-white gradient is retired (§7:
+     no blue gradients); --bg-rainbow stays defined for older presets. */
+  --color-body-bg: var(--color-body);
+  /* Deep brown footer: white text measures 12.6:1. */
+  --color-footer: #4A2C14;
+  --color-footer-text: #FFFFFF;
 
   --radius-xs: 4px;
   --radius-sm: 6px;
@@ -102,13 +172,35 @@
 
   --focus-ring: 3px solid var(--brand-blue);
   --focus-ring-offset: 2px;
+  /* The page ring follows --palette-primary-dark (lib/theme.ts): dark enough
+     for links on white, so too dark to see on the header, the footer and the
+     other dark surfaces. Each of those declares a ring in its own text colour
+     in the same rule as its background, and the light surfaces inside the
+     header put the page ring back. check-contrast.mjs measures every rule
+     that sets --focus-ring against that rule's background, at 3:1. It
+     cannot see inheritance: a new light popover inside a dark surface must
+     reset --focus-ring to var(--focus-ring-page) in its own rule. Controls
+     that float over any surface (the skip link, the two floating buttons)
+     draw a white ring inside their own edge instead. */
+  --focus-ring-page: var(--focus-ring);
+  --focus-ring-nav: 3px solid var(--color-nav-text);
+  --focus-ring-footer: 3px solid var(--color-footer-text);
 
-  --font-body: "Nunito Sans", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --font-display: "Rubik", "Nunito Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  /* --font-nunito / --font-rubik come from next/font (app/fonts.ts) on <html>. */
+  --font-body: var(--font-nunito, "Nunito Sans"), system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-display: var(--font-rubik, "Rubik"), var(--font-nunito, "Nunito Sans"), system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
-  --transition-fast: 150ms;
-  --transition-base: 200ms;
+  /* Motion (design-motion-principles audit, Emil-weighted): short, eased
+     out, never bouncy. Both reduced-motion switches null all of it. */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in: cubic-bezier(0.55, 0, 1, 0.45);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --dur-1: 120ms; /* colour, press */
+  --dur-2: 160ms; /* hover lift, popover enter */
+  --dur-3: 200ms; /* dialog enter */
+  --transition-fast: var(--dur-1);
+  --transition-base: var(--dur-2);
 
   --step-0: 1rem;
   --step-1: 1.125rem;
@@ -133,9 +225,29 @@
   /* Comfortable reading measure. Admin body copy ran the full 1200px container. */
   --measure: 68ch;
 
+  /* Dialog gutter. A token rather than a literal on .modal-form because the
+     sticky title and action bands cancel it with a negative margin to reach
+     the dialog border, and the two must not drift. responsive.css widens it
+     from md up; phones keep the tighter value so a stacked action bar does
+     not eat a 568px-tall viewport. */
+  --modal-pad: var(--space-4);
+
+  /* RailScroller (P4-02, components.css and responsive.css). --rail-pad is
+     the bleed a scrolling track keeps on every side so a card's focus ring,
+     lift and shadow are not clipped; --rail-gap is the space between items
+     (twice the bleed wherever the track scrolls, so one view is exactly a
+     clientWidth); --rail-per-view is how many cards one view holds from
+     768px up (3, then 4 at 1024px and 5 at 1280px). */
+  --rail-pad: var(--space-2);
+  --rail-gap: var(--space-2);
+  --rail-per-view: 3;
+
   /* Stacking order, named. These were literals scattered across three files,
      which is how the toast region ended up painting over the chat button and
      both floating buttons ended up over the checkout bar. */
+  /* Inside a scrolling <dialog>, above the form's own positioned children
+     (.image-thumb is position:relative) but below every page-level layer. */
+  --z-modal-sticky: 1;
   --z-sticky-bar: 20;
   --z-header: 40;
   --z-fab: 60;
@@ -143,11 +255,19 @@
   --z-toast: 100;
 
   --container-max: 1200px;
+  /* The Seller Centre and admin console (01 §5): a dashboard beside the 16rem
+     sidebar is not squeezed into the storefront's 1200px. rem, so it widens
+     with the 12-24px text setting. Applied in responsive.css (section 9). */
+  --console-max: 90rem;
   --header-h: 64px;
   /* Real rendered header height, including the user strip. Set from JS on mount,
      on resize, and on every accessibility font change — a hardcoded offset is
      wrong at 16px and badly wrong at 24px. The fallback matches the default. */
   --header-total: 92px;
+  /* The same measured height, but kept when the header is too tall to stick
+     (--header-total is then 0px). For panels that open under the header and
+     must fit the window below it. */
+  --header-block: 92px;
   /* Space reserved at the bottom of the viewport by the mobile tab bar, so
      floating buttons and page content can sit clear of it. */
   --bottom-inset: 0px;
@@ -156,6 +276,12 @@
      never guess it: the bar wraps to two rows once its buttons no longer fit,
      and grows with the 12-24px accessibility font scale. */
   --commit-bar-h: 0px;
+  /* The accessibility and chat buttons are fixed at --fab-size in the bottom
+     corners. --fab-clearance is the strip they occupy, gaps included: page
+     content, the footer and focus scrolling keep clear of it so nothing a
+     person needs ends up under a floating button (N-14, WCAG 2.4.11). */
+  --fab-size: 56px;
+  --fab-clearance: calc(var(--fab-size) + 2 * var(--space-3));
 
   /* Star rating.
      --star-filled is the requested bright gold. On white it measures 1.43:1,
@@ -166,7 +292,12 @@
      only channel. */
   --star-filled: rgb(255, 212, 59);
   --star-edge: var(--brand-yellow-800);
-  --star-empty: var(--border);
+  /* Fill of the rating-breakdown bar (.breakdown-row__bar). The edge itself
+     is 2.85:1 on the --surface-gray-2 track under the presets that keep the
+     default gold, below the 3:1 a graphic needs; a quarter black takes it to
+     4.68:1. An alias, so it follows --star-edge into every preset and into
+     high contrast. check-contrast.mjs requires 3:1 on the track. */
+  --star-bar: color-mix(in srgb, var(--star-edge) 75%, #000);
 
   /* Inline-SVG icon stroke weight. components/Icon.tsx sets stroke-width as a
      presentation ATTRIBUTE, which CSS always outranks, so this is the single
@@ -188,16 +319,37 @@
   --text-charcoal: #000000;
   --text-muted: #1A1A1A;
   --border: #000000;
+  --border-control: #000000;
   --surface-gray: #FFFFFF;
   --surface-gray-2: #FFFFFF;
   --color-body: #FFFFFF;
   --color-body-bg: #FFFFFF;
   --palette-primary: #B8860B;
+  --palette-primary-text: #000000;
   --palette-primary-dark: #00205B;
   --palette-deep: #00143D;
   --brand-blue: #00205B;
   --brand-blue-800: #00143D;
   --brand-red: #8E1529;
+  --brand-brown: #3D2410;
+  --brand-brown-800: #2A180A;
+  --brand-brown-100: #FFFFFF;
+  --color-footer: #2A180A;
+  /* Warning text, about 11:1 on white. */
+  --warning-text: #4D3800;
+  /* Warning graphics too (notice borders). The themed gold is under 3:1 on
+     its own tint; this is darker than every preset's warning, so the mode
+     never draws a fainter border than normal does. */
+  --warning: #4D3800;
+  /* Status pills: the five whose source token this block sets, each with
+     this block's value for it (--text-charcoal, --text-muted, --brand-blue,
+     --warning, --brand-red). The tints, --status-ok and --status-error-text
+     keep their :root values, as their sources do here. */
+  --status-text: #000000;
+  --status-neutral: #1A1A1A;
+  --status-info: #00205B;
+  --status-warn: #4D3800;
+  --status-error: #8E1529;
   --shadow-sm: 0 0 0 1px #000;
   --shadow-md: 0 0 0 2px #000;
   --shadow-lg: 0 0 0 3px #000;
@@ -208,7 +360,6 @@
      contrast, rather than relying on the edge. */
   --star-filled: #8A6000;
   --star-edge: #000000;
-  --star-empty: #000000;
 }
 
 /* Font size set precisely by accessibility toolbar (12–24px) */

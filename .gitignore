@@ -24,6 +24,11 @@ tmp-*
 
 # Optional local tooling
 node_modules/
+# Another agent tool's mirror of .claude/skills. .claude/skills is the single
+# source of truth; this copy is kept locally but never committed (B-23).
+.agents/
+# Generated motion-audit reports (design-motion-principles skill).
+motion-audits/
 dist/
 build/
 

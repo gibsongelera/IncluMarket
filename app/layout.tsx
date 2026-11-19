@@ -18,11 +18,25 @@ import { ChatWidget } from "@/components/ChatWidget";
 import { AccessibilityWidget } from "@/components/AccessibilityWidget";
 import { VisualAlertHost } from "@/components/VisualAlert";
 import { HeaderMetrics } from "@/components/HeaderMetrics";
+import { bodyFont, displayFont } from "./fonts";
 
 export const metadata: Metadata = {
-  title: "IncluMarket — PWD Livelihood Marketplace",
+  title: {
+    default: "InclusiveMarket — products made by PWD trainees of AVRC Region IX",
+    template: "%s — InclusiveMarket",
+  },
   description:
-    "IncluMarket — a Shopee-style e-commerce module for PWD livelihood under the InkluTrack ecosystem. Built on DSWD identity and WCAG 2.1 AA.",
+    "Buy bags, apparel, crafts, food and more made by persons with disabilities trained at AVRC Region IX. Accessible by design. Part of the InkluTrack ecosystem.",
+  applicationName: "InclusiveMarket",
+  // Installable on phones (C-48): manifest and icons, no offline mode.
+  manifest: "/manifest.webmanifest",
+  icons: {
+    icon: [
+      { url: "/icons/icon-32.png", sizes: "32x32", type: "image/png" },
+      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+    ],
+    apple: "/icons/apple-touch-icon.png",
+  },
 };
 
 // Theme + contrast are request-time; avoid static prerender crashing when
@@ -45,7 +59,10 @@ export default async function RootLayout({
   const css = themeVarsToCss(vars);
 
   return (
-    <html lang="en" data-contrast={contrast === "high" ? "high" : undefined}>
+    <html
+      lang="en"
+      className={`${bodyFont.variable} ${displayFont.variable}`}
+      data-contrast={contrast === "high" ? "high" : undefined}>
       <head>
         <meta name="theme-color" content={vars["--color-nav"] || "#0038A8"} />
         <style id="im-theme" dangerouslySetInnerHTML={{ __html: css }} />

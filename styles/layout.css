@@ -3,60 +3,130 @@
   background: var(--color-nav);
   color: var(--color-nav-text);
   box-shadow: var(--shadow-sm);
+  --focus-ring: var(--focus-ring-nav); /* dark chrome: tokens.css */
 }
 .site-header a { color: var(--color-nav-text); text-decoration: none; }
 .site-header--seller { background: var(--color-nav); }
 .site-header--admin  { background: var(--color-nav); }
 .site-header--landing { background: var(--color-nav); }
 
+/* The row wraps: when brand, search and nav do not fit on one line (the
+   buyer's nav is 540px at 16px text and 780px at 24px), the nav takes a line
+   of its own instead of crushing the search to nothing and pushing the page
+   sideways (finding 59). Phones use the grid in responsive.css §11. */
 .header-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 1rem;
+  gap: .5rem 1rem;
   padding: .75rem 1rem;
   min-height: var(--header-h);
 }
+/* A 44px target at every text size; on a phone only the 32px mark shows, so
+   the box is centred around it rather than shrinking to it. */
 .brand {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  min-height: max(2.75rem, 44px);
+  min-width: max(2.75rem, 44px);
   gap: .55rem;
   font-weight: 800;
   font-size: 1.15rem;
   letter-spacing: .01em;
 }
+/* The AVRC III house mark on a white tile, so its reds and yellow read the
+   same on every header preset (F-07). */
 .brand-mark {
   display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  flex: none;
   width: 32px; height: 32px;
-  background: var(--palette-primary); color: var(--text-charcoal); /* Guardrail 1: dark text on orange */
+  padding: 2px;
+  background: #fff;
   border-radius: var(--radius-sm);
-  font-weight: 900;
-  font-size: .95rem;
 }
-.brand-word small { font-size: .7rem; opacity: .85; font-weight: 500; margin-left: .25rem; }
+.brand-mark img { display: block; width: 100%; height: 100%; }
+.brand-word small { font-size: .7rem; opacity: .85; font-weight: 500; }
 
+/* Never wider than the row: on a line of its own at 24px text the links wrap
+   inside it rather than overflow, each line at the end, so Sign out stays
+   under the bell rather than alone at the left. */
 .header-nav {
   margin-left: auto;
   display: flex;
-  gap: .15rem;
+  gap: .25rem;
   align-items: center;
+  justify-content: flex-end;
   flex-wrap: wrap;
   flex-shrink: 0;
+  max-width: 100%;
 }
+/* Every item in the nav row is one height (2.75rem, never under the 44px
+   target), centred, with its count inline after the word: the links, Cart,
+   the bell and Sign out used to be 35, 38, 40 and 32px tall, the bell's
+   count floated above its circle, and a count sat against its word
+   ("Wishlist3"). Hover and current tints are the nav text colour mixed
+   in, so they show on an admin theme with a light nav too. */
 .nav-link {
-  padding: .4rem .5rem;
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  justify-content: center;
+  min-width: max(2.75rem, 44px);
+  min-height: max(2.75rem, 44px);
+  padding: .4rem .6rem;
   border-radius: var(--radius-sm);
   color: var(--color-nav-text);
   font-size: .92rem;
+  line-height: 1.2;
   white-space: nowrap;
 }
-.nav-link:hover { background: rgba(255,255,255,.12); text-decoration: none; }
-.nav-link--active { background: rgba(255,255,255,.18); }
-.nav-link--cart { display: inline-flex; align-items: center; gap: .4rem; }
+.nav-link:hover { background: color-mix(in srgb, var(--color-nav-text) 12%, transparent); text-decoration: none; }
+.nav-link--active { background: color-mix(in srgb, var(--color-nav-text) 18%, transparent); }
 
+/* Counts in the nav (Wishlist, Messages, Cart, the bell): one compact pill,
+   in rem so it grows with the text. Shown only above zero. */
+.header-nav .badge,
+.site-header .icon-btn__count {
+  position: static;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.35rem;
+  height: 1.35rem;
+  min-height: 0;
+  padding: 0 .4rem;
+  border: 0;
+  border-radius: 999px;
+  background: var(--brand-yellow);
+  color: var(--text-charcoal);
+  font-size: .72rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+/* The header's bell (768px and up): a nav item like its neighbours, not a
+   white circle. Icon, then its count. */
+.site-header .notification-bell .icon-btn {
+  width: auto;
+  height: auto;
+  min-width: max(2.75rem, 44px);
+  min-height: max(2.75rem, 44px);
+  justify-content: center;
+  gap: .4rem;
+  padding: .4rem .6rem;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-nav-text);
+}
+.site-header .notification-bell .icon-btn:hover { background: color-mix(in srgb, var(--color-nav-text) 12%, transparent); }
+.site-header .notification-bell .icon-btn[aria-expanded="true"] { background: color-mix(in srgb, var(--color-nav-text) 18%, transparent); }
+
+/* 11rem: the "Search" button (about 6rem) plus an input of at least 4rem, at
+   every text size. Below that the nav wraps to its own line (.header-row). */
 .search {
-  flex: 1 1 220px;
+  flex: 1 1 11rem;
   display: flex;
   gap: .5rem;
   max-width: 460px;
@@ -77,13 +147,52 @@
   padding: .25rem;
   list-style: none;
   background: var(--canvas-white);
+  --focus-ring: var(--focus-ring-page); /* light surface inside the dark header */
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-lg);
-  max-height: 320px;
+  max-height: min(28rem, 70vh);
   overflow-y: auto;
 }
+.search__group {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: .5rem .6rem .25rem;
+  font-size: .75rem;
+  font-weight: 800;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.search__clear {
+  border: 0;
+  background: none;
+  font: inherit;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--brand-blue);
+  cursor: pointer;
+  text-decoration: underline;
+}
+.search__thumb {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: var(--radius-sm);
+  background: var(--surface-gray-2);
+  color: var(--brand-blue);
+  font-weight: 800;
+  overflow: hidden;
+}
+.search__thumb img { width: 100%; height: 100%; object-fit: cover; }
+.search__label { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.search__price { flex: none; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--price-color); }
+.search__suggestion--all { font-weight: 700; color: var(--brand-blue); }
 .search__suggestion {
+  min-height: 2.75rem;
   display: flex;
   align-items: center;
   gap: .5rem;
@@ -95,13 +204,14 @@
 .search__suggestion.is-active,
 .search__suggestion:hover { background: var(--surface-gray); }
 
-/* Compact the buttons that share the nav row (Contrast, Sign in/out) so the
-   whole primary nav fits on one line instead of wrapping the last item. */
+/* The buttons that share the nav row (Sign in / Sign out): the row's height
+   and the links' text size, so they line up with them. */
 .header-nav .btn--ghost,
 .header-nav .btn--primary {
-  padding: .35rem .6rem;
-  font-size: .88rem;
-  min-height: 32px;
+  padding: .4rem .75rem;
+  font-size: .92rem;
+  line-height: 1.2;
+  min-height: max(2.75rem, 44px);
   white-space: nowrap;
 }
 
@@ -121,9 +231,17 @@
   padding: .35rem 1rem;
 }
 .site-header--seller .user-strip { background: color-mix(in srgb, var(--color-nav) 88%, var(--palette-primary)); }
-.site-header--admin  .user-strip { background: var(--palette-primary-dark); color: #FFFFFF; }
+.site-header--admin  .user-strip { background: var(--palette-primary-dark); color: #FFFFFF; --focus-ring: 3px solid #FFFFFF; }
 
 .user-strip .container { display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; }
+.user-strip__link {
+  margin-left: auto;
+  color: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: .2em;
+  padding-block: .25rem;
+}
 
 /* Footer — themed via --color-footer */
 .site-footer {
@@ -131,6 +249,7 @@
   color: var(--color-footer-text);
   border-top: 1px solid color-mix(in srgb, var(--color-footer-text) 18%, transparent);
   margin-top: 3rem;
+  --focus-ring: var(--focus-ring-footer); /* dark chrome: tokens.css */
 }
 .footer-row { padding: 1rem; text-align: center; }
 .site-footer a { color: var(--color-footer-text); }
@@ -143,7 +262,8 @@
   padding: 2rem 1rem 1rem;
   text-align: left;
 }
-.footer-grid h2 {
+.footer-grid h2,
+.footer-partner h2 {
   font-size: .85rem;
   text-transform: uppercase;
   letter-spacing: .04em;
@@ -155,23 +275,31 @@
   color: #FFFFFF;
 }
 .footer-links { list-style: none; margin: 0; padding: 0; display: grid; gap: .4rem; }
-.footer-social { display: flex; gap: .6rem; margin-top: .6rem; }
+/* Shown only when real profile URLs exist (lib/site.ts). Icon plus a visible
+   name, and a full-size target. */
+.footer-social { list-style: none; margin: 0; padding: 0; display: grid; gap: .4rem; }
 .footer-social a {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--color-footer-text) 30%, transparent);
+  gap: .5rem;
+  min-height: 2.75rem;
 }
 .newsletter-form { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .5rem; }
+/* Never wider than its column. The input asks for 11.25rem beside
+   "Subscribe" (the button wraps below when they do not fit) and shrinks to
+   its column: a footer column can be 160px (.footer-grid), 162px at 768px
+   with a scrollbar, 167px at 375px and 12px text with "Follow us" shown
+   (F-06). A fixed min-width of 180px stuck out and scrolled the page
+   sideways; in rem, the input also widens with the text. */
 .newsletter-form input {
-  flex: 1;
-  min-width: 180px;
+  flex: 1 1 11.25rem;
+  min-width: 0;
   background: var(--canvas-white);
   color: var(--text-charcoal);
 }
+/* A full-size target, beside the input or wrapped below it. Two classes, so
+   it beats responsive.css's later .btn--sm (36px from 768px). */
+.newsletter-form .btn--sm { min-height: max(2.75rem, 44px); }
 .footer-bottom {
   border-top: 1px solid color-mix(in srgb, var(--color-footer-text) 18%, transparent);
   padding: 1rem;
@@ -186,6 +314,23 @@
   padding: .85rem 0;
 }
 .static-page { padding: 2rem 1rem 3rem; max-width: 760px; }
+/* "About InclusiveMarket" is one word wider than a 375px phone at 24px text;
+   .prose is a grid, so only "anywhere" lets the title shrink below that word
+   instead of pushing the page sideways (F-06). */
+.static-page h1 { overflow-wrap: anywhere; }
+
+/* Full-page states: error, not found, suspended account. A heading, one
+   sentence that says what happened, and the next step — never a blank page. */
+.page-state {
+  display: grid;
+  gap: var(--space-4);
+  max-width: var(--measure);
+  padding-block: var(--space-7);
+}
+.page-state h1 { font-size: var(--step-4); }
+.page-state__search { max-width: 32rem; }
+.page-state__subtitle { font-size: var(--step-1); margin: 0 0 var(--space-2); }
+.page-state__links { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--space-2); }
 .prose { display: grid; gap: 1rem; line-height: 1.65; }
 .prose h1 { font-size: var(--step-4); }
 .prose h2 { font-size: 1.15rem; margin-top: 1rem; }
@@ -277,6 +422,13 @@
   /* Measured header height; a literal is wrong at every font size but the
      default, and badly wrong at the 24px accessibility setting. */
   top: calc(var(--header-total) + var(--space-2));
+  /* Taller than the window below the header (24px text: the header alone is
+     over 200px), its lower filters sat off screen while they had focus. It
+     scrolls on its own instead, ending above the floating buttons, like the
+     console sidebar. */
+  max-height: calc(100vh - var(--header-total) - var(--space-2) - var(--fab-clearance)); /* no svh */
+  max-height: calc(100svh - var(--header-total) - var(--space-2) - var(--fab-clearance));
+  overflow: auto;
 }
 .filters h2 { font-size: 1rem; margin-bottom: .5rem; }
 .rating-row { display: flex; flex-wrap: wrap; gap: .5rem; }
@@ -284,62 +436,604 @@
 
 .rail { margin-bottom: 1.75rem; }
 .rail h2 { font-size: 1.1rem; margin-bottom: .6rem; }
-.seller-rail {
+.feed-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 1rem; flex-wrap: wrap; gap: .5rem; }
+
+/* --- Storefront home (/home, P4-05, 05 §2): one column; filters live on
+   /search. A white page (--canvas-white, not the body's tint) and --space-7
+   of whitespace between sections, no boxes around them: each section owns
+   its bottom margin (.home-section here; .home-hero below, .category-nav in
+   shopee.css). The loading screen's main carries .main--home too. */
+body:has(.main--home) { background: var(--canvas-white); }
+.main--home { padding-top: 1.25rem; padding-bottom: 2rem; }
+.home-section { margin-block-end: var(--space-7); }
+
+/* Phones: the first four cards of each product rail (ProductRail). Five
+   rails of ten in a 2-column wrap were about 50 stacked cards before
+   Discover. display: none, so the rest leave the Tab order and the
+   accessibility tree as well; responsive.css shows them from 768px, where
+   the rail is one scrolling row. "View all", where a rail has one, Discover
+   and /search list every product. Not capped: Today's deals (no other page
+   lists every deal; capOnPhones={false}) and the category tiles. */
+.product-rail--capped .rail__item:nth-child(n + 5) { display: none; }
+
+/* --- Shops by PWD sellers (P4-05, 05 #7, 01 §6.5) ----------------------------
+   components/StoreCards.tsx. One column here; 2 from 600px and 4 from 1024px
+   (responsive.css). The card is flat: white, 1px border, --radius-md. It is
+   the `store-card` container: narrow, the logo sits above the words; from a
+   17rem card (responsive.css, in rem, so the text setting moves the switch)
+   the logo is on the left. Its one link's ::after covers the card and draws
+   the keyboard ring, as on the hero's promo tile. */
+.store-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: .75rem;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
-.seller-card {
+/* Equal heights in a row: the grid stretches the item, the item its card. */
+.store-grid > li { display: flex; min-width: 0; }
+.store-card {
+  position: relative; /* holds the link's ::after */
+  container: store-card / inline-size;
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--canvas-white);
+  color: var(--text-charcoal);
+}
+@media (hover: hover) and (pointer: fine) {
+  .store-card { transition: box-shadow var(--dur-2) var(--ease-out); }
+  .store-card:hover { box-shadow: var(--shadow-md); }
+}
+.store-card__body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: start;
+  gap: var(--space-3);
+}
+/* The 3rem round logo (decorative: the name beside it says who), else the
+   shop's initial, drawn as on the promo tile. */
+.store-card__logo,
+.store-card__avatar {
+  display: block;
+  inline-size: 3rem;
+  block-size: 3rem;
+  border-radius: 999px;
+}
+.store-card__logo {
+  object-fit: cover;
+  border: 1px solid var(--border);
+  background: var(--surface-gray);
+}
+.store-card__avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--palette-primary-100);
+  color: var(--palette-primary-dark);
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: var(--step-2);
+}
+.store-card__text {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: .35rem;
-  text-align: left;
-  padding: 1rem;
-  background: var(--canvas-white);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  transition: box-shadow .12s ease, transform .12s ease;
+  gap: var(--space-2);
+  min-width: 0;
+  max-inline-size: 100%;
 }
-.seller-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
-.seller-card__avatar {
+.store-card__text > * { margin: 0; }
+/* The whole name: long words break only when a whole one cannot fit. */
+.store-card__name {
+  font-size: var(--step-1);
+  font-weight: 700;
+  line-height: 1.3;
+  overflow-wrap: break-word;
+  max-inline-size: 100%;
+}
+.store-card__link {
+  color: inherit;
+  text-decoration: none;
+}
+.store-card__link:hover { text-decoration: underline; }
+/* Not positioned itself, so the ::after takes the card as its box. */
+.store-card__link::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-md);
+}
+/* The ring is on the ::after, round the whole card, for keyboard focus only. */
+.store-card__link:focus-visible { outline: none; }
+.store-card__link:focus-visible::after {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+/* The badge wraps inside a narrow card (24px text) rather than overflow it. */
+.store-card__badges { max-inline-size: 100%; }
+.store-card__badges .badge { max-inline-size: 100%; }
+.store-card__meta {
+  color: var(--text-muted);
+  font-size: .875rem;
+}
+
+/* --- Buyer dashboard (/account for a buyer, P4-06, 05 §3) -----------------
+   app/account/page.tsx. One column here; from 1024px two (responsive.css):
+   My purchases and Picked for you across both, then recent orders beside
+   PWD verification and the wishlist beside the shortcuts. Each widget is a
+   section under its 01 §6.4 header (.section-head: the h2 at --step-3, a
+   "View all" link named for what it lists); the console's --space-6
+   between them. The panels are .card, flat (responsive.css §7). Text
+   breaks between words only: a word splits only when it is wider than its
+   whole box. */
+.buyer-dash__head { margin-block: var(--space-5) var(--space-6); }
+.buyer-dash {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-6) var(--space-5);
+  align-items: start;
+  padding-bottom: var(--space-6);
+}
+.buyer-dash > * { min-width: 0; }
+/* Picked for you is the last widget, not a /home section: the grid's gap
+   spaces it. */
+.buyer-dash .home-section { margin-block-end: 0; }
+
+/* My purchases: KpiCard links, two to a row (2×2), or four once the
+   section holds four tiles of 7.5rem (the `purchases` container query in
+   responsive.css), never three and one. Never a tile under 7.5rem, so with
+   24px text on a phone they stack one to a row rather than split "receive"
+   mid-word; max() caps the row at two. */
+.buyer-dash__purchases { container: purchases / inline-size; }
+.purchase-tiles {
+  display: grid;
+  grid-template-columns: repeat(
+    auto-fill,
+    minmax(min(100%, max(7.5rem, calc((100% - var(--space-4)) / 2))), 1fr)
+  );
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+/* Equal heights in a row: the grid stretches the item, the item its tile. */
+.purchase-tiles > li { display: flex; min-width: 0; }
+.purchase-tiles > li > .kpi { flex: 1 1 auto; min-width: 0; }
+
+/* Recent orders: one row per order in one flat panel, the thumbnail
+   (decorative, alt="") beside the words. The Track link is a 44px target
+   that grows with the text, at the end of the status line, dropping under
+   it when they do not fit. */
+.dash-orders {
+  margin: 0;
+  padding: 0 var(--space-3);
+  list-style: none;
+}
+/* The thumbnail takes at most a quarter of the row, so with 24px text on a
+   phone the words keep room for a whole word per line. */
+.dash-order {
+  display: grid;
+  grid-template-columns: min(3.5rem, 25%) minmax(0, 1fr);
+  gap: var(--space-3);
+  align-items: start;
+  padding-block: var(--space-3);
+}
+.dash-order + .dash-order { border-top: 1px solid var(--border); }
+.dash-order__thumb {
+  display: block;
+  inline-size: 100%;
+  block-size: auto;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  background: var(--surface-gray);
+}
+.dash-order__body {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+}
+.dash-order__body > p { margin: 0; overflow-wrap: break-word; }
+/* An h3, so heading jumps reach each order; sized like the body text. */
+.dash-order__title {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: var(--step-0);
+  font-weight: 600;
+  line-height: 1.4;
+  overflow-wrap: break-word;
+}
+.dash-order__meta {
+  color: var(--text-muted);
+  font-size: .875rem;
+}
+.dash-order__foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  margin-top: var(--space-1);
+}
+.dash-order__total {
+  font-family: var(--font-display);
+  font-variant-numeric: tabular-nums;
+}
+/* Two classes: responsive.css (imported last) sets .btn--sm to 36px. */
+.dash-order__foot .dash-order__track {
+  margin-inline-start: auto;
+  min-height: max(2.75rem, 44px);
+}
+
+/* Wishlist: four StorefrontCards, two to a row on phones and four from
+   600px (responsive.css), never a column under the 7.5rem that keeps a
+   "₱1,250.00" price on one line (the rails' rule): at 24px text a narrow
+   box shows fewer to a row. Not .product-grid (check-grid.mjs). */
+.dash-cards {
+  display: grid;
+  grid-template-columns: repeat(
+    auto-fill,
+    minmax(min(100%, max(7.5rem, calc((100% - var(--space-3)) / 2))), 1fr)
+  );
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.dash-cards > li { display: flex; min-width: 0; }
+.dash-cards > li > * { flex: 1 1 auto; min-width: 0; }
+
+/* Shortcuts: the account sections and Help, one 44px row each. */
+.dash-shortcuts {
+  margin: 0;
+  padding-block: var(--space-1);
+  list-style: none;
+}
+.dash-shortcuts > li + li { border-top: 1px solid var(--border); }
+.dash-shortcut {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: max(2.75rem, 44px);
+  padding-block: var(--space-2);
+  color: var(--brand-blue);
+  font-weight: 600;
+  text-decoration: none;
+  overflow-wrap: break-word;
+}
+.dash-shortcut:hover { color: var(--brand-blue-800); text-decoration: underline; }
+.dash-shortcut .icon {
+  flex: none;
+  width: 1.25rem;
+  height: 1.25rem;
+}
+.dash-shortcut > span { min-width: 0; }
+.countdown { font-weight: 800; color: var(--price-color); font-variant-numeric: tabular-nums; }
+.feed__more { margin-top: var(--space-5); color: var(--text-muted); }
+
+/* Sort: a radio group that looks like tabs. The native radios stay in the
+   accessibility tree and keyboard order (arrow keys move between them); the
+   label is the visible target. */
+.sort-tabs { margin: 0; }
+.sort-tabs__group { display: flex; flex-wrap: wrap; gap: var(--space-1); margin: 0; padding: 0; border: 0; align-items: center; }
+.sort-tabs__legend { float: left; margin-right: var(--space-2); font-weight: 700; color: var(--text-muted); font-size: .9rem; }
+.sort-tab { position: relative; display: inline-flex; }
+.sort-tab input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.sort-tab span {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
+  min-height: 2.75rem;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border);
   border-radius: 999px;
+  background: var(--canvas-white);
+  font-weight: 600;
+  font-size: .9rem;
+  color: var(--text-charcoal);
+}
+.sort-tab:hover span { border-color: var(--brand-blue); color: var(--brand-blue); }
+.sort-tab input:focus-visible + span { outline: var(--focus-ring); outline-offset: var(--focus-ring-offset); }
+.sort-tab--current span,
+.sort-tab input:checked + span { background: var(--brand-blue); border-color: var(--brand-blue); color: #FFFFFF; }
+
+/* "Why am I seeing this?" under a personalised rail. */
+.why { margin: 0 0 var(--space-3); }
+.why summary { cursor: pointer; font-weight: 700; color: var(--brand-blue); min-height: 2.75rem; display: flex; align-items: center; }
+.why__more { font-weight: 600; text-decoration: underline; }
+.why p { margin: var(--space-1) 0 0; max-width: var(--measure); color: var(--text-charcoal); }
+
+/* --- Home hero (P4-03, 05 #3, 01 §6.5) ------------------------------------
+   components/BannerStrip.tsx (the carousel: RailScroller's hero, whose track
+   and buttons are in components.css) and components/PromoTile.tsx (the side
+   tile). One column here, at every width: .home-hero--split stacks the carousel
+   over the tile, .home-hero--carousel and .home-hero--promo hold one of them full
+   width. responsive.css puts .home-hero--split side by side from 1024px and gives
+   a tile 34rem wide or more its wide form. */
+.home-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-4);
+  margin-block-end: var(--space-7);
+}
+
+/* A slide: the banner at the ratio Admin → Banners asks for (about
+   1600 × 600), its box reserved before the image arrives so nothing shifts;
+   the title under it, never over it (a banner may carry baked-in text, which
+   its alt text repeats). */
+.hero-slide {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--canvas-white);
+  color: var(--text-charcoal);
+  text-decoration: none;
+}
+.hero-slide__img {
+  display: block;
+  inline-size: 100%;
+  block-size: auto;
+  aspect-ratio: 16 / 6;
+  object-fit: cover;
+  background: var(--surface-gray-2);
+}
+.hero-slide__title {
+  padding: var(--space-2) var(--space-3);
+  font-weight: 700;
+  overflow-wrap: break-word;
+}
+a.hero-slide:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-ring-offset); }
+
+/* The side tile: white, 1px border, the carousel's radius. Its one link's
+   ::after covers the tile (PromoTile.tsx), so the tile is the target and
+   the ::after draws the keyboard ring. It is the `promo` query container: its wide form
+   (responsive.css) follows its own width in rem, so the text setting moves
+   the switch too. In a split row it stretches to the carousel's height; the
+   body fills it and centres the content in any spare height. */
+.promo-tile {
+  position: relative; /* holds the link's ::after */
+  container: promo / inline-size;
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--canvas-white);
+  color: var(--text-charcoal);
+}
+@media (hover: hover) and (pointer: fine) {
+  .promo-tile { transition: box-shadow var(--dur-2) var(--ease-out); }
+  .promo-tile:hover { box-shadow: var(--shadow-md); }
+}
+.promo-tile__body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: center;
+  gap: var(--space-3);
+  block-size: 100%;
+}
+/* The product photo: a 1:1 --surface-gray well, at most 60% of a narrow
+   tile, so the 1/3 column stays near the carousel's height. */
+.promo-tile__media--product {
+  inline-size: min(60%, 14rem);
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  background: var(--surface-gray);
+}
+.promo-tile__media--product img {
+  display: block;
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
+}
+/* No photo: the product's initial, as on a product card. */
+.promo-tile__initial {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  block-size: 100%;
+  background: var(--surface-gray-2);
+  color: var(--text-muted);
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: var(--step-5);
+}
+/* The shop: a 3rem round logo, else the initial as the seller cards draw it. */
+.promo-tile__logo,
+.promo-tile__avatar {
+  display: block;
+  inline-size: 3rem;
+  block-size: 3rem;
+  border-radius: 50%;
+}
+.promo-tile__logo {
+  object-fit: cover;
+  border: 1px solid var(--border);
+  background: var(--surface-gray);
+}
+.promo-tile__avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background: var(--palette-primary-100);
   color: var(--palette-primary-dark);
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: var(--step-2);
+}
+.promo-tile__text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.promo-tile__text > * { margin: 0; }
+/* The h3 holds the eyebrow and the link, so a heading jump hears "Flash
+   sale, <title>"; the link's own name stays the title alone. */
+.promo-tile__title {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: var(--step-1);
+  line-height: 1.3;
+}
+.promo-tile__eyebrow {
+  color: var(--brand-brown);
+  font-size: .875rem;
   font-weight: 800;
 }
-.seller-card__name { font-weight: 700; }
-.seller-card__story {
-  color: var(--text-muted);
-  font-size: .85rem;
+/* Two lines at most (three for a shop name, which is short words that
+   wrap early at 24px text); long words wrap only when a whole one cannot
+   fit. */
+.promo-tile__link {
+  color: inherit;
+  text-decoration: none;
+  overflow-wrap: break-word;
   display: -webkit-box;
-  -webkit-line-clamp: 3;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
-.feed-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 1rem; flex-wrap: wrap; gap: .5rem; }
-.product-grid {
-  display: grid;
-  gap: 1rem;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+.promo-tile--shop .promo-tile__link {
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
 }
+/* Not positioned itself, so the ::after takes the tile as its box (and the
+   link's clamp, overflow: hidden, does not clip it: the ::after's
+   containing block is the tile, outside the clipping box). */
+.promo-tile__link::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-lg);
+}
+/* The ring is drawn on the ::after, so it outlines the whole tile, and only
+   for keyboard focus (a click draws none). */
+.promo-tile__link:focus-visible { outline: none; }
+.promo-tile__link:focus-visible::after {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+.promo-tile__price {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+  font-size: var(--step-1);
+}
+.promo-tile__price .badge { white-space: nowrap; }
+/* The countdown's words appear after hydration: hold their line meanwhile. */
+.promo-tile__ends {
+  line-height: 1.5;
+  min-block-size: 1.5em;
+}
+.promo-tile__story {
+  max-inline-size: var(--measure);
+  color: var(--text-muted);
+  font-size: .875rem;
+  line-height: 1.45;
+  overflow-wrap: break-word;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.promo-tile__meta {
+  color: var(--text-muted);
+  font-size: .875rem;
+}
+
+/* --- Seller shop (/shop/[id]) ---------------------------------------------- */
+.main--shop { padding-top: 1.25rem; padding-bottom: 2rem; }
+.shop-head { background: var(--canvas-white); border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; margin-bottom: var(--space-5); }
+.shop-head__banner { display: block; width: 100%; aspect-ratio: 16 / 4; object-fit: cover; background: var(--surface-gray-2); }
+.shop-head__body { display: flex; gap: var(--space-4); align-items: center; padding: var(--space-4); flex-wrap: wrap; }
+.shop-head__logo { flex: none; display: inline-grid; place-items: center; width: 4rem; height: 4rem; border-radius: 999px; overflow: hidden; background: var(--palette-primary-100); color: var(--palette-primary-dark); font-size: var(--step-2); font-weight: 800; }
+.shop-head__logo img { width: 100%; height: 100%; object-fit: cover; }
+.shop-head__name { margin: 0; }
+.shop-head__meta { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-4); margin: var(--space-1) 0 0; }
+.shop-head__story { padding: 0 var(--space-4) var(--space-4); }
+.shop-head__story p { margin: 0; max-width: var(--measure); }
+
+.shop-card { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-4); margin: var(--space-5) 0; }
+.shop-card__body { flex: 1 1 16rem; min-width: 0; }
+.shop-card__name { margin: 0; font-size: var(--step-1); }
+.shop-card__story { margin: var(--space-2) 0 0; max-width: var(--measure); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+
+/* --- Packing slip (/seller/orders/[id]/slip, C-33) ------------------------ */
+.slip { background: #FFFFFF; color: #000000; border: 1px solid var(--border); border-radius: var(--radius-md); padding: var(--space-5); max-width: 48rem; display: grid; gap: var(--space-4); }
+.slip p { margin: 0; }
+.slip__head { display: flex; justify-content: space-between; gap: var(--space-4); flex-wrap: wrap; border-bottom: 2px solid #000000; padding-bottom: var(--space-3); }
+.slip__shop { font-size: var(--step-2); font-weight: 800; }
+.slip__order { text-align: right; }
+.slip__order h1 { margin: 0; font-size: var(--step-2); }
+.slip__to h2 { font-size: var(--step-0); margin: 0 0 var(--space-1); text-transform: uppercase; letter-spacing: .06em; }
+.slip__items { width: 100%; border-collapse: collapse; }
+.slip__items th, .slip__items td { border-bottom: 1px solid #999999; padding: var(--space-2); text-align: left; vertical-align: top; }
+.slip__items .num, .slip__check { text-align: center; width: 4rem; }
+.slip__pay { border: 2px solid #000000; padding: var(--space-3); display: grid; gap: var(--space-1); }
+.slip__foot { font-size: .875rem; }
+
+/* --- Wishlist ------------------------------------------------------------ */
+.wishlist-grid { list-style: none; margin: 0; padding: 0; }
+.wishlist-item { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }
+.wishlist-item > .product-card { flex: 1; }
+.wishlist-item__actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.wishlist-item__actions .btn { flex: 1 1 auto; min-height: 2.75rem; }
+.wishlist-item__note { margin: 0; flex: 1 1 100%; font-weight: 600; color: var(--text-muted); }
+.wishlist-gone { margin-top: var(--space-6); }
+.wishlist-gone ul { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-2); }
+.wishlist-gone li { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-2) var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--canvas-white); }
+.pd__title-row { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-3); }
+.pd__title-row .pd__title { margin: 0; }
+.pd__wishlist { flex: none; min-width: 2.75rem; min-height: 2.75rem; }
+
+/* --- Search (/search) ---------------------------------------------------- */
+.main--search { padding-top: 1.25rem; padding-bottom: 2rem; }
+.search-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--space-2); margin-bottom: var(--space-3); }
+.search-head h1 { margin: 0; overflow-wrap: anywhere; }
+.search-head p { margin: 0; }
+.search-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-4); align-items: start; }
+.search-results { min-width: 0; }
+.search-filters { display: grid; gap: var(--space-4); }
+.search-filters fieldset { margin: 0; padding: 0; border: 0; display: grid; gap: var(--space-1); }
+.search-filters legend { margin-bottom: var(--space-2); padding: 0; }
+.price-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); }
+.price-row__item { display: grid; gap: var(--space-1); }
+.search-layout .filters__toggle { display: inline-flex; align-items: center; }
+.search-layout--collapsed .filters__body { display: none; }
+.search-layout .filters__body { animation: fade-in var(--dur-1) var(--ease-out); }
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+.filters__head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
+.filters__head h2 { margin: 0; }
+.empty--search h2 { font-size: var(--step-1); margin-top: 0; }
+.empty--search ul { margin: 0; padding-left: 1.25rem; }
+
+.load-more { display: grid; justify-items: center; gap: var(--space-3); margin-top: var(--space-5); }
+.load-more__count { margin: 0; color: var(--text-muted); }
+.load-more .btn { min-width: 12rem; min-height: 2.75rem; }
+/* Product card (§7 anatomy): 1:1 photo, title clamped to two lines,
+   tabular price, rating and sold count, seller line, one badge slot, the
+   wishlist heart. Three type sizes only. Every card in a row is the same
+   height: the grid stretches items and the body pushes the price row down.
+   The grid itself is defined once, in responsive.css. */
 .product-card {
   position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
   background: var(--canvas-white);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
   overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  transition: transform .12s ease, box-shadow .12s ease;
 }
-.product-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+/* Keyboard focus shows on the whole card, whichever control inside has it. */
+.product-card:focus-within { outline: var(--focus-ring); outline-offset: var(--focus-ring-offset); }
 .product-card__link {
   display: flex;
   flex-direction: column;
@@ -348,26 +1042,102 @@
   text-decoration: none;
   color: var(--text-charcoal);
 }
+.product-card__link:focus-visible { outline: none; }
 .product-card__wishlist {
   position: absolute;
-  top: 8px;
-  left: 8px;
+  top: var(--space-2);
+  left: var(--space-2);
   z-index: 3;
   background: rgba(255, 255, 255, .92);
 }
-.product-card__featured {
+.product-card__thumb {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  background: var(--surface-gray);
+  border-bottom: 1px solid var(--border);
+}
+.product-card__thumb img { display: block; width: 100%; height: 100%; object-fit: cover; }
+/* No photo yet: a neutral tile with the product's initial, never an emoji. */
+.product-card__initial {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  background: var(--surface-gray-2);
+  color: var(--text-muted);
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: var(--step-5);
+}
+.product-card__badge { position: absolute; top: var(--space-2); right: var(--space-2); z-index: 1; pointer-events: none; }
+.product-card__soldout {
   position: absolute;
-  top: 8px;
-  left: 8px;
-  z-index: 1;
-  pointer-events: none;
+  inset: auto 0 0 0;
+  padding: var(--space-1) var(--space-2);
+  background: rgba(33, 37, 41, .78);
+  color: #FFFFFF;
+  font-size: .8125rem;
+  font-weight: 700;
+  text-align: center;
 }
-.product-card__wishlist ~ .product-card__link .product-card__featured {
-  /* Keep Featured badge clear of the wishlist heart */
-  left: 46px;
+.product-card__body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3) var(--space-3);
 }
-.tag--new,
-.tag--placeholder,
+.product-card__title {
+  margin: 0;
+  font-size: .9375rem;
+  font-weight: 600;
+  line-height: 1.3;
+  min-height: 2.6em;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.product-card__price {
+  margin: auto 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-2);
+  color: var(--price-color);
+  font-size: 1.0625rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.product-card__price--sale { color: var(--price-color); font-weight: 800; }
+.product-card__price--original {
+  color: var(--text-muted);
+  font-size: .8125rem;
+  font-weight: 400;
+  text-decoration: line-through;
+}
+.product-card__meta,
+.product-card__seller {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-1) var(--space-2);
+  font-size: .8125rem;
+  color: var(--text-muted);
+}
+.product-card__seller { justify-content: flex-start; }
+/* Lift on hover only where hover exists, so cards do not stay "lifted" after
+   a tap on touch screens. Transform and shadow only; both reduced-motion
+   switches turn the transition off. */
+@media (hover: hover) and (pointer: fine) {
+  .product-card { transition: transform var(--dur-2) var(--ease-out), box-shadow var(--dur-2) var(--ease-out); }
+  .product-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+}
 .tag--discount {
   pointer-events: none;
 }
@@ -391,7 +1161,7 @@
   overflow: hidden;
 }
 .product-card__price {
-  color: var(--brand-red);
+  color: var(--price-color);
   font-weight: 800;
   font-size: 1.05rem;
   display: flex;
@@ -399,7 +1169,7 @@
   gap: .4rem;
   flex-wrap: wrap;
 }
-.product-card__price--sale { color: var(--brand-red); font-weight: 800; }
+.product-card__price--sale { color: var(--price-color); font-weight: 800; }
 .product-card__price--original {
   color: var(--text-muted);
   font-weight: 500;
@@ -410,9 +1180,9 @@
 .tag--discount {
   position: absolute;
   top: 8px; left: 8px;
-  background: var(--brand-red);
-  color: #FFFFFF; /* Guardrail 2: red is a dark surface, charcoal on it is 2.64:1 */
-  border: 1px solid var(--brand-red-800);
+  background: var(--brand-brown);
+  color: #FFFFFF; /* Guardrail 2 */
+  border: 1px solid var(--brand-brown-800);
   padding: 2px 8px;
   border-radius: 999px;
   font-weight: 800;
@@ -458,7 +1228,7 @@
 }
 .pd__title { font-size: var(--step-4); }
 .pd__rating { display: flex; align-items: center; gap: .4rem; margin: .25rem 0 0; }
-.pd__price { font-size: var(--step-4); color: var(--brand-red); font-weight: 800; }
+.pd__price { font-size: var(--step-4); color: var(--price-color); font-weight: 800; }
 .pd__desc { color: var(--text-charcoal); }
 .pd__section { margin-top: 1rem; }
 .pd__section h3 { font-size: 1rem; margin-bottom: .35rem; }
@@ -482,18 +1252,19 @@
 .variant-btn[disabled] { opacity: .5; cursor: not-allowed; text-decoration: line-through; }
 .stock-note { font-size: .9rem; }
 .stock-note--ok   { color: var(--success); font-weight: 700; }
-.stock-note--low  { color: var(--warning); font-weight: 700; }
-.stock-note--out  { color: var(--brand-red); font-weight: 800; }
+.stock-note--low  { color: var(--warning-text); font-weight: 700; }
+.stock-note--out  { color: var(--text-charcoal); font-weight: 800; }
 
-.qty-row { display: flex; align-items: center; gap: .5rem; }
-.qty-row input { width: 80px; text-align: center; }
+.qty-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); }
+.qty-row > label { font-weight: 600; }
+/* rem, not px: two digits must still fit at the 24px accessibility font. */
+.qty-row input { width: 5rem; text-align: center; }
 
 .pd__actions { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: 1rem; }
 
 .reviews { margin-top: 2rem; }
 .reviews-list { display: grid; gap: .75rem; }
 .related-rail { margin-top: 2rem; }
-.related-rail .product-grid { margin-top: .75rem; }
 .review {
   background: var(--canvas-white);
   border: 1px solid var(--border);
@@ -524,13 +1295,22 @@
 .order-timeline__step:first-child { border-left-color: transparent; padding-left: 0; margin-left: 0; }
 .order-timeline__step.is-current { border-left-color: var(--palette-primary); }
 .order-timeline__note { margin: 0; }
+/* An order's History disclosure in a list row (Seller Centre → Orders): a
+   full-size target, with a drawn chevron since display:flex drops the
+   summary's own marker. */
+.order-history > summary { cursor: pointer; display: flex; align-items: center; gap: var(--space-2); min-height: max(2.75rem, 44px); font-weight: 600; color: var(--brand-blue); }
+.order-history > summary::-webkit-details-marker { display: none; }
+.order-history > summary::before { content: ""; flex: none; width: .45em; height: .45em; border: solid currentColor; border-width: 0 .15em .15em 0; transform: rotate(-45deg); }
+.order-history[open] > summary::before { transform: rotate(45deg); }
+.order-history > summary:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-ring-offset); }
 
 /* Cart */
 .main--cart, .main--checkout, .main--orders, .main--support, .main--wishlist, .main--messages { padding-top: 1.5rem; padding-bottom: 2rem; }
 .cart-body { display: grid; gap: .75rem; }
 .cart-item {
   display: grid;
-  grid-template-columns: 72px 1fr auto auto auto;
+  /* checkbox · photo · title · price · quantity · remove */
+  grid-template-columns: auto 72px 1fr auto auto auto;
   gap: 1rem;
   align-items: center;
   background: var(--canvas-white);
@@ -547,11 +1327,11 @@
 }
 .cart-item__title { font-weight: 600; }
 .cart-item__meta { font-size: .8rem; color: var(--text-muted); }
-.cart-item__price { color: var(--brand-red); font-weight: 700; }
+.cart-item__price { color: var(--price-color); font-weight: 700; }
 .qty-ctrl { display: inline-flex; align-items: center; gap: .25rem; }
 .qty-ctrl button {
   width: 32px; height: 32px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-control);
   background: var(--canvas-white);
   border-radius: var(--radius-sm);
   cursor: pointer;
@@ -572,9 +1352,26 @@
 .checkout-summary { background: var(--canvas-white); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 1rem; align-self: start; position: sticky; top: calc(var(--header-total) + var(--space-2)); }
 .checkout-summary .totals { display: grid; gap: .35rem; margin-top: .75rem; padding-top: .75rem; border-top: 1px solid var(--border); }
 .checkout-summary .totals > div { display: flex; justify-content: space-between; }
-.checkout-summary .totals .grand { font-weight: 800; font-size: 1.05rem; color: var(--brand-red); }
+.checkout-summary .totals .grand { font-weight: 800; font-size: 1.05rem; color: var(--price-color); }
+.checkout-group { display: grid; gap: var(--space-2); padding-block: var(--space-2); border-bottom: 1px solid var(--border); }
+.checkout-group__title { font-size: var(--step-0); margin: 0; }
+.checkout-group__ship { margin: 0; }
+.checkout-line { display: flex; align-items: center; gap: var(--space-2); }
+.checkout-line__thumb {
+  width: 2.75rem;
+  height: 2.75rem;
+  flex-shrink: 0;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+}
+.checkout-line__body { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.cart-item__problem { margin-top: var(--space-1); font-size: .875rem; }
+.cart-summary__blocked { display: grid; gap: var(--space-1); justify-items: end; }
 
 /* Orders */
+.order-card__tracking { margin: 0; padding: var(--space-2) var(--space-3); background: var(--surface-gray); border-radius: var(--radius-sm); }
+.field__label { font-weight: 600; color: var(--text-charcoal); }
 .order-card {
   background: var(--canvas-white);
   border: 1px solid var(--border);
@@ -601,30 +1398,223 @@
 
 /* Seller */
 .main--seller, .main--admin { padding-top: 1.5rem; padding-bottom: 2rem; display: grid; gap: 1.25rem; }
+
+/* Seller Centre / Admin shell: one column, plus a left sidebar from lg up
+   (responsive.css). The phone tab bar and header links cover smaller screens.
+   The content column is the `console` query container: the KPI row and
+   .dash-grid are sized by its width, in rem (container queries in
+   responsive.css), so they react to the sidebar and to the 24px text setting
+   as well as to the window. inline-size containment ignores the column's
+   content when sizing it, which a minmax(0, 1fr) track does anyway. Nothing
+   position: fixed renders inside it (toasts, the floating buttons, the
+   visual alert, the tab bar, the commit bars and the header search all sit
+   outside the console), and dialogs open with showModal() in the top
+   layer. */
+.console { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-5); }
+.console__content { min-width: 0; container: console / inline-size; }
+.console-nav { display: none; }
+.console-nav__title {
+  margin: 0 0 var(--space-3);
+  font-family: var(--font-display);
+  font-weight: 800;
+  color: var(--text-charcoal);
+}
+.console-nav__group + .console-nav__group { margin-top: var(--space-4); }
+.console-nav__section {
+  margin: 0 0 var(--space-1);
+  padding-inline: var(--space-3);
+  font-size: .75rem;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.console-nav ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.console-nav__link {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 2.75rem;
+  padding: var(--space-2) var(--space-3);
+  border-left: 3px solid transparent;
+  border-radius: var(--radius-sm);
+  color: var(--text-charcoal);
+  font-weight: 600;
+  text-decoration: none;
+}
+.console-nav__link:hover { background: var(--surface-gray); }
+/* Current page: tint, bar AND aria-current — never colour alone. */
+.console-nav__link.is-current {
+  background: var(--brand-blue-100);
+  border-left-color: var(--brand-blue);
+  color: var(--brand-blue-800);
+}
+/* A queue count on a link (ConsoleNav `badges`): a nav-coloured pill on the
+   light md row; the dark lg sidebar inverts it (responsive.css). Its hidden
+   " waiting" completes the link's name: "Verifications 3 waiting".
+   position: relative holds that absolute .sr-only text inside the md row's
+   scroller; without it the text escaped and widened the page. */
+.console-nav__badge {
+  position: relative;
+  flex-shrink: 0;
+  margin-left: auto;
+  min-width: 1.5rem;
+  padding: 0 var(--space-2);
+  border-radius: 999px;
+  font-size: .875rem; /* the small-print minimum (01 §3.2) */
+  font-weight: 800;
+  line-height: 1.5rem;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  background: var(--color-nav);
+  color: var(--color-nav-text);
+}
 .page-head { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; }
+/* A head with a line under its title (the admin overview): the title and
+   the line grow together and the action keeps its size, dropping under
+   them when both do not fit (one column on phones, responsive.css). */
+.page-head__text { flex: 1 1 15rem; }
+.page-head__text > h1 { margin: 0; }
+.page-head__text > p { margin: var(--space-1) 0 0; }
+/* Its action is a 44px target that grows with the text: .btn's 44px floor
+   alone fell under 2.75rem at the 24px setting. */
+.page-head__text + .btn { min-height: max(2.75rem, 44px); }
+
+/* Section header (01 §6.4): the h2 on the left, a "View all" link on the
+   right; the link drops under the title when the two do not fit. The caller
+   names the link for what it lists ("View all deals", the extra words
+   visually hidden) and hides its arrow (aria-hidden). */
+.section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-1) var(--space-4);
+  margin-bottom: var(--space-3);
+}
+.section-head > h2,
+.section-head__title > h2 {
+  margin: 0;
+  font-size: var(--step-3);
+  font-weight: 800;
+}
+/* A heading with something beside or under it (ProductRail's `meta`): the
+   deals countdown on the heading's line, the "why am I seeing this?"
+   disclosure on a line of its own under it. */
+.section-head__title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-3);
+  min-width: 0;
+}
+.section-head__title > .why {
+  flex-basis: 100%;
+  margin: 0;
+}
+.section-head__link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: max(2.75rem, 44px); /* the 44px target, growing with the text */
+  color: var(--brand-blue);
+  font-weight: 600;
+}
+.section-head__link:hover { color: var(--brand-blue-800); }
+.section-head__link svg { width: 1em; height: 1em; }
+
+/* The KPI row. The cards are in components.css. Inside the console the row
+   is sized by the content column (container queries in responsive.css:
+   one column, two, then every card in one row). This auto-fit grid is the
+   fallback anywhere else: 15rem holds an 11-character figure such as
+   ₱128,430.00 at --step-4, and min() keeps a single column inside a window
+   narrower than that. */
 .kpis {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: .75rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(15rem, 100%), 1fr));
+  gap: var(--space-4);
+  /* A list of KpiCard links (<ul role="list">) as well as a section. */
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
-.kpi {
-  background: var(--canvas-white);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  padding: 1rem;
-}
-.kpi__label { color: var(--text-muted); font-size: .85rem; display: block; }
-.kpi__value { font-size: var(--step-4); font-weight: 800; color: var(--brand-blue); }
+/* A line under the row, such as the overview's "These figures cover the
+   newest 20,000 orders". */
+.kpis-note { margin: var(--space-3) 0 0; }
 
-.chart-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+/* Dashboard grid (01 §5): one column, and 12 from 58rem of console content
+   (responsive.css), where a card spans 8 + 4, 6 + 6 or 12. A child without
+   a span class takes the whole row. */
+.dash-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-4);
+}
+
+/* Charts side by side from 40rem of console content (a container query in
+   responsive.css); one column below. */
+.chart-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-4); }
 .chart-card {
   background: var(--canvas-white);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  padding: 1rem;
+  padding: var(--space-4);
 }
-.chart-card h2 { font-size: 1rem; margin-bottom: .5rem; }
+/* Card title (01 §3.2): Rubik 700 at --step-1. Still an h2 or h3 in the
+   outline. */
+.chart-card h2,
+.chart-card__title {
+  margin: 0 0 var(--space-2);
+  font-family: var(--font-display);
+  font-size: var(--step-1);
+  font-weight: 700;
+  line-height: 1.2;
+}
+/* Header (01 §6.2): title and subtitle on the left, a slot on the right for
+   components/Tabs.tsx when the chart switches series. The tabs wrap under
+   the title when the card is too narrow for both. Body: the Chart. Footer:
+   its "View as table" text alternative (.chart-data-table). */
+.chart-card__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+  margin-bottom: var(--space-3);
+}
+.chart-card__head > :first-child { flex: 1 1 auto; }
+.chart-card__head h2,
+.chart-card__head .chart-card__title { margin: 0; }
+.chart-card__subtitle {
+  margin: var(--space-1) 0 0;
+  color: var(--text-muted);
+  font-size: .875rem;
+}
+/* The tab strip in the head is a control in the corner of the card, not a
+   divider above a panel: no rule under it and no margin. The phone rule in
+   responsive.css bleeds a page-level strip to the screen edge; the card's
+   strip stays inside the card. */
+.chart-card__head .tabs {
+  margin: 0;
+  padding-inline: 0;
+  border-bottom: 0;
+}
+/* With no rule under the strip, the selected tab's white fill sat on the
+   white card and its outline was 1.3:1, so only blue bold text marked it.
+   A 3px brand-blue underline instead, taken from its bottom padding so the
+   tab keeps its height; a border, not a shadow, so forced colours keep it. */
+.chart-card__head .tab--active {
+  border-color: transparent;
+  border-bottom: 3px solid var(--brand-blue);
+  padding-bottom: calc(.55rem - 3px);
+  margin-bottom: 0;
+}
 .chart-card canvas { width: 100%; height: auto; }
+/* A table in a card (the overview's top products and recent orders): the
+   card is its frame, so TableWrap's region drops its own border and keeps
+   its focus ring. Its width and phone rows are in responsive.css. */
+.chart-card .table-wrap { border: 0; border-radius: 0; }
 
 /* Filter bar */
 .filter-bar {
@@ -640,15 +1630,26 @@
 .filter-bar select, .filter-bar input { min-height: 36px; }
 
 /* Variant rows (seller product modal) */
-.variants { margin-top: .5rem; }
+.variants { margin-top: var(--space-2); }
 .variant-row {
   display: grid;
-  grid-template-columns: 1fr 1fr 90px 1fr auto;
-  gap: .5rem;
+  /* Stock is the one narrow column; sized in rem so it still fits a
+     four-digit quantity at the 24px accessibility font. */
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 6rem minmax(0, 1fr) auto;
+  gap: var(--space-2);
   align-items: end;
-  margin-bottom: .5rem;
+  margin-bottom: var(--space-2);
 }
 .variant-row .field { margin: 0; }
+/* Each row is its own record; a rule between them reads faster than relying
+   on the gap alone once a seller has five of them. */
+.variant-row + .variant-row {
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--border);
+}
+/* The last cell's label is a &nbsp; spacer that aligns the button with the
+   inputs. Let the button own the full cell so it lines up with their edges. */
+.variant-row .field > .btn { width: 100%; }
 
 /* Admin ticket workspace */
 .ticket-workspace {
@@ -701,3 +1702,50 @@
 /* Responsive */
 
 /* Width media queries live in styles/responsive.css. */
+.ticket-reply { display: grid; gap: var(--space-2); justify-items: start; }
+.ticket-reply .field { width: 100%; margin: 0; }
+
+/* "In partnership with" strip: the DSWD marks sit on a white tile so they
+   read the same in every theme; links meet the 44px target (F-06). The tile
+   wraps and its logos shrink, so at 320px with 24px text nothing is cut off
+   (body clips sideways overflow, so it would not show as a scrollbar). */
+.footer-partner {
+  padding-block: 1.25rem;
+  border-top: 1px solid color-mix(in srgb, var(--color-footer-text) 25%, transparent);
+}
+.footer-partner__body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem 1.5rem;
+}
+.footer-partner__logos {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  max-width: 100%;
+  min-width: 0;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  background: #fff;
+}
+.footer-partner__logos img {
+  height: 3.5rem;
+  width: auto;
+  min-width: 0;
+  max-width: 100%;
+  object-fit: contain;
+}
+.footer-partner__text { flex: 1 1 16rem; min-width: 0; }
+.footer-partner__text p { margin: 0 0 0.25rem; }
+.footer-partner__links { display: flex; flex-wrap: wrap; gap: 0 1rem; margin: 0; padding: 0; list-style: none; }
+.footer-partner__links a,
+.footer-partner__plain {
+  display: inline-flex;
+  align-items: center;
+  min-height: max(2.75rem, 44px);
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  color: inherit;
+}

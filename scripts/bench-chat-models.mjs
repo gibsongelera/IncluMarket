@@ -1,5 +1,5 @@
 /**
- * Compare OpenRouter free models for the IncluMarket support widget.
+ * Compare OpenRouter free models for the InclusiveMarket support widget.
  *
  * Free-tier model ids churn, and the thing that decides whether the chatbot
  * feels alive is not benchmark quality — it is whether a reply lands inside
@@ -50,7 +50,7 @@ const MODELS = argModels ?? DEFAULT_MODELS;
 
 // A cut-down version of the real prompt: enough shared rules plus a live
 // context block, so the restriction test is meaningful.
-const SYSTEM = `You are the support assistant for IncluMarket, a marketplace where every seller is a person with a disability. Prices are in Philippine pesos.
+const SYSTEM = `You are the support assistant for InclusiveMarket, a marketplace where every seller is a person with a disability. Prices are in Philippine pesos.
 
 HOW TO ANSWER
 - Reply with the FINAL ANSWER ONLY. Never show your reasoning, analysis, planning or step-by-step thinking. The person sees your reply verbatim.
@@ -111,7 +111,7 @@ async function ask(model, question) {
         Authorization: `Bearer ${KEY}`,
         "Content-Type": "application/json",
         "HTTP-Referer": process.env.OPENROUTER_SITE_URL || "http://localhost:3000",
-        "X-Title": process.env.OPENROUTER_APP_NAME || "IncluMarket",
+        "X-Title": process.env.OPENROUTER_APP_NAME || "InclusiveMarket",
       },
       body: JSON.stringify({
         model,

@@ -54,6 +54,21 @@ export function applyReduceMotion(on: boolean) {
   else document.documentElement.removeAttribute("data-reduce-motion");
 }
 
+/**
+ * Whether to skip motion: the OS setting or the toolbar Reduce motion switch.
+ * CSS honours both for animations; JS smooth scrolling has to ask (M-01).
+ */
+export function prefersReducedMotion(): boolean {
+  if (typeof window === "undefined") return true;
+  if (document.documentElement.getAttribute("data-reduce-motion") === "true") return true;
+  return typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+/** "smooth", unless the person asked for less motion. */
+export function scrollBehavior(): ScrollBehavior {
+  return prefersReducedMotion() ? "auto" : "smooth";
+}
+
 export function applyLargeCursors(on: boolean) {
   if (typeof document === "undefined") return;
   if (on) document.documentElement.setAttribute("data-large-cursors", "true");
@@ -64,6 +79,61 @@ export function applyReadingMode(on: boolean) {
   if (typeof document === "undefined") return;
   if (on) document.documentElement.setAttribute("data-reading-mode", "true");
   else document.documentElement.removeAttribute("data-reading-mode");
+}
+
+/**
+ * Whether voice commands can run at all.
+ *
+ * Both answers have to be distinguishable in the UI. Silently doing nothing is
+ * what made the toggle look broken: Firefox has no SpeechRecognition, and the
+ * API is also gated on a secure context, so a phone hitting the dev server at
+ * http://192.168.x.x gets an object that errors the instant it starts.
+ */
+export type VoiceSupport = "ready" | "unsupported" | "insecure";
+
+export function checkVoiceSupport(scope: {
+  SpeechRecognition?: unknown;
+  webkitSpeechRecognition?: unknown;
+  isSecureContext?: boolean;
+}): VoiceSupport {
+  if (!scope.SpeechRecognition && !scope.webkitSpeechRecognition) return "unsupported";
+  if (scope.isSecureContext === false) return "insecure";
+  return "ready";
+}
+
+/**
+ * Split Web Speech error codes into "retry" and "stop and explain".
+ *
+ * Restarting on a fatal code is an infinite loop: the browser ends the session
+ * immediately, onend fires, the restart raises the same error. `no-speech` and
+ * `aborted`, by contrast, are the normal way a continuous session ends and
+ * must be retried or recognition dies after the first pause.
+ */
+export function classifyVoiceError(code: string): { fatal: boolean; message: string } {
+  switch (code) {
+    case "not-allowed":
+    case "service-not-allowed":
+      return {
+        fatal: true,
+        message:
+          "Microphone access is blocked. Allow the microphone for this site in your browser settings, then switch voice commands on again.",
+      };
+    case "audio-capture":
+      return {
+        fatal: true,
+        message: "No microphone was found. Connect one, then switch voice commands on again.",
+      };
+    case "network":
+      return {
+        fatal: true,
+        message: "Speech recognition could not reach the browser's speech service. Check your connection.",
+      };
+    case "language-not-supported":
+      return { fatal: true, message: "This browser cannot recognise the language used for commands." };
+    default:
+      // no-speech, aborted, and anything unknown: let onend retry.
+      return { fatal: false, message: "" };
+  }
 }
 
 /** Match inclumarket-style voice command phrases to routes / actions. */
@@ -94,7 +164,7 @@ export function matchVoiceCommand(utterance: string): VoiceAction {
   if (/\b(scroll )?down\b/.test(t)) return { type: "scroll", direction: "down" };
   if (/\b(go to )?top\b/.test(t)) return { type: "scroll", direction: "top" };
   if (/\bread (the )?title\b/.test(t)) {
-    return { type: "speak", text: typeof document !== "undefined" ? document.title : "IncluMarket" };
+    return { type: "speak", text: typeof document !== "undefined" ? document.title : "InclusiveMarket" };
   }
   if (/\bread (the )?page\b/.test(t)) {
     const text =
@@ -104,4 +174,36 @@ export function matchVoiceCommand(utterance: string): VoiceAction {
     return { type: "speak", text: text || "No page content found." };
   }
   return null;
+}
+
+/** The toolbar's settings as they are stored on the account (im_ui_prefs). */
+export interface UiPrefs {
+  fontSize: FontSizePx;
+  contrast: boolean;
+  reduceMotion: boolean;
+  largeCursors: boolean;
+  visualAlerts: boolean;
+  tts: boolean;
+  voice: boolean;
+  reading: boolean;
+  highlight: boolean;
+  speechRate: number;
+}
+
+/**
+ * Keep only valid settings from untrusted input (the save action is a public
+ * endpoint). Unknown keys and wrong types are dropped, not coerced.
+ */
+export function cleanUiPrefs(input: unknown): Partial<UiPrefs> {
+  if (!input || typeof input !== "object") return {};
+  const src = input as Record<string, unknown>;
+  const out: Partial<UiPrefs> = {};
+  if (typeof src.fontSize === "number" && Number.isFinite(src.fontSize)) out.fontSize = clampFontSize(src.fontSize);
+  for (const k of ["contrast", "reduceMotion", "largeCursors", "visualAlerts", "tts", "voice", "reading", "highlight"] as const) {
+    if (typeof src[k] === "boolean") out[k] = src[k] as boolean;
+  }
+  if (typeof src.speechRate === "number" && Number.isFinite(src.speechRate)) {
+    out.speechRate = Math.round(Math.min(2, Math.max(0.5, src.speechRate)) * 100) / 100;
+  }
+  return out;
 }

@@ -1,13 +1,65 @@
 "use server";
 
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getSession } from "@/lib/session";
 import { guardByIp, rateLimit, RATE_LIMITED_MESSAGE } from "@/lib/security/rate-limit";
 import { clearRecoveryMarker, hasRecoveryMarker, setRecoveryMarker } from "@/lib/auth/recovery";
+import { RESET_PATH } from "@/lib/auth/email-link";
 import type { Role } from "@/lib/types";
+
+/*
+ * Sign-up, resend-code and password-reset emails are sent by Supabase Auth
+ * itself, from the templates and SMTP settings in the Supabase dashboard
+ * (Authentication > Emails). The templates link to /auth/confirm with
+ * {{ .TokenHash }}, which works on any device, and show {{ .Token }}, the
+ * code the sign-in page accepts. Without custom SMTP, Supabase delivers only
+ * to the project team's own addresses, a few an hour (README, "Email").
+ *
+ * Order, ticket and newsletter emails are separate: lib/email/send.ts.
+ */
+function siteBase(): string {
+  return (process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000").replace(/\/$/, "");
+}
+
+/** Where a link from an unedited template lands: same-browser PKCE. */
+function callbackUrl(next?: string): string {
+  return `${siteBase()}/auth/callback${next ? `?next=${encodeURIComponent(next)}` : ""}`;
+}
+
+const ALREADY_REGISTERED =
+  "An account with that email already exists. If you have not confirmed it yet, open Sign in and resend the code.";
+
+/** A failed Supabase Auth email, in words a person can act on. */
+function mailError(
+  error: { message?: string; status?: number; name?: string; code?: string },
+  fallback: string
+): string {
+  const msg = (error.message || "").trim();
+  if (error.status === 429 || error.code === "over_email_send_rate_limit" || /rate limit/i.test(msg)) {
+    return "Too many emails were sent just now. Please wait a few minutes and try again.";
+  }
+  if (error.status === 500 || error.name === "AuthRetryableFetchError" || /error sending/i.test(msg)) {
+    return "We could not send the email. Please try again in a minute.";
+  }
+  return describeAuthError(error, fallback);
+}
+
+function describeAuthError(
+  error: { message?: string; status?: number; name?: string } | null | undefined,
+  fallback: string
+): string {
+  const msg = (error?.message || "").trim();
+  if (msg && msg !== "{}") return msg;
+  if (error?.status === 500 || error?.name === "AuthRetryableFetchError") {
+    return "We could not send the email. Please try again in a minute.";
+  }
+  return fallback;
+}
+
+const SUSPENDED_MESSAGE =
+  "This account is suspended, so it cannot sign in right now. If you think this is a mistake, contact us through the Contact page.";
 
 export interface AuthResult {
   ok: boolean;
@@ -16,14 +68,6 @@ export interface AuthResult {
   name?: string;
   needsEmailConfirm?: boolean;
   message?: string;
-}
-
-async function siteOrigin(): Promise<string> {
-  const h = await headers();
-  const proto = h.get("x-forwarded-proto") || "http";
-  const host = h.get("x-forwarded-host") || h.get("host");
-  if (host) return `${proto}://${host}`;
-  return process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 }
 
 async function audit(actorId: number, role: string, action: string, target: string) {
@@ -55,7 +99,12 @@ export async function loginAction(email: string, password: string): Promise<Auth
   });
 
   if (error) {
-    const msg = error.message || "Sign in failed.";
+    const msg = describeAuthError(error, "Sign in failed.");
+    // Suspension bans the user in Supabase Auth (setAccountStatus), which
+    // reports it as "User is banned".
+    if (/banned/i.test(msg)) {
+      return { ok: false, error: SUSPENDED_MESSAGE };
+    }
     if (/confirm|not confirmed|email not confirmed/i.test(msg)) {
       return {
         ok: false,
@@ -80,71 +129,90 @@ export async function loginAction(email: string, password: string): Promise<Auth
 
   const session = await getSession();
   if (!session) {
-    return { ok: false, error: "Account profile not found. Contact support." };
+    // Either the profile is suspended (and the Auth ban has not applied yet)
+    // or there is no profile. A suspended user used to see "Account profile
+    // not found", which explains nothing (B-14).
+    const { data: profile } = await createAdminClient()
+      .from("im_profiles")
+      .select("account_status")
+      .eq("auth_user_id", data.user.id)
+      .maybeSingle();
+    await supabase.auth.signOut();
+    if (profile?.account_status === "suspended") return { ok: false, error: SUSPENDED_MESSAGE };
+    return { ok: false, error: "We could not find your account details. Please contact us through the Contact page." };
   }
 
   await audit(session.user_id, session.role, "auth_login", `user:${session.user_id}`);
   return { ok: true, role: session.role, name: session.name };
 }
 
+/**
+ * Create a BUYER account. Only buyers sign themselves up; sellers are PWD
+ * trainees whom AVRC staff onboard from Admin > Users. Migration 0025 makes
+ * the database enforce this too, since anyone can call Supabase's sign-up
+ * endpoint directly.
+ */
 export async function signupAction(
   name: string,
   email: string,
   password: string,
-  role: Role,
   consent: boolean
 ): Promise<AuthResult> {
   const cleanName = String(name || "").trim();
   const cleanEmail = String(email || "").trim().toLowerCase();
   if (!cleanName || !cleanEmail || !password)
     return { ok: false, error: "Please fill in all fields." };
+  if (cleanName.length > 80) return { ok: false, error: "Please keep your name to 80 characters." };
   if (password.length < 8)
     return { ok: false, error: "Password must be at least 8 characters." };
   if (!consent)
     return { ok: false, error: "You must accept the Data Privacy notice to continue." };
-  if (role !== "buyer" && role !== "seller")
-    return { ok: false, error: "Please choose a valid role." };
 
   const signupGuard = await guardByIp("signup", { limit: 5, windowSeconds: 3600 });
   if (signupGuard) return signupGuard;
 
-  const origin = await siteOrigin();
+  // Supabase creates the user and sends the confirmation email (code and
+  // link). If the email cannot be sent, it creates nothing.
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase.auth.signUp({
     email: cleanEmail,
     password,
-    options: {
-      emailRedirectTo: `${origin}/auth/callback`,
-      data: { name: cleanName, role },
-    },
+    options: { data: { name: cleanName }, emailRedirectTo: callbackUrl() },
   });
 
   if (error) {
-    if (/already registered|already been registered/i.test(error.message)) {
-      return { ok: false, error: "An account with that email already exists." };
+    if (/already registered|already been registered|already exists/i.test(error.message || "")) {
+      return { ok: false, error: ALREADY_REGISTERED };
     }
-    return { ok: false, error: error.message };
+    console.error(`[auth] signUp failed: ${error.name} status=${error.status ?? "?"} code=${error.code ?? "?"}`);
+    return { ok: false, error: mailError(error, "Could not create your account.") };
+  }
+  // A confirmed address gets a stand-in user with no identities and no email.
+  if (!data.user || (data.user.identities?.length ?? 0) === 0) {
+    return { ok: false, error: ALREADY_REGISTERED };
   }
 
-  // If email confirmations are disabled, a session may already exist.
-  if (data.session) {
-    const session = await getSession();
-    if (session) {
+  {
+    const { data: profile } = await createAdminClient()
+      .from("im_profiles")
+      .select("id")
+      .eq("auth_user_id", data.user.id)
+      .maybeSingle();
+    if (profile) {
       await createAdminClient().from("im_consent_logs").insert({
-        user_id: session.user_id,
+        user_id: profile.id,
         action: "account_created",
         consent: true,
         purpose: "RA 10173 DPA registration consent",
       });
-      await audit(session.user_id, role, "account_created", `user:${session.user_id}`);
-      return { ok: true, role: session.role, name: session.name };
+      await audit(profile.id, "buyer", "account_created", `user:${profile.id}`);
     }
   }
 
   return {
     ok: true,
     needsEmailConfirm: true,
-    message: "Check your email to confirm your account before signing in.",
+    message: "Check your email for a confirmation code before signing in.",
   };
 }
 
@@ -160,34 +228,22 @@ export async function resendConfirmationAction(email: string): Promise<AuthResul
   });
   if (!resend.ok) return { ok: false, error: RATE_LIMITED_MESSAGE };
 
-  const origin = await siteOrigin();
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase.auth.resend({
     type: "signup",
     email: normalized,
-    options: { emailRedirectTo: `${origin}/auth/callback` },
+    options: { emailRedirectTo: callbackUrl() },
   });
-  if (error) return { ok: false, error: error.message };
+  if (error) {
+    // Logged, not surfaced: Supabase rate-limits (429) only addresses that
+    // have an account waiting, so passing its error on would reveal which do.
+    console.error(`[auth] resend failed: ${error.name} status=${error.status ?? "?"} code=${error.code ?? "?"}`);
+  }
   return {
     ok: true,
-    message: "Confirmation email sent. Please check your inbox.",
+    message: "If that account is waiting for confirmation, we sent a new code. Check your inbox and spam.",
   };
 }
-
-/**
- * Where the emailed link lands.
- *
- * This is the FALLBACK target, used when the Supabase email template still
- * builds its link from {{ .ConfirmationURL }}. That path is PKCE, so it only
- * works if the link is opened in the browser that requested it.
- *
- * The template should instead point at /auth/confirm with {{ .TokenHash }},
- * which works on any device. See lib/auth/email-link.ts.
- *
- * The URL must be allow-listed in Supabase Auth under Redirect URLs, or
- * Supabase silently substitutes the Site URL.
- */
-const RESET_REDIRECT = "/auth/callback?next=/reset-password";
 
 /** Minimum we will accept. Supabase enforces its own floor as well. */
 const MIN_PASSWORD = 8;
@@ -200,8 +256,8 @@ const MIN_PASSWORD = 8;
  * — and on a marketplace where every seller is a person with a disability,
  * confirming that a given person has an account here is itself a disclosure.
  *
- * The link Supabase sends lands on /auth/callback, which exchanges the code
- * for a session and forwards to /reset-password.
+ * Supabase Auth sends the email (its "Reset password" template), and itself
+ * answers the same way for an unknown address.
  */
 export async function requestPasswordResetAction(email: string): Promise<AuthResult> {
   const normalized = String(email || "").trim().toLowerCase();
@@ -221,29 +277,13 @@ export async function requestPasswordResetAction(email: string): Promise<AuthRes
   // rate-limited, so timing and wording cannot be used to probe for accounts.
   if (perEmail.ok && !ipGuard) {
     const supabase = await createSupabaseServerClient();
-    // Deliberately NOT siteOrigin(): that trusts the request Host, and a reset
-    // link built from an attacker-supplied Host is the classic password-reset
-    // poisoning bug — the victim gets a real token pointing at the attacker.
-    // The configured origin wins; the request host is only a dev fallback.
-    const site = process.env.NEXT_PUBLIC_SITE_URL || (await siteOrigin());
     const { error } = await supabase.auth.resetPasswordForEmail(normalized, {
-      redirectTo: `${site}${RESET_REDIRECT}`,
+      redirectTo: callbackUrl(RESET_PATH),
     });
     if (error) {
       // Logged, not surfaced — the caller still sees the neutral message.
-      //
-      // Log the status and name too, not just the message. Supabase's mailer
-      // failures arrive as AuthRetryableFetchError with an EMPTY message, so
-      // logging error.message alone prints "{}" and tells you nothing about
-      // the one failure mode that silences this whole feature.
       console.error(
-        `[auth] password reset request failed: ${error.name} status=${error.status ?? "?"} ` +
-          `message=${JSON.stringify(error.message)}` +
-          (error.status === 500
-            ? " — a 500 with an empty message is Supabase's auth mailer failing." +
-              " Auth emails do NOT use EMAIL_PROVIDER; configure custom SMTP in" +
-              " Supabase (Project Settings -> Authentication -> SMTP Settings)."
-            : "")
+        `[auth] password reset mail failed: ${error.name} status=${error.status ?? "?"} code=${error.code ?? "?"}`
       );
     }
   }
@@ -265,9 +305,9 @@ export async function requestPasswordResetAction(email: string): Promise<AuthRes
  * in a URL fragment. A code has no such coupling — you carry six digits across
  * to whatever device you are already sitting at.
  *
- * Requires the Supabase recovery template to include {{ .Token }}. Its length
- * is a Supabase setting (8 digits on this project), so nothing here assumes
- * one -- non-digits are stripped and whatever remains is sent as the token.
+ * The code is {{ .Token }} in Supabase's "Reset password" template. Its
+ * length is a Supabase setting, so non-digits are stripped and whatever
+ * remains is sent as the token.
  *
  * Same neutral-response rule as the request step: a wrong code and an unknown
  * address must be indistinguishable, or this becomes the enumeration oracle
@@ -309,6 +349,58 @@ export async function verifyPasswordResetCodeAction(
   await setRecoveryMarker(data.user.id);
 
   return { ok: true, message: "Code accepted. Choose your new password." };
+}
+
+/**
+ * Confirm a new account with the code from Supabase's confirmation email.
+ *
+ * Same idea as verifyPasswordResetCodeAction: the code is not tied to the
+ * browser that requested it, unlike a PKCE link.
+ */
+export async function verifySignupCodeAction(
+  email: string,
+  code: string
+): Promise<AuthResult> {
+  const normalized = String(email || "").trim().toLowerCase();
+  const token = String(code || "").replace(/\D/g, "");
+  if (!normalized || !token) {
+    return { ok: false, error: "Enter the code from your email." };
+  }
+
+  const perEmail = await rateLimit("signup_verify", `email:${normalized}`, {
+    limit: 8,
+    windowSeconds: 900,
+  });
+  const ipGuard = await guardByIp("signup_verify_ip", { limit: 20, windowSeconds: 900 });
+  if (!perEmail.ok || ipGuard) return { ok: false, error: RATE_LIMITED_MESSAGE };
+
+  const supabase = await createSupabaseServerClient();
+  // "email" covers the sign-up code; "signup" is kept for codes from older emails.
+  const kinds = ["email", "signup"] as const;
+  for (const type of kinds) {
+    const { data, error } = await supabase.auth.verifyOtp({
+      email: normalized,
+      token,
+      type,
+    });
+    if (error || !data.user) continue;
+
+    const session = await getSession();
+    if (!session) {
+      return { ok: false, error: "Account profile not found. Contact support." };
+    }
+
+    await createAdminClient().from("im_consent_logs").insert({
+      user_id: session.user_id,
+      action: "email_confirmed",
+      consent: true,
+      purpose: "RA 10173 DPA registration consent",
+    });
+    await audit(session.user_id, session.role, "email_confirmed", `user:${session.user_id}`);
+    return { ok: true, role: session.role, name: session.name };
+  }
+
+  return { ok: false, error: "That code is not valid, or it has expired. Request a new one." };
 }
 
 /**

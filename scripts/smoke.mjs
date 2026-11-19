@@ -45,7 +45,8 @@ const required = [
   "lib/actions/chat.ts",
   "lib/actions/messages.ts",
   "lib/actions/wishlist.ts",
-  "lib/actions/payments.ts",
+  "lib/actions/payments-buyer.ts",
+  "supabase/migrations/0025_buyer_only_signup.sql",
   "lib/chatbot/responder.ts",
   "app/layout.tsx",
   "app/admin/payments/page.tsx",
@@ -99,6 +100,22 @@ try {
   assert(mod.clampFontSize(11) === 12, "imported clampFontSize(11)===12");
   assert(mod.clampFontSize(25) === 24, "imported clampFontSize(25)===24");
   assert(mod.matchVoiceCommand("go to wishlist")?.href === "/buyer/wishlist", "imported voice wishlist");
+  // A fatal code must not be retried: restarting on not-allowed is the loop
+  // that made voice commands sit at "Off" forever with no explanation.
+  assert(mod.classifyVoiceError("not-allowed").fatal === true, "voice error: not-allowed is fatal");
+  assert(mod.classifyVoiceError("audio-capture").fatal === true, "voice error: audio-capture is fatal");
+  assert(mod.classifyVoiceError("no-speech").fatal === false, "voice error: no-speech retries");
+  assert(mod.classifyVoiceError("aborted").fatal === false, "voice error: aborted retries");
+  assert(Boolean(mod.classifyVoiceError("not-allowed").message), "voice error carries a message");
+  assert(mod.checkVoiceSupport({}) === "unsupported", "voice support: no API");
+  assert(
+    mod.checkVoiceSupport({ webkitSpeechRecognition: function () {}, isSecureContext: false }) === "insecure",
+    "voice support: insecure origin"
+  );
+  assert(
+    mod.checkVoiceSupport({ SpeechRecognition: function () {}, isSecureContext: true }) === "ready",
+    "voice support: ready"
+  );
 } catch (err) {
   console.log(`  SKIP  TS prefs import (${err.message.split("\n")[0]}) — inline asserts used`);
 }
@@ -179,6 +196,27 @@ const resetPage = read("app/reset-password/page.tsx");
 assert(resetPage.includes("hasRecoveryMarker"), "reset page gates on the recovery marker");
 const landing = read("components/LandingClient.tsx");
 assert(landing.includes("requestPasswordResetAction"), "sign-in panel offers the reset");
+assert(
+  /supabase\.auth\.signUp\(/.test(authAction) && authAction.includes("resetPasswordForEmail("),
+  "signup and reset emails are sent by Supabase Auth (dashboard templates + SMTP)"
+);
+assert(
+  /export async function signupAction\(\s*name: string,\s*email: string,\s*password: string,\s*consent: boolean\s*\)/.test(authAction),
+  "signupAction takes no role: self sign-up is buyer-only"
+);
+assert(!/name="role"/.test(landing), "the sign-up form offers no role choice");
+assert(
+  /'buyer'\s*\)\s*on conflict \(email\) do nothing/.test(read("supabase/migrations/0025_buyer_only_signup.sql")),
+  "0025: the new-user trigger creates buyers only"
+);
+assert(
+  authAction.includes("export async function verifySignupCodeAction"),
+  "verifySignupCodeAction exported"
+);
+assert(
+  /verifySignupCodeAction[\s\S]{0,1200}rateLimit\(/.test(authAction),
+  "signup code redemption is rate limited"
+);
 
 console.log("\n=== Smoke: chatbot responder rules ===");
 const responder = read("lib/chatbot/responder.ts");

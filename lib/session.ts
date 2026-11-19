@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -10,7 +11,7 @@ const CONTRAST_COOKIE = "im_contrast";
 const HOME_BY_ROLE: Record<Role, string> = {
   buyer: "/home",
   seller: "/seller/dashboard",
-  admin: "/admin/users",
+  admin: "/admin",
 };
 
 export function homeForRole(role: Role): string {
@@ -52,9 +53,40 @@ export async function getSession(): Promise<SessionUser | null> {
   };
 }
 
+/**
+ * True when the browser holds a valid sign-in for a SUSPENDED profile — the
+ * window between an admin suspending someone and their session expiring.
+ */
+export async function isSignedInButSuspended(): Promise<boolean> {
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return false;
+  const { data } = await createAdminClient()
+    .from("im_profiles")
+    .select("account_status")
+    .eq("auth_user_id", user.id)
+    .maybeSingle();
+  return data?.account_status === "suspended";
+}
+
+/**
+ * getSession() memoised for one server render. The Seller Centre and Admin
+ * layouts and the page inside them both need the session; without this every
+ * page view made two Supabase Auth round trips. Server actions keep calling
+ * getSession() directly — a sign-in or sign-out changes the answer mid-request.
+ */
+export const getRenderSession = cache(getSession);
+
 export async function requireRole(roles: Role[]): Promise<SessionUser> {
-  const session = await getSession();
-  if (!session) redirect("/");
+  const session = await getRenderSession();
+  if (!session) {
+    // A suspended user used to be bounced silently to the storefront (B-14);
+    // they now get a page that says what happened and what to do.
+    if (await isSignedInButSuspended()) redirect("/account-suspended");
+    redirect("/login");
+  }
   if (roles.length && !roles.includes(session.role)) {
     redirect(homeForRole(session.role));
   }

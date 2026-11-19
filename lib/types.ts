@@ -1,12 +1,14 @@
-// IncluMarket domain types (mirror the im_* Postgres tables).
+// InclusiveMarket domain types (mirror the im_* Postgres tables).
 
 export type Role = "buyer" | "seller" | "admin";
-export type ProductStatus = "pending" | "approved" | "flagged";
+export type ProductStatus = "pending" | "approved" | "flagged" | "archived";
 export type OrderStatus =
   | "pending"
   | "processing"
   | "shipped"
   | "delivered"
+  | "cancelled"
+  | "return_requested"
   | "returned";
 export type TicketStatus = "open" | "in_progress" | "resolved";
 export type Priority = "low" | "medium" | "high";
@@ -21,6 +23,8 @@ export interface Profile {
   assistive_needs: string | null;
   is_featured_seller: boolean;
   seller_story: string | null;
+  account_status: "active" | "suspended" | "pending_approval";
+  phone: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -29,6 +33,11 @@ export interface Category {
   id: string;
   label: string;
   folder: string;
+  /** Migration 0020 (order, icon, description, retire); absent before it. */
+  position?: number;
+  icon?: string | null;
+  description?: string | null;
+  is_active?: boolean;
 }
 
 export interface Product {
@@ -44,6 +53,17 @@ export interface Product {
   created_at: string;
   updated_at: string;
   images?: string[];
+  /** Migration 0016 (absent on older databases). */
+  moderation_reason?: string | null;
+  adaptive_tags?: string[];
+  rating_avg?: number;
+  rating_count?: number;
+  sold_count?: number;
+  stock_total?: number;
+  /** Migration 0021. */
+  featured_position?: number | null;
+  featured_from?: string | null;
+  featured_until?: string | null;
 }
 
 export interface WishlistItem {
@@ -62,7 +82,13 @@ export type NotificationType =
   | "order_status"
   | "message"
   | "chat_escalation"
-  | "system";
+  | "system"
+  // Migration 0019:
+  | "pwd_verification"
+  | "moderation"
+  | "review_reply"
+  | "payout"
+  | "account";
 
 export interface Notification {
   id: number;
@@ -113,11 +139,33 @@ export interface ProductVariant {
   sku_code: string;
 }
 
+export type PaymentStatus = "unpaid" | "pending" | "paid" | "failed" | "refunded";
+
 export interface Order {
   id: number;
   buyer_id: number;
   total_amount: number;
   order_status: OrderStatus;
+  payment_status: PaymentStatus;
+  /** "cod" | "paymongo"; null on orders placed before migration 0010. */
+  payment_provider: string | null;
+  payment_reference: string | null;
+  shipping_name: string | null;
+  shipping_address: string | null;
+  shipping_city: string | null;
+  shipping_phone: string | null;
+  /** Lifecycle details from migration 0014 (null on older rows). */
+  courier?: string | null;
+  tracking_number?: string | null;
+  delivered_at?: string | null;
+  cancel_reason?: string | null;
+  return_reason?: string | null;
+  refund_due?: boolean;
+  /** Migration 0015: one order per seller inside a checkout. */
+  seller_id?: number | null;
+  checkout_id?: number | null;
+  subtotal?: number | null;
+  shipping_fee?: number | null;
   created_at: string;
 }
 
@@ -137,6 +185,13 @@ export interface OrderItem {
   variant_id: number | null;
   quantity: number;
   unit_price: number;
+  /** Migration 0015 pricing record (null on older lines). */
+  base_unit_price?: number | null;
+  sale_discount_pct?: number | null;
+  pwd_rate?: number | null;
+  pwd_discount_amount?: number | null;
+  legal_basis?: string | null;
+  verification_id?: number | null;
 }
 
 export interface ProductReview {

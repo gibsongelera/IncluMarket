@@ -12,23 +12,35 @@
   cursor: pointer;
   min-height: 40px;
   line-height: 1.1;
-  transition: background-color .15s ease, border-color .15s ease, transform .05s ease;
+  transition:
+    background-color var(--dur-1) var(--ease-out),
+    border-color var(--dur-1) var(--ease-out),
+    transform var(--dur-1) var(--ease-out);
   text-decoration: none;
 }
-.btn:active { transform: translateY(1px); }
+.btn:active { transform: scale(0.98); }
 .btn[disabled], .btn[aria-disabled="true"] {
   opacity: .55;
   cursor: not-allowed;
   transform: none;
 }
 
-/* Guardrail 2: white text on dark burgundy / forest surfaces */
+/* Primary action: brand blue, white text (Guardrail 2, 9.9:1). Hover goes
+   DARKER blue — it used to turn dark red, which reads as "danger". */
 .btn--primary {
-  background: var(--palette-deep);
+  background: var(--brand-blue);
   color: #FFFFFF;
-  border-color: var(--palette-deep);
+  border-color: var(--brand-blue);
 }
-.btn--primary:hover { background: var(--brand-red-800); border-color: var(--brand-red-800); }
+.btn--primary:hover { background: var(--brand-blue-800); border-color: var(--brand-blue-800); }
+
+/* Secondary action next to a primary one (Add to cart beside Buy now). */
+.btn--outline {
+  background: var(--canvas-white);
+  color: var(--brand-blue);
+  border-color: var(--brand-blue);
+}
+.btn--outline:hover { background: var(--brand-blue-100); }
 
 .btn--danger {
   background: var(--brand-red);
@@ -49,7 +61,10 @@
   color: var(--text-charcoal); /* Guardrail 1 */
   border-color: var(--brand-yellow-800);
 }
-.btn--warning:hover { background: var(--brand-yellow-800); color: var(--text-charcoal); }
+/* Hover darkens the yellow a little instead of switching to --brand-yellow-800:
+   four event presets make that token dark (a star edge), and dark text on it
+   fell to 1.9:1. */
+.btn--warning:hover { background: color-mix(in srgb, var(--brand-yellow) 85%, var(--text-charcoal)); color: var(--text-charcoal); }
 
 .btn--sm { padding: .35rem .75rem; min-height: 32px; font-size: .875rem; }
 .btn--block { width: 100%; }
@@ -73,8 +88,24 @@
 .badge--red     { background: var(--brand-red);    color: #FFFFFF; border-color: var(--brand-red-800); }   /* Guardrail 2: red is a dark surface */
 .badge--success { background: var(--success-100);  color: var(--success); border-color: var(--success); }
 .badge--muted   { background: var(--surface-gray); color: var(--text-muted); }
+/* Discount badge ("−20%"): the commerce accent, white text — Guardrail 2. */
+.badge--sale    { background: var(--brand-brown); color: #FFFFFF; border-color: var(--brand-brown-800); }
+/* Verified PWD seller: brown accent on its tint, with an icon and words. */
+.badge--verified { background: var(--brand-brown-100); color: var(--brand-brown-800); border-color: var(--brand-brown); }
+.pd__seller { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
 
-/* Status pill (order/ticket lifecycles) */
+/* Money. Tabular numerals so prices in a column line up digit for digit. A
+   sale price is the accent colour; the price it replaces is struck through
+   AND announced as "was" to screen readers, so the change is never conveyed
+   by colour or strike-through alone. */
+.price       { font-variant-numeric: tabular-nums; font-weight: 700; }
+.price--sale { color: var(--price-color); font-weight: 800; }
+.price--was  { color: var(--text-muted); font-weight: 400; font-size: .875em; }
+
+/* Status pill (order/ticket lifecycles). Colours come from the fixed
+   --status-* tokens (tokens.css), which no theme preset sets, so a status
+   reads the same in every event theme; high contrast still overrides them.
+   Shipped uses --palette-teal, fixed the same way. */
 .pill {
   display: inline-block;
   padding: 2px 10px;
@@ -83,31 +114,677 @@
   font-weight: 700;
   border: 1px solid transparent;
   background: var(--surface-gray);
-  color: var(--text-charcoal);
+  color: var(--status-text);
   text-transform: capitalize;
+  /* Wrap between words if it must, never inside one ("Showi|ng"). */
+  overflow-wrap: normal;
+  word-break: normal;
 }
-.pill--pending    { background: var(--surface-gray-2); color: var(--text-charcoal); border-color: var(--border); }
-.pill--processing { background: var(--brand-blue-100); color: var(--brand-blue); border-color: var(--brand-blue); }
-.pill--shipped    { background: var(--brand-yellow);   color: var(--text-charcoal); border-color: var(--brand-yellow-800); } /* Guardrail 1 */
-.pill--delivered  { background: var(--success-100);    color: var(--success); border-color: var(--success); }
-.pill--returned   { background: var(--brand-red-100);  color: var(--brand-red-800); border-color: var(--brand-red); }
-.pill--open       { background: var(--brand-red-100);  color: var(--brand-red-800); border-color: var(--brand-red); }
-.pill--in_progress{ background: var(--brand-blue-100); color: var(--brand-blue); border-color: var(--brand-blue); }
-.pill--resolved   { background: var(--success-100);    color: var(--success); border-color: var(--success); }
-.pill--approved   { background: var(--success-100);    color: var(--success); border-color: var(--success); }
-.pill--flagged    { background: var(--brand-red-100);  color: var(--brand-red-800); border-color: var(--brand-red); }
+.pill--pending    { background: var(--status-warn-100);  color: var(--status-text); border-color: var(--status-warn); }
+.pill--processing { background: var(--status-info-100);  color: var(--status-info); border-color: var(--status-info); }
+.pill--shipped    { background: var(--palette-teal-100); color: var(--palette-teal); border-color: var(--palette-teal); }
+.pill--delivered  { background: var(--status-ok-100);    color: var(--status-ok); border-color: var(--status-ok); }
+.pill--returned   { background: var(--status-error-100); color: var(--status-error-text); border-color: var(--status-error); }
+.pill--open       { background: var(--status-error-100); color: var(--status-error-text); border-color: var(--status-error); }
+.pill--in_progress{ background: var(--status-info-100);  color: var(--status-info); border-color: var(--status-info); }
+.pill--resolved   { background: var(--status-ok-100);    color: var(--status-ok); border-color: var(--status-ok); }
+.pill--approved   { background: var(--status-ok-100);    color: var(--status-ok); border-color: var(--status-ok); }
+.pill--flagged    { background: var(--status-error-100); color: var(--status-error-text); border-color: var(--status-error); }
+.pill--cancelled  { background: var(--surface-gray-2);   color: var(--status-text); border-color: var(--status-neutral); }
+.pill--return_requested { background: var(--status-warn-100); color: var(--status-text); border-color: var(--status-warn); }
+.pill--archived   { background: var(--surface-gray-2);   color: var(--status-neutral); border-color: var(--border); }
+.pill--active     { background: var(--status-ok-100);    color: var(--status-ok); border-color: var(--status-ok); }
+/* Body copy of ConfirmDialog: a few short paragraphs, evenly spaced. */
+.confirm-dialog__body { display: grid; gap: var(--space-2); }
+.pill--submitted  { background: var(--status-info-100);  color: var(--status-info); border-color: var(--status-info); }
+.pill--rejected   { background: var(--status-error-100); color: var(--status-error-text); border-color: var(--status-error); }
+.pill--revoked    { background: var(--status-error-100); color: var(--status-error-text); border-color: var(--status-error); }
+.pill--expired    { background: var(--surface-gray-2);   color: var(--status-text); border-color: var(--status-neutral); }
+.pill--suspended  { background: var(--surface-gray-2);   color: var(--status-text); border-color: var(--status-neutral); }
+/* Payment status (unpaid, pending, paid, failed, refunded; migrations 0010
+   and 0015). Pending reuses .pill--pending. Unpaid is normal for cash on
+   delivery and refunded is settled, so both are neutral, not errors. */
+.pill--paid       { background: var(--status-ok-100);    color: var(--status-ok); border-color: var(--status-ok); }
+.pill--failed     { background: var(--status-error-100); color: var(--status-error-text); border-color: var(--status-error); }
+.pill--unpaid     { background: var(--surface-gray-2);   color: var(--status-text); border-color: var(--status-neutral); }
+.pill--refunded   { background: var(--surface-gray-2);   color: var(--status-text); border-color: var(--status-neutral); }
 
 /* Forms */
-.form { display: grid; gap: 1rem; }
+.form { display: grid; gap: var(--space-4); }
 .field {
   display: grid;
-  gap: .35rem;
+  /* minmax(0,·) so an input inside a grid or flex row can shrink below its
+     intrinsic width instead of pushing the dialog sideways. */
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-2);
 }
 .field > label, fieldset > legend {
   font-weight: 600;
   color: var(--text-charcoal);
 }
 .hint { color: var(--text-muted); font-size: .8rem; }
+
+/* Inline notice: one sentence of status in context (preview banner, payment
+   cancelled, verification pending). The text always states the status; the
+   colour bar only reinforces it (WCAG 1.4.1). Dark text on light tints —
+   Guardrail 1. */
+.notice {
+  display: block;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border);
+  border-left-width: 4px;
+  border-radius: var(--radius-sm);
+  background: var(--canvas-white);
+  color: var(--text-charcoal);
+}
+.notice--info    { background: var(--info-100);    border-color: var(--info); }
+.notice--warning { background: var(--warning-100); border-color: var(--warning); }
+.notice--success { background: var(--success-100); border-color: var(--success); }
+.notice--danger  { background: var(--danger-100);  border-color: var(--danger); }
+.notice > :last-child { margin-bottom: 0; }
+/* A short warning in a table cell or a card ("Starts 12 Dec", "Hidden until
+   approved"): the warning text colour (6.38:1 on white, checked on the grey
+   wells too) and weight, not .field-error, which reads as a form error. */
+.text-warning { color: var(--warning-text); font-weight: 600; }
+
+/* Numbers people read back or compare digit by digit (masked PWD IDs). */
+.mono { font-family: var(--font-mono); letter-spacing: .02em; }
+
+/* Definition list for read-only details (account, verification review). */
+.details-list { display: grid; grid-template-columns: max-content 1fr; gap: var(--space-2) var(--space-4); margin: 0; }
+.details-list dt { font-weight: 700; color: var(--text-muted); }
+.details-list dd { margin: 0; overflow-wrap: anywhere; }
+
+/* --- Reviews (product page, Seller Centre) ------------------------------- */
+.reviews__layout { display: grid; gap: var(--space-5); }
+.reviews__average { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin: 0 0 var(--space-3); }
+.reviews__average > strong { font-size: var(--step-2); }
+.reviews__breakdown { display: grid; gap: var(--space-1); }
+.breakdown-row {
+  display: grid;
+  grid-template-columns: 5rem minmax(0, 1fr) 2.5rem;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 2.75rem;
+  padding: 0 var(--space-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  font: inherit;
+  color: var(--text-charcoal);
+  text-align: left;
+  cursor: pointer;
+}
+.breakdown-row--all { display: block; font-weight: 700; }
+.breakdown-row:hover:not(:disabled) { background: var(--surface-gray); }
+.breakdown-row[aria-pressed="true"] { border-color: var(--brand-blue); background: var(--brand-blue-100); font-weight: 700; }
+.breakdown-row:disabled { color: var(--text-muted); cursor: default; }
+.breakdown-row__bar { height: .5rem; border-radius: 999px; background: var(--surface-gray-2); overflow: hidden; }
+.breakdown-row__bar > span { display: block; height: 100%; background: var(--star-bar); }
+.breakdown-row__count { text-align: right; font-variant-numeric: tabular-nums; }
+.reviews__list { display: grid; gap: var(--space-3); align-content: start; }
+.reviews__list > p { margin: 0; }
+.review header { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.review__reply { margin-top: var(--space-2); padding: var(--space-3); border-left: 4px solid var(--brand-brown); background: var(--brand-brown-100); border-radius: var(--radius-sm); }
+.review__reply p { margin: 0; }
+.review__reply-label { font-weight: 700; margin-bottom: var(--space-1) !important; }
+.review__reply-form { display: grid; gap: var(--space-2); margin-top: var(--space-2); }
+
+/* --- Cart selection and checkout addresses (C-29) ------------------------ */
+.cart-selectall { margin-bottom: var(--space-3); font-weight: 700; }
+.cart-check { display: inline-grid; place-items: center; min-width: 2.75rem; min-height: 2.75rem; cursor: pointer; }
+.cart-check input { width: 1.25rem; height: 1.25rem; accent-color: var(--brand-blue); }
+.address-choices { display: grid; gap: var(--space-2); margin-bottom: var(--space-3); }
+.address-choice { display: flex; gap: var(--space-3); align-items: flex-start; padding: var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--canvas-white); cursor: pointer; }
+.address-choice.is-selected { border-color: var(--brand-blue); box-shadow: inset 0 0 0 1px var(--brand-blue); }
+.address-choice input { margin-top: .2rem; width: 1.25rem; height: 1.25rem; flex: none; accent-color: var(--brand-blue); }
+.address-choice > span { display: grid; gap: var(--space-1); min-width: 0; justify-items: start; }
+.address-choice__line { overflow-wrap: anywhere; }
+.address-form { display: grid; gap: var(--space-3); }
+.address-list { list-style: none; margin: 0 0 var(--space-4); padding: 0; display: grid; gap: var(--space-3); }
+.address-card p { margin: 0 0 var(--space-1); overflow-wrap: anywhere; }
+.address-card__name { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+
+.pwd-line { color: var(--text-charcoal); font-weight: 700; }
+
+/* --- Order detail (/buyer/orders/[id]) ---------------------------------- */
+.order-detail { display: grid; gap: var(--space-4); margin-top: var(--space-4); }
+.order-detail__subhead { font-size: var(--step-0); margin: var(--space-4) 0 var(--space-2); }
+.details-list--money dd { text-align: right; font-variant-numeric: tabular-nums; }
+.order-card__details { margin-left: var(--space-3); font-weight: 700; white-space: nowrap; }
+
+/* --- Notifications (/notifications, Account → Notifications) ------------- */
+.notif-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-2); }
+.notif-item { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: var(--space-3); padding: var(--space-3) var(--space-4); border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--canvas-white); }
+.notif-item--unread { border-left: 4px solid var(--brand-blue); }
+.notif-item__body { flex: 1 1 18rem; min-width: 0; }
+.notif-item__body p { margin: 0; }
+.notif-item__title { font-weight: 700; }
+.notif-item--unread .notif-item__title { font-weight: 800; }
+.notif-item__actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.pager { display: flex; justify-content: center; gap: var(--space-3); margin-top: var(--space-4); }
+.notification-panel__foot { display: flex; justify-content: space-between; gap: var(--space-3); padding: var(--space-2) var(--space-3); border-top: 1px solid var(--border); font-weight: 700; }
+.notif-settings__table th[scope="row"] { font-weight: 700; text-align: left; }
+.notif-settings__table td { white-space: nowrap; }
+
+/* --- Product wizard (components/ProductWizard.tsx, C-32) ----------------- */
+.wizard { display: grid; gap: var(--space-4); }
+.wizard__title { margin: 0; }
+.wizard__body { display: grid; gap: var(--space-3); margin: 0; padding: 0; border: 0; }
+.wizard__body > p { margin: 0; max-width: var(--measure); }
+.steps__jump { display: flex; align-items: center; gap: var(--space-2); background: none; border: 0; padding: 0; font: inherit; color: inherit; cursor: pointer; min-height: 2.75rem; text-align: left; }
+.photo-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-3); grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr)); }
+.photo-list li { display: grid; gap: var(--space-2); }
+.photo-list img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: var(--radius-sm); border: 1px solid var(--border); }
+.photo-list li:first-child img { outline: 3px solid var(--brand-blue); outline-offset: -3px; }
+.photo-list__actions { display: flex; flex-wrap: wrap; gap: var(--space-1); }
+.option-list { display: grid; gap: var(--space-3); }
+.option-row { display: grid; gap: var(--space-2); grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr)); align-items: end; margin: 0; padding: var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-md); }
+.option-row__remove { justify-self: start; min-height: 2.75rem; }
+
+.finance-earnings { margin-top: var(--space-5); }
+
+/* --- Admin overview: "The shop" (C-37, 03 §2) ----------------------------
+   The four health counts in their card, a link row each: the icon tile
+   (.kpi__icon, aria-hidden), the label and the count. Rows, not KPI cards,
+   which inside the card would be cards in a card (01 §9); "Needs attention"
+   and the figures are KPI cards. The count drops under the label when the
+   card is too narrow for both (a phone with 24px text). The old tile grid's
+   13rem minimum made /admin 336px wide at 320px with 24px text. */
+.health-list { list-style: none; margin: 0; padding: 0; }
+.health-list > li + li { border-top: 1px solid var(--border); }
+a.health-list__link {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  min-height: 3rem;
+  padding-block: var(--space-3);
+  color: var(--text-charcoal);
+  text-decoration: none;
+}
+a.health-list__link:hover .health-list__label { text-decoration: underline; }
+.health-list__link .kpi__icon { margin-left: 0; }
+/* 5rem: at 320px with 24px text the icon and the label still share the
+   first line (7rem left the icon alone on it); the count wraps instead. */
+.health-list__label { flex: 1 1 5rem; font-weight: 600; }
+.health-list__count {
+  margin-left: auto;
+  font-family: var(--font-display);
+  font-size: var(--step-3);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+.health-list__note { flex-basis: 100%; }
+
+/* --- KPI card (01 §6.1, D-06) ---------------------------------------------
+   One family for every dashboard figure: the <article class="kpi"> tiles and
+   components/KpiCard.tsx, where the whole card is a link. .kpi--queue is a
+   "Needs attention" tile, which takes over from .overview-tile. Flat: 1px
+   border, no shadow (01 §4). The row (.kpis) is in layout.css; inside the
+   console its columns, and the tighter tile of a very narrow console, are
+   container queries in responsive.css. */
+.kpi {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  justify-content: space-between;
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--canvas-white);
+  box-shadow: none;
+}
+.kpi__label {
+  display: block;
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+.kpi__value {
+  /* Neutral, not brand blue: a saturated hue at 30px across a row of tiles is
+     what makes a dashboard tiring. Colour is reserved for status meaning. */
+  color: var(--text-charcoal);
+  /* The display face with even digits (01 §6.1). Rubik is wider than the
+     body face (₱128,430.00 is 6.7em at weight 800), which is what the
+     console's container-sized row in responsive.css allows for. */
+  font-family: var(--font-display);
+  font-size: var(--step-4);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+/* The card as a link keeps the page focus ring (base.css). */
+a.kpi {
+  min-height: 100%; /* fills its list item, so a row of tiles lines up */
+  color: inherit;
+  text-decoration: none;
+}
+a.kpi:hover { border-color: var(--brand-blue); }
+/* Label left, icon right. The label grows and wraps; only when its longest
+   word and the icon cannot share a line does the icon drop below it. */
+.kpi__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+.kpi__head > .kpi__label { flex: 1 1 0; }
+.kpi__icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 2.5rem;
+  height: 2.5rem;
+  margin-left: auto;
+  border-radius: var(--radius-sm);
+}
+.kpi__icon svg { width: 1.25rem; height: 1.25rem; }
+/* Each tint and its icon colour in one rule, so check-contrast.mjs measures
+   the pair in every preset. */
+.kpi__icon--blue { background: var(--brand-blue-100); color: var(--brand-blue-800); }
+.kpi__icon--brown { background: var(--brand-brown-100); color: var(--brand-brown-800); }
+.kpi__icon--teal { background: var(--palette-teal-100); color: var(--palette-teal); }
+.kpi__icon--ok { background: var(--status-ok-100); color: var(--status-ok); }
+.kpi__icon--warn { background: var(--status-warn-100); color: var(--warning-text); }
+/* Arrow and words, coloured by good or bad news rather than up or down. The
+   fixed status tokens, so a trend reads the same in every event theme. The
+   icon sits on the first line when the words wrap: a 1em icon in a 1.5em
+   line, a quarter em down. */
+.kpi__trend {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-1);
+  font-size: 0.875rem;
+  font-weight: 700;
+  line-height: 1.5;
+}
+.kpi__trend svg { width: 1em; height: 1em; margin-top: 0.25em; }
+.kpi__trend--good { color: var(--status-ok); }
+.kpi__trend--bad { color: var(--status-error-text); }
+.kpi__trend--neutral { color: var(--text-muted); }
+/* Work is waiting: the brown bar, kept through the hover border. */
+.kpi--queue.is-waiting,
+a.kpi--queue.is-waiting:hover { border-left: 4px solid var(--brand-brown); }
+/* The sparkline slot (01 §6.1): a 3rem strip that keeps to the bottom of a
+   card stretched by its row. The canvas fills it; components/Sparkline.tsx
+   draws to the box's size. aria-hidden: the card's .sr-only summary after it
+   carries the words. */
+.kpi__spark { display: block; height: 3rem; margin-top: auto; }
+.sparkline { display: block; width: 100%; height: 100%; }
+
+/* --- Charts (01 §2.4, §6.2, D-07): components/Chart.tsx, lib/charts.ts ----
+   CSS sizes each canvas and the draw follows the box, so no width is ever
+   set inline and a chart follows its card when the card grows or shrinks.
+   The card itself (.chart-card, .chart-grid) is in layout.css. */
+.chart__canvas { display: block; width: 100%; }
+/* Line and bar: 5:2, never under 10rem, so four rows of ticks keep their
+   room at the 24px text setting on a phone. Horizontal bars (--rows) take
+   the height their rows need, set by the draw. */
+.chart__canvas--plot { aspect-ratio: 5 / 2; min-height: 10rem; }
+
+/* Donut: the ring beside its legend when the card holds both (12rem each,
+   plus the gap), the legend under the ring on a narrower card. flex-wrap,
+   so no query. */
+.chart-donut {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4) var(--space-5);
+}
+.chart-donut__ring {
+  position: relative;
+  flex: none;
+  width: min(100%, 12rem);
+  aspect-ratio: 1;
+}
+/* Two classes, to outrank `.chart-card canvas { height: auto }` (layout.css
+   and responsive.css load later). */
+.chart-donut__ring .chart-donut__canvas { display: block; width: 100%; height: 100%; }
+/* The total, as HTML over the hole, so it is real text and grows with the
+   text setting. The hole is 62% of the ring (DONUT_HOLE in lib/charts.ts),
+   so the box covers just the hole (19% in from each side) and touch
+   exploration still reaches the canvas and its name on the ring; the side
+   padding, a share of the ring too, keeps two short lines inside it. */
+.chart-donut__total {
+  position: absolute;
+  inset: 19%;
+  margin: 0;
+  display: grid;
+  place-content: center;
+  padding-inline: 4%;
+  text-align: center;
+  line-height: 1.15;
+}
+.chart-donut__count {
+  color: var(--text-charcoal);
+  font-family: var(--font-display);
+  font-size: var(--step-3);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.chart-donut__unit { color: var(--text-muted); font-size: .875rem; }
+
+/* The legend (01 §2.4): a swatch, the status word, the count and the share,
+   all real text that wraps. A swatch's colour is set inline from
+   lib/charts.ts segmentColor, the same value the canvas draws, and stays so
+   under forced colours (the canvas is never recoloured). It is aria-hidden:
+   the words carry the status. */
+.chart-legend {
+  flex: 1 1 12rem;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: var(--space-2);
+  font-size: .875rem;
+}
+.chart-legend__item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+.chart-legend__swatch {
+  align-self: start;
+  width: .75rem;
+  height: .75rem;
+  margin-top: calc((1lh - .75rem) / 2);
+  border-radius: var(--radius-xs);
+  forced-color-adjust: none;
+}
+.chart-legend__label { color: var(--text-charcoal); overflow-wrap: anywhere; }
+.chart-legend__value {
+  color: var(--text-charcoal);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.chart-legend__share { color: var(--text-muted); font-weight: 400; }
+/* A legend item that links to the list behind it (the seller's donut,
+   Point.href): the link is the item's grid, a 44px target that grows with
+   the text, and the status word is underlined link text, so it reads as a
+   link by more than its colour. */
+a.chart-legend__link {
+  min-height: max(2.75rem, 44px);
+  align-content: center;
+  color: var(--text-charcoal);
+  text-decoration: none;
+}
+a.chart-legend__link .chart-legend__label {
+  color: var(--brand-blue);
+  text-decoration: underline;
+}
+a.chart-legend__link:hover .chart-legend__label { color: var(--brand-blue-800); }
+/* Two or more lines: a row of names, each after a sample of its stroke. */
+.chart-legend--series {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  margin-top: var(--space-3);
+}
+.chart-legend--series .chart-legend__item { display: flex; align-items: center; }
+.chart-legend__line { flex: none; width: 1.5rem; height: .75rem; }
+/* The data table's figures line up on the right, digit for digit. */
+.chart-data-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+/* The table scrolls inside its card instead of widening the page: at 320px
+   with 24px text "Return requested | Orders | Share" needed 344px. Focusable
+   and named in Chart.tsx, like TableWrap, so the scroll works by keyboard. */
+.chart-data-table__scroll { overflow-x: auto; }
+/* Forced colours (Windows High Contrast): a canvas is never recoloured, so
+   on a dark theme its lines, labels and segments would sit on black at about
+   2:1. Each chart keeps the white it is drawn for: the donut's ring rather
+   than its canvas, so the total inside keeps its charcoal too
+   (forced-color-adjust is inherited). Swatches get an outline in the
+   theme's text colour so they stand off any background. */
+@media (forced-colors: active) {
+  .chart__canvas,
+  .chart-donut__ring {
+    forced-color-adjust: none;
+    background: var(--canvas-white);
+  }
+  .chart-donut__ring { border-radius: 50%; }
+  .chart-legend__swatch { outline: 1px solid CanvasText; }
+}
+
+/* --- Seller Centre shop settings ------------------------------------------ */
+.shop-settings { max-width: 44rem; }
+.shop-image { display: grid; gap: var(--space-2); }
+.shop-image p { margin: 0; }
+.shop-image__preview { max-width: 100%; border-radius: var(--radius-sm); border: 1px solid var(--border); object-fit: cover; }
+.shop-image--logo .shop-image__preview { width: 6rem; height: 6rem; border-radius: 999px; }
+.shop-image--banner .shop-image__preview { aspect-ratio: 16 / 4; width: 100%; }
+
+/* --- Seller Centre dashboard (04 §2–§3) ------------------------------------
+   The setup steps, the to-dos and the figures are KPI tiles in .kpis rows
+   (components/SellerTodos.tsx, KpiCard); the cards are .chart-card in
+   .dash-grid, as on the admin overview. */
+
+/* A setup step as a tile: its words are the point, so the label is charcoal
+   at body size, not the muted small label above a figure. The line under it
+   says "Done" or "Not done yet"; the icon tile (a check once done) only
+   repeats it. A done step is a plain tile, not a link. */
+.kpi--step { min-height: 100%; }
+.kpi--step .kpi__label {
+  color: var(--text-charcoal);
+  font-size: 1rem;
+  font-weight: 700;
+}
+.kpi__status {
+  color: var(--text-muted);
+  font-size: .875rem;
+  font-weight: 700;
+}
+.kpi--step.is-done .kpi__status { color: var(--status-ok); }
+/* A second line under a figure: Ready to withdraw's "₱300 still on the
+   way". It wraps rather than widen the tile. */
+.kpi__note {
+  color: var(--text-muted);
+  font-size: .875rem;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+/* Running low: one row per option, a rule between them (like the
+   overview's health list): the product and its option, "2 left", and
+   "Update stock". On a narrow card the count and the link wrap under the
+   words; the link is a 44px target that grows with the text. */
+.stock-list { list-style: none; margin: 0; padding: 0; }
+.stock-list > li + li { border-top: 1px solid var(--border); }
+.stock-list__item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+  padding-block: var(--space-2);
+}
+.stock-list__text {
+  display: grid;
+  flex: 1 1 8rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.stock-list__name { font-weight: 600; color: var(--text-charcoal); }
+.stock-list__option { color: var(--text-muted); font-size: .875rem; }
+.stock-list__left { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.stock-list__link {
+  display: inline-flex;
+  align-items: center;
+  min-height: max(2.75rem, 44px);
+  font-weight: 600;
+}
+.stock-list__more { margin: var(--space-2) 0 0; }
+
+/* Latest reviews: stars and their figure, the first line, the product, who
+   and when, and "Reply" (a 44px target) while there is no reply. */
+.review-list { list-style: none; margin: 0; padding: 0; }
+.review-list > li + li { border-top: 1px solid var(--border); }
+.review-mini {
+  display: grid;
+  gap: var(--space-1);
+  padding-block: var(--space-3);
+  overflow-wrap: anywhere;
+}
+.review-list > li:first-child { padding-top: 0; }
+.review-mini p { margin: 0; }
+.review-mini__rating {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.review-mini__product { font-weight: 600; }
+.review-mini__state { color: var(--status-ok); font-weight: 700; }
+.review-mini__reply {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  min-height: max(2.75rem, 44px);
+  font-weight: 600;
+}
+
+/* --- Account area --------------------------------------------------------- */
+.account-tabs { margin-top: var(--space-4); }
+.account-tabs .tab { text-decoration: none; display: inline-flex; align-items: center; min-height: 2.75rem; }
+.account-grid { display: grid; gap: var(--space-4); }
+.account-grid--spaced { margin-top: var(--space-4); }
+/* The admin's "Go to the admin console": 44px and growing with the text.
+   Two classes, so it beats responsive.css's later .btn--sm (36px from 768px). */
+.account-admin .btn--sm { min-height: max(2.75rem, 44px); }
+.verification-status__title { font-size: var(--step-1); margin: 0 0 var(--space-2); }
+/* The compact card's only action: 44px and growing with the text, though
+   responsive.css sets .btn--sm to 36px from 768px (two classes win). */
+.verification-status .btn--sm { min-height: max(2.75rem, 44px); }
+
+/* Inline error under one field. The words carry the meaning; colour and
+   weight repeat it (WCAG 1.4.1). */
+.field-error { color: var(--brand-red-800); font-weight: 600; margin: 0; }
+.field input[aria-invalid="true"] { border-color: var(--brand-red); border-width: 2px; }
+
+/* Checkbox with a long label: box and text side by side, 44px target. */
+.field--check { display: flex; align-items: flex-start; gap: var(--space-3); }
+.field--check input[type="checkbox"] { flex: none; width: 1.5rem; height: 1.5rem; margin: .125rem 0 0; accent-color: var(--brand-blue); }
+.field--check label { font-weight: 600; min-height: 2.75rem; }
+
+.details-list--stacked { grid-template-columns: minmax(0, 1fr); gap: var(--space-1) 0; }
+.details-list--stacked dd { margin-bottom: var(--space-3); }
+
+/* --- PWD verification flow (components/PwdVerificationFlow.tsx) ---------- */
+.verify-flow { display: grid; gap: var(--space-4); }
+.verify-flow__title { margin: 0; font-size: var(--step-1); }
+.verify-flow__title:focus { outline: none; }
+.verify-flow__title:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-ring-offset); }
+.verify-flow__body { display: grid; gap: var(--space-4); }
+.verify-flow__body > p { margin: 0; max-width: var(--measure); }
+.verify-flow__actions { display: flex; flex-wrap: wrap; gap: var(--space-3); justify-content: flex-end; }
+.verify-flow__actions .btn { min-height: 2.75rem; }
+
+/* Progress: numbered, with the current step named in text and aria-current. */
+.steps { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-2); }
+.steps__item { display: flex; align-items: center; gap: var(--space-2); color: var(--text-muted); }
+.steps__num {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 999px;
+  border: 2px solid currentColor;
+  font-weight: 800;
+  font-size: .875rem;
+}
+.steps__item--current { color: var(--brand-blue); font-weight: 800; }
+.steps__item--current .steps__num { background: var(--brand-blue); border-color: var(--brand-blue); color: #FFFFFF; }
+.steps__item--done { color: var(--text-charcoal); }
+
+/* One photo slot. */
+.capture-list { display: grid; gap: var(--space-4); }
+.capture {
+  margin: 0;
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+}
+.capture__title { font-weight: 800; padding: 0 var(--space-1); }
+.capture > .hint { margin: 0; font-size: .9rem; }
+.capture__actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.capture__actions .btn { min-height: 2.75rem; }
+.capture__preview { display: grid; gap: var(--space-2); justify-items: start; }
+.capture__preview img {
+  max-width: 100%;
+  max-height: 16rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  object-fit: contain;
+  background: var(--surface-gray);
+}
+.capture__ok { margin: 0; font-weight: 700; color: var(--text-charcoal); }
+
+/* Camera stage with an ID-card-shaped guide (85.6 x 54 mm). The dimmed
+   surround is a shadow on the guide, so the guide scales with the stage. */
+.capture__stage {
+  position: relative;
+  width: 100%;
+  max-width: 40rem;
+  aspect-ratio: 4 / 3;
+  background: #000000;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+.capture__video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.capture__stage--selfie .capture__video { transform: scaleX(-1); }
+.capture__guide {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 84%;
+  aspect-ratio: 85.6 / 54;
+  transform: translate(-50%, -50%);
+  border: 3px dashed #FFFFFF;
+  border-radius: .75rem;
+  box-shadow: 0 0 0 100vmax rgb(0 0 0 / .45);
+  pointer-events: none;
+}
+.capture__guide-text {
+  position: absolute;
+  left: var(--space-3);
+  right: var(--space-3);
+  bottom: var(--space-3);
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  background: rgb(0 0 0 / .7);
+  color: #FFFFFF;
+  font-weight: 700;
+  text-align: center;
+}
+
+.review-photos--large { grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); }
+.review-photos--large img { aspect-ratio: auto; max-height: 22rem; object-fit: contain; background: var(--surface-gray); }
+
+/* Admin review dialog: three numbered blocks, one task each. */
+.review-block { display: grid; gap: var(--space-3); padding-top: var(--space-3); border-top: 1px solid var(--border); }
+.review-block > h3 { margin: 0; font-size: var(--step-0); }
+.review-block > p { margin: 0; }
+.radio-group { margin: 0; padding: 0; border: 0; display: grid; gap: var(--space-2); }
+.radio-group > legend { margin-bottom: var(--space-2); padding: 0; }
+.radio { display: flex; align-items: flex-start; gap: var(--space-2); min-height: 2.75rem; cursor: pointer; }
+.radio input { flex: none; width: 1.25rem; height: 1.25rem; margin: .15rem 0 0; accent-color: var(--brand-blue); }
+.form-actions--start { justify-content: flex-start; flex-wrap: wrap; }
+.tabs .tab { text-decoration: none; }
+.tab__count { font-weight: 700; }
+
+.review-photos { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-3); grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); }
+.review-photos li { display: grid; gap: var(--space-1); font-size: .9rem; }
+.review-photos img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: var(--radius-sm); border: 1px solid var(--border); }
+
 .form-error {
   color: var(--brand-red);
   font-weight: 600;
@@ -170,31 +847,43 @@
 /* Lead paragraph. Existed as a class on the landing hero only; promoted here
    so static pages get the same treatment. */
 .lede { font-size: var(--step-1); color: var(--text-charcoal); }
+/* `input:not([type])` matters more than it looks. An <input> with no type
+   attribute IS a text input, but the attribute selector does not match it, so
+   14 fields across checkout, signup, support, admin users and the seller
+   product form were rendering with no width, no padding and no 44px floor --
+   raw UA controls sitting in a styled form. That is the "fields don't fill
+   the row" symptom. */
+input:not([type]),
 input[type="text"], input[type="email"], input[type="password"],
 input[type="number"], input[type="search"], input[type="tel"], select, textarea {
   width: 100%;
   padding: .55rem .75rem;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-control);
   border-radius: var(--radius-sm);
   font: inherit;
   color: var(--text-charcoal);
   background: var(--canvas-white);
   min-height: 40px;
 }
-textarea { min-height: 96px; resize: vertical; }
+/* rem so the box grows with the accessibility font instead of showing three
+   lines at 12px and one and a half at 24px. */
+textarea { min-height: 6rem; resize: vertical; }
 input:focus, select:focus, textarea:focus { border-color: var(--brand-blue); }
-.row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--space-4); }
 .form-actions {
   display: flex;
-  gap: .5rem;
+  gap: var(--space-2);
   flex-wrap: wrap;
   align-items: center;
 }
 fieldset {
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  padding: 1rem;
-  margin: 0 0 1rem;
+  padding: var(--space-4);
+  margin: 0 0 var(--space-4);
+  /* A fieldset is a flex/grid child in several layouts and defaults to
+     min-width: min-content, which its inner grids then refuse to shrink. */
+  min-width: 0;
 }
 
 /* Cards */
@@ -208,25 +897,157 @@ fieldset {
 
 /* Tables */
 .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--canvas-white); }
+/* One table look (01 §6.3). Below md a .data-table--cards table becomes a
+   stack of cards (responsive.css section 3), which resets the row height and
+   the right-aligned figures. */
 .data-table { width: 100%; border-collapse: collapse; min-width: 720px; }
 .data-table th,
 .data-table td {
-  padding: .7rem .8rem;
+  padding: var(--space-3);
   border-bottom: 1px solid var(--border);
   text-align: left;
   vertical-align: middle;
 }
+/* Header row: .875rem 700 muted on the grey, sentence case. Both colours in
+   this rule, so check-contrast.mjs measures the pair in every preset. */
 .data-table thead th {
   background: var(--surface-gray);
-  color: var(--text-charcoal);
+  color: var(--text-muted);
+  font-size: .875rem;
   font-weight: 700;
   position: sticky;
   top: 0;
 }
+/* A table row grows with its content; height on a row is its minimum. */
+.data-table tbody tr { height: 3rem; }
 .data-table tbody tr:hover { background: var(--surface-gray); }
-.data-table tbody tr:nth-child(even) { background: rgba(248, 249, 250, .55); }
+/* Stripes from the tokens, half the grey: lighter than the hover, and white
+   (no stripe) in high contrast, where the grey is white. */
+.data-table tbody tr:nth-child(even) { background: color-mix(in srgb, var(--surface-gray) 50%, var(--canvas-white)); }
 .data-table tbody tr:nth-child(even):hover { background: var(--surface-gray); }
 .data-table td .btn { margin-right: .25rem; }
+/* Money and counts: right-aligned, even digits, header included. */
+.data-table .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+/* A short code that stays whole, such as an order number ("#1024"): a
+   phone card's cell breaks anywhere (responsive.css, so a long title
+   cannot widen the card), which also let a squeezed column cut "#10|24". */
+.data-table .cell-code { white-space: nowrap; }
+/* The row a link points at (Orders → Export lands on /admin/reports
+   #report-orders): an inset ring and the tint, so it is not told by colour
+   alone, and in forced colours the ring stays. :target on a page load or an
+   in-page link; .is-target where client-side navigation set the URL with
+   pushState, which leaves :target alone (AdminReportsClient). After the
+   stripes, so it beats them; inset, because .table-wrap clips an outline
+   drawn outside the row. The same marks the row ?focus= focused
+   (DeepLinkFocus leaves it tabindex="-1") for as long as it holds keyboard
+   focus: the base outline sits outside the row, where it is clipped, and
+   Safari draws none. :focus, not :focus-visible: focus set by script on a
+   page load does not match :focus-visible, and only that row has the
+   tabindex. */
+.data-table tbody tr:target,
+.data-table tbody tr.is-target,
+.data-table tbody tr[tabindex="-1"]:focus {
+  outline: var(--focus-ring);
+  outline-offset: -3px;
+  background: var(--brand-blue-100);
+}
+/* Safari does not draw an outline on a table row, which would leave only
+   the tint: a bar on the row's first cell is drawn everywhere. */
+.data-table tbody tr:target > td:first-child,
+.data-table tbody tr.is-target > td:first-child,
+.data-table tbody tr[tabindex="-1"]:focus > td:first-child {
+  box-shadow: inset 0.25rem 0 0 var(--brand-blue);
+}
+
+/* A row's single action is a primary one (Refund sent…): 44px on every
+   screen, not only in the phone cards. */
+.data-table td.cell-actions > .btn {
+  min-height: max(2.75rem, 44px);
+  /* Its label stays on one line, so a crowded table (1280px with 24px
+     text) scrolls sideways in TableWrap instead of squeezing the button
+     to a column of letters. The phone cards wrap it again (responsive.css). */
+  white-space: nowrap;
+  overflow-wrap: normal;
+}
+
+/* A control in a row's own cell (Admin → Users: the role select): the row
+   menu's target, max(2.75rem, 44px). The global select floor (responsive.css)
+   is a fixed 44px, which does not grow with the text; 2.75rem alone is 33px
+   at the 12px setting. Its width stays the cell's, so a phone card at 320px
+   with 24px text holds it. */
+.data-table .role-sel {
+  min-height: max(2.75rem, 44px);
+  max-width: 100%;
+}
+
+/* Identity cell (01 §6.3): an initials avatar, the name and a muted second
+   line. The block goes inside the <td> (a flex <td> is no longer a table
+   cell):
+     <td><div class="cell-identity">
+       <span class="avatar" aria-hidden="true">MS</span>
+       <span class="cell-identity__text">
+         <span class="cell-identity__name">Maria Santos</span>
+         <span class="cell-identity__meta">Zamboanga City</span>
+       </span></div></td>
+   The avatar is aria-hidden: the name beside it says the same. Where the
+   cell is too narrow for both (a card at 320px with 24px text) the name
+   wraps under the avatar instead of overflowing. */
+.cell-identity {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+}
+.cell-identity__text {
+  display: grid;
+  flex: 1 1 6rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.cell-identity__name { font-weight: 600; }
+/* A link that is the cell's whole point (the overview's order numbers and
+   top products) is a target of its own, not a word in running text: at
+   least max(2.75rem, 44px) tall, like the row's buttons. The Phase 2 check
+   measured them at 24px. */
+.data-table td.cell-code > a,
+.data-table a.cell-identity__name {
+  display: inline-flex;
+  align-items: center;
+  min-height: max(2.75rem, 44px);
+}
+.cell-identity__meta {
+  color: var(--text-muted);
+  font-size: .875rem;
+}
+/* A product photo in the avatar's place (the overview's top products):
+   2.5rem, square, cut to fit, alt="" beside the title it shows. */
+.cell-identity__thumb {
+  flex: none;
+  width: 2.5rem;
+  height: 2.5rem;
+  object-fit: cover;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-gray);
+}
+/* Initials avatar: both colours in this rule, so the checker measures the
+   pair (11.38:1 on the default preset). */
+.avatar {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  background: var(--brand-blue-100);
+  color: var(--brand-blue-800);
+  font-size: .875rem;
+  font-weight: 700;
+  line-height: 1;
+}
 
 /* Tabs */
 .tabs { display: flex; gap: .25rem; flex-wrap: wrap; border-bottom: 1px solid var(--border); margin: 0 0 1rem; }
@@ -302,6 +1123,7 @@ fieldset {
 /* Star input (radio group) */
 .star-input {
   display: inline-flex;
+  flex-wrap: wrap; /* five 2.75rem targets and the value pass 320px at 24px text */
   align-items: center;
   gap: 0.1em;
   font-size: 1.75rem;
@@ -310,6 +1132,10 @@ fieldset {
 .star-input button {
   background: none;
   border: 0;
+  /* Buttons do not inherit the font: without this each star (1em) took the
+     browser's 13.33px, ignoring the 1.75rem above and the 12-24px
+     accessibility scale. */
+  font: inherit;
   /* 44x44 minimum, in rem so it grows with the font scale rather than
      staying frozen while the star inside it gets bigger. */
   min-width: 2.75rem;
@@ -319,24 +1145,36 @@ fieldset {
   justify-content: center;
   padding: 0;
   cursor: pointer;
-  color: var(--star-empty);
+  /* An unselected star is drawn like the display's empty star (.stars
+     .star--empty): a white fill inside the --star-edge outline set on the svg
+     below. Filled with --border (the former --star-empty), the five targets
+     measured 1.3:1 on the white dialog and barely showed; under high contrast
+     they were solid black, darker than the chosen ones. */
+  /* Explicit literal rather than a background token: this is an SVG fill, but
+     the background-only rule exists because that distinction is easy to get
+     wrong, and the checker is right to flag it. */
+  color: #FFFFFF;
   line-height: 1;
 }
 
+/* The edge goes on every star, chosen or not, as in .stars: it gives the
+   white ones their shape and keeps the gold ones from looking thickened.
+   paint-order draws the stroke first so the fill covers its inner half. */
 .star-input button svg {
   height: 1em;
   width: 1em;
+  stroke: var(--star-edge);
+  /* SVG user units (viewBox is 576x512). Twice the display stars' 28: the
+     fill covers the stroke's inner half, so 28 left about 0.7px of edge on a
+     28px star, too thin to hold its 3:1 once antialiased (1.4.11); 56 leaves
+     about 1.4px, and grows with the text size. */
+  stroke-width: 56px;
+  paint-order: stroke fill;
 }
 
 .star-input button[aria-checked="true"],
 .star-input button.is-active {
   color: var(--star-filled);
-}
-
-.star-input button.is-active svg {
-  stroke: var(--star-edge);
-  stroke-width: 28px;
-  paint-order: stroke fill;
 }
 
 .star-input button:focus-visible {
@@ -345,30 +1183,164 @@ fieldset {
   border-radius: var(--radius-sm);
 }
 
+/* The chosen value in words after the stars (StarInput), so "chosen" does
+   not rest on the gold fill alone. */
+.star-input__value {
+  margin-left: var(--space-2);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-charcoal);
+  white-space: nowrap;
+}
+
 /* Modal (native <dialog>) */
 .modal {
   padding: 0;
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
-  width: min(560px, calc(100% - 2rem));
+  /* rem, not px. A dialog sized in px holds still while its contents grow with
+     the 12-24px accessibility font, so the same form that is comfortable at
+     16px wraps every label at 24px. min() keeps it inside the viewport. */
+  width: min(35rem, calc(100% - 2rem));
+  /* The product form is taller than a laptop viewport once a seller adds a
+     few variants. Cap it here and scroll inside, so the sticky title and
+     action bar below have a scroll port to pin themselves to. */
+  max-height: min(88svh, calc(100% - 2rem));
+  overflow: auto;
+  overscroll-behavior: contain;
   color: var(--text-charcoal);
   background: var(--canvas-white);
 }
-.modal--wide { width: min(760px, calc(100% - 2rem)); }
+.modal--wide { width: min(47.5rem, calc(100% - 2rem)); }
 .modal::backdrop { background: rgba(33, 37, 41, .55); }
-.modal-form { padding: 1.25rem; display: grid; gap: 1rem; }
-.modal-form h2 { margin: 0; }
+
+/* Entrance. A dialog going from display:none to open needs allow-discrete
+   plus @starting-style to animate at all; browsers without them simply show
+   it, which is the current behaviour. Deliberately a short fade and a few
+   pixels of lift — no scale, because a modal that zooms is exactly the kind
+   of movement that triggers vestibular symptoms. Both reduced-motion
+   switches (base.css and the toolbar's data-reduce-motion) null it out. */
+@media (prefers-reduced-motion: no-preference) {
+  .modal {
+    opacity: 0;
+    translate: 0 var(--space-1);
+    transition:
+      opacity var(--dur-2) var(--ease-out),
+      translate var(--dur-2) var(--ease-out),
+      overlay var(--transition-base) allow-discrete,
+      display var(--transition-base) allow-discrete;
+  }
+  .modal[open] { opacity: 1; translate: 0 0; }
+  @starting-style {
+    .modal[open] { opacity: 0; translate: 0 var(--space-1); }
+  }
+}
+.modal-form {
+  display: grid;
+  gap: var(--space-4);
+  /* No block padding: the sticky title and action bands below supply the top
+     and bottom gutter themselves, and the row gap supplies the rest. A block
+     padding here would have to be cancelled with a negative margin on those
+     bands, and sticky positioning constrains the MARGIN box -- a negative
+     bottom margin pins the bar that far short of the edge and lets content
+     scroll through the gap underneath it. */
+  padding: 0 var(--modal-pad);
+  /* Every direct child spans one full-width track, so a .row or a fieldset
+     fills the dialog instead of shrink-wrapping its content and leaving the
+     right side of a 760px modal empty. minmax(0,·) lets them shrink too. */
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+}
+
+/* Title and actions are full-bleed bands pinned to the dialog edges. Before
+   this the form scrolled as one block: on a laptop the seller lost both the
+   heading and "Save product" and had to scroll a nameless column of inputs
+   to find the primary action. The negative margins cancel the form padding
+   so the bands reach the dialog border. */
+.modal-form > h2,
+.modal-form > .form-actions {
+  position: sticky;
+  z-index: var(--z-modal-sticky);
+  background: var(--canvas-white);
+  /* Inline only. These cancel the form's side padding so each band reaches
+     the dialog border; inline margins do not affect the top/bottom sticky
+     constraint the way block margins do. */
+  margin-inline: calc(var(--modal-pad) * -1);
+  padding: var(--space-3) var(--modal-pad);
+}
+.modal-form > h2 {
+  top: 0;
+  border-bottom: 1px solid var(--border);
+}
+.modal-form > .form-actions {
+  bottom: 0;
+  border-top: 1px solid var(--border);
+  justify-content: flex-end;
+}
+
+/* fieldset ships a 1rem bottom margin for prose layouts. Inside this grid it
+   stacks with the row gap, so the space after the photo and variant panels
+   was double the space everywhere else. The gap owns the rhythm here. */
+.modal-form > fieldset { margin: 0; }
+.modal-form > .field > textarea { min-height: 7rem; }
 
 /* Utility */
+/* Empty state: says what is empty and offers the next step (a button or a
+   link), never a bare "nothing here". */
 .empty {
-  padding: 2rem;
+  display: grid;
+  justify-items: center;
+  gap: var(--space-3);
+  padding: var(--space-6) var(--space-4);
   text-align: center;
   color: var(--text-muted);
   border: 1px dashed var(--border);
   border-radius: var(--radius-md);
   background: var(--surface-gray);
 }
+.empty p { margin: 0; }
+.empty strong { color: var(--text-charcoal); }
+/* The way out of an empty list (Clear search, See all, Add a product): the
+   full target at every text size, not only the 44px floor. */
+.empty > .btn { min-height: max(2.75rem, 44px); }
+
+/* Loading skeletons. Static neutral blocks — no shimmer, no pulse (a looping
+   animation is both "AI-slop" and a vestibular trigger, M-10). The container
+   is a role="status" region that says "Loading…" to screen readers. */
+.skeleton { display: grid; gap: var(--space-4); padding-block: var(--space-5); }
+.skeleton__block {
+  background: var(--surface-gray-2);
+  border-radius: var(--radius-sm);
+}
+.skeleton__line { height: 1rem; }
+.skeleton__line--title { height: 1.75rem; width: min(60%, 24rem); }
+.skeleton__line--short { width: 40%; }
+.skeleton__card { aspect-ratio: 3 / 4; border-radius: var(--radius-md); }
+.skeleton__row { height: 3.5rem; }
+.skeleton__media { aspect-ratio: 1 / 1; border-radius: var(--radius-md); }
+.skeleton__split { display: grid; gap: var(--space-5); }
+/* The dashboard skeleton (components/Skeleton.tsx DashboardSkeleton): its
+   tiles and panels sit in .kpis and .dash-grid, so the page's columns place
+   them; only their heights are here, in rem. */
+.skeleton--dashboard { gap: var(--space-6); }
+.skeleton__head { display: grid; gap: var(--space-2); }
+.skeleton__tile { height: 8rem; border-radius: var(--radius-md); }
+.skeleton__panel { height: 16rem; border-radius: var(--radius-md); }
+/* The home skeleton (HomeSkeleton): the hero's box (4:1 from 1024px, where
+   the carousel takes 2/3, in responsive.css), one row of 5rem category
+   circles (as many as fit, never a sideways scroll) and a rail of cards in
+   the rail's own track, which shows no scrollbar here. */
+.skeleton__hero { aspect-ratio: 16 / 6; border-radius: var(--radius-lg); }
+.skeleton__tiles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  block-size: 5rem;
+  overflow: hidden;
+}
+.skeleton__circle { flex: none; inline-size: 5rem; block-size: 5rem; border-radius: 999px; }
+.skeleton--home .rail-scroller--rail .rail__track { overflow: hidden; }
 
 /* Inline sort control (buyer home feed head) */
 .sort-field {
@@ -400,7 +1372,10 @@ fieldset {
   color: var(--text-charcoal);
   cursor: pointer;
   padding: 0;
-  transition: background-color .15s ease, color .15s ease, border-color .15s ease;
+  transition:
+    background-color var(--dur-1) var(--ease-out),
+    color var(--dur-1) var(--ease-out),
+    border-color var(--dur-1) var(--ease-out);
 }
 .icon-btn:hover { background: var(--surface-gray); }
 .icon-btn[aria-pressed="true"] {
@@ -435,6 +1410,7 @@ fieldset {
   width: min(360px, 90vw);
   background: var(--canvas-white);
   color: var(--text-charcoal);
+  --focus-ring: var(--focus-ring-page); /* light surface inside the dark header */
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-lg);
@@ -481,14 +1457,18 @@ fieldset {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 56px;
-  height: 56px;
+  width: var(--fab-size);
+  height: var(--fab-size);
   border-radius: 999px;
   border: none;
   background: var(--brand-blue);
   color: #FFFFFF;
   box-shadow: var(--shadow-lg);
   cursor: pointer;
+  /* It floats over any surface, the dark footer included, so its ring is
+     white and drawn inside its own edge (tokens.css focus-ring notes). */
+  --focus-ring: 3px solid #FFFFFF;
+  --focus-ring-offset: -6px;
 }
 .a11y-fab:hover { background: var(--brand-blue-800); }
 .a11y-panel {
@@ -511,6 +1491,7 @@ fieldset {
   padding: .7rem .85rem;
   background: var(--brand-blue);
   color: #FFFFFF;
+  --focus-ring: 3px solid #FFFFFF; /* the page ring is this blue */
 }
 .a11y-panel__head .icon-btn { background: transparent; border-color: rgba(255,255,255,.4); color: #FFFFFF; }
 .a11y-tabs {
@@ -573,6 +1554,9 @@ fieldset {
   align-items: center;
   justify-content: space-between;
   gap: .75rem;
+  /* WCAG 2.5.5. The padding alone left these at ~42px, and this is the one
+     panel where a near-miss target is least acceptable. */
+  min-height: 44px;
   padding: .6rem .75rem;
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
@@ -598,6 +1582,17 @@ fieldset {
 .a11y-rate input { width: 100%; accent-color: var(--brand-blue); }
 .a11y-quick { display: flex; gap: .4rem; flex-wrap: wrap; }
 .a11y-hint { margin: .25rem 0 .1rem; line-height: 1.35; }
+/* Same shape as .form-error. The speech API reports permission and service
+   failures only through onerror, so this is the only place the panel can
+   explain why a toggle that says "On" is not listening. */
+.a11y-hint--error {
+  color: var(--brand-red);
+  background: var(--brand-red-100);
+  border: 1px solid var(--brand-red);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2);
+  font-weight: 600;
+}
 .a11y-help { display: grid; gap: .55rem; }
 .a11y-reset { justify-self: stretch; margin-top: .25rem; }
 
@@ -613,10 +1608,14 @@ fieldset {
   animation: visual-alert-flash 2.2s ease;
   pointer-events: none;
 }
-.visual-alert--info { background: color-mix(in srgb, var(--brand-blue) 92%, #000); }
-.visual-alert--success { background: color-mix(in srgb, var(--palette-forest) 92%, #000); }
-.visual-alert--warn { background: color-mix(in srgb, var(--brand-yellow-800) 92%, #000); }
-.visual-alert--error { background: color-mix(in srgb, var(--brand-red) 92%, #000); }
+/* Each tone restates the white text of .visual-alert: check-contrast.mjs
+   pairs a colour with a background only within one rule, so without it no
+   tone was measured. The gold tone takes a quarter black, not 8%: white on
+   the default gold at 92% measured 3.79:1. */
+.visual-alert--info { color: #FFFFFF; background: color-mix(in srgb, var(--brand-blue) 92%, #000); }
+.visual-alert--success { color: #FFFFFF; background: color-mix(in srgb, var(--palette-forest) 92%, #000); }
+.visual-alert--warn { color: #FFFFFF; background: color-mix(in srgb, var(--brand-yellow-800) 75%, #000); }
+.visual-alert--error { color: #FFFFFF; background: color-mix(in srgb, var(--brand-red) 92%, #000); }
 @keyframes visual-alert-flash {
   0% { opacity: 0; }
   12% { opacity: 1; }
@@ -635,17 +1634,20 @@ fieldset {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 56px;
-  height: 56px;
+  width: var(--fab-size);
+  height: var(--fab-size);
   border-radius: 999px;
   border: none;
-  background: var(--brand-red);
+  background: var(--brand-blue);
   color: #FFFFFF;
   box-shadow: var(--shadow-lg);
   cursor: pointer;
   margin-left: auto;
+  /* Floats over any surface: white ring inside its own edge, as .a11y-fab. */
+  --focus-ring: 3px solid #FFFFFF;
+  --focus-ring-offset: -6px;
 }
-.chat-fab:hover { background: var(--brand-red-800); }
+.chat-fab:hover { background: var(--brand-blue-800); }
 .chat-panel {
   position: absolute;
   right: 0;
@@ -668,6 +1670,7 @@ fieldset {
   padding: .7rem .85rem;
   background: var(--brand-blue);
   color: #FFFFFF;
+  --focus-ring: 3px solid #FFFFFF; /* the page ring is this blue */
 }
 .chat-panel__head .icon-btn { background: transparent; border-color: rgba(255,255,255,.4); color: #FFFFFF; }
 .chat-log {
@@ -714,10 +1717,11 @@ fieldset {
 .chat-form input { flex: 1; min-height: 36px; }
 
 /* Featured badge (products + PWD sellers) */
+/* Featured: a section accent, so the brown tint (yellow is for stars only). */
 .badge--featured {
-  background: var(--palette-primary-100);
-  color: var(--brand-blue-800);
-  border-color: var(--brand-yellow);
+  background: var(--brand-brown-100);
+  color: var(--brand-brown-800);
+  border-color: var(--brand-brown);
 }
 
 /* Disclaimer / note */
@@ -732,4 +1736,464 @@ fieldset {
 .note {
   background: var(--surface-gray);
   border-color: var(--border);
+}
+
+/* --- Admin content pages (C-40) ------------------------------------------ */
+.review-admin-list,
+.inbox-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-3); }
+.review-admin,
+.inbox-item { display: grid; gap: var(--space-1); padding: var(--space-4); }
+.review-admin > p,
+.inbox-item > p { margin: 0; }
+.review-admin__text,
+.inbox-item__text { white-space: pre-line; overflow-wrap: anywhere; }
+.inbox-item__actions { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-2) !important; }
+.banner-admin__thumb { display: block; width: 12rem; max-width: 100%; aspect-ratio: 16 / 6; object-fit: cover; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface-gray-2); }
+.settings-group { display: grid; gap: var(--space-3); }
+.settings-group > h2 { margin: var(--space-4) 0 0; }
+.setting-row { display: grid; gap: var(--space-2); padding: var(--space-4); }
+.setting-row > p { margin: 0; }
+.setting-row__control { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.setting-row__control input { width: 8rem; max-width: 100%; }
+
+/* --- Popovers (M-04) -------------------------------------------------------
+   The bell, chat and accessibility panels used to appear and vanish in one
+   frame. They now grow a few pixels from their trigger's corner (160 ms)
+   and leave faster (120 ms, usePresence keeps them mounted and inert for
+   it). Both reduced-motion switches make them instant again. */
+.notification-panel { transform-origin: top right; }
+.chat-panel { transform-origin: bottom right; }
+.a11y-panel { transform-origin: bottom left; }
+@media (prefers-reduced-motion: no-preference) {
+  .notification-panel,
+  .chat-panel,
+  .a11y-panel {
+    transition:
+      opacity var(--dur-2) var(--ease-out),
+      transform var(--dur-2) var(--ease-out);
+  }
+  @starting-style {
+    .notification-panel { opacity: 0; transform: translateY(-4px) scale(0.98); }
+    .chat-panel,
+    .a11y-panel { opacity: 0; transform: translateY(4px) scale(0.98); }
+  }
+  .notification-panel[data-state="closing"],
+  .chat-panel[data-state="closing"],
+  .a11y-panel[data-state="closing"] {
+    opacity: 0;
+    transition-duration: var(--dur-1);
+  }
+  .notification-panel[data-state="closing"] { transform: translateY(-4px) scale(0.98); }
+  .chat-panel[data-state="closing"],
+  .a11y-panel[data-state="closing"] { transform: translateY(4px) scale(0.98); }
+}
+
+/* --- Icon swap (M-13): the wishlist heart fades and grows in, 120 ms --- */
+.icon-swap { display: inline-flex; }
+@media (prefers-reduced-motion: no-preference) {
+  .icon-swap--animate { animation: icon-swap-in var(--dur-1) var(--ease-out); }
+}
+@keyframes icon-swap-in {
+  from { opacity: 0; transform: scale(0.9); }
+}
+
+/* --- List toolbar and pagination (P2-05, 03 §6, ADR-05) -------------------
+   The bands above and under an admin list (components/ListToolbar.tsx,
+   components/Pagination.tsx): plain links and a GET form. These are the
+   narrowest layouts; the pager's wider ones are container queries in
+   responsive.css. Every link and control is at least max(2.75rem, 44px):
+   2.75rem alone is 33px at the 12px text setting. */
+.list-toolbar { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-3); margin-bottom: var(--space-4); }
+.list-toolbar > .tabs { margin-bottom: 0; }
+.list-toolbar .tab { display: inline-flex; align-items: center; gap: var(--space-2); min-height: max(2.75rem, 44px); }
+/* A chart's view tabs (SalesOverview: Sales / Orders, on both dashboards):
+   .tab's padding alone made them 42px at 16px text. */
+.chart-card__head .tab { display: inline-flex; align-items: center; min-height: max(2.75rem, 44px); }
+/* The count: a white pill with a border on the page and on a hovered tab;
+   the current tab's in its tint. Text and fill in one rule each. */
+.list-toolbar .tab__count {
+  min-width: 1.5rem;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--canvas-white);
+  color: var(--text-charcoal);
+  font-size: .875rem;
+  font-weight: 700;
+  line-height: 1.5rem;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.list-toolbar .tab--active .tab__count {
+  border-color: var(--brand-blue-100);
+  background: var(--brand-blue-100);
+  color: var(--brand-blue-800);
+}
+/* Search on the left, Export on the right at the field's foot; Export drops
+   under the search when both do not fit. */
+.list-toolbar__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-3) var(--space-4);
+}
+.list-toolbar__search {
+  flex: 1 1 20rem;
+  min-width: 0;
+  max-width: 40rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-2);
+  margin: 0;
+}
+.list-toolbar__search > label { font-weight: 600; color: var(--text-charcoal); }
+/* The field, Search and Clear search; the button wraps under the field
+   before the field gets narrower than 12rem. */
+.list-toolbar__field { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); min-width: 0; }
+.list-toolbar__field > input { flex: 1 1 12rem; min-width: 0; }
+.list-toolbar__field > .btn,
+.list-toolbar__export { flex: none; }
+.list-toolbar__field .icon,
+.list-toolbar__export .icon { width: 1.25rem; height: 1.25rem; }
+.list-toolbar__clear {
+  display: inline-flex;
+  align-items: center;
+  min-height: max(2.75rem, 44px);
+  padding-inline: var(--space-1);
+  color: var(--brand-blue);
+  font-weight: 600;
+}
+.list-toolbar__clear:hover { color: var(--brand-blue-800); }
+.list-toolbar__count {
+  margin: 0;
+  color: var(--text-muted);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+/* Lines between the toolbar and its list that say what the list leaves out
+   (Admin → Orders): what a tab counts, a name search cut short, a ?focus=
+   row that is not in it, a view that needs a database update. Muted, at
+   reading width. */
+.list-notes {
+  display: grid;
+  gap: var(--space-1);
+  max-width: var(--measure);
+  margin: 0 0 var(--space-4);
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+.list-notes > p { margin: 0; }
+
+/* Pagination. Narrowest: "Showing …", then "Page 3 of 20" on its own line
+   over Previous and Next at either end, then the page size; the numbered
+   pages are hidden until the console content is 32rem (responsive.css). */
+.pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3) var(--space-5);
+  margin-top: var(--space-4);
+}
+.pagination__summary { margin: 0; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.pagination__nav { flex: 1 1 100%; min-width: 0; }
+.pagination__pages {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.pagination__num,
+.pagination__gap { display: none; }
+.pagination__status {
+  order: -1;
+  flex: 1 1 100%;
+  min-width: 0;
+  text-align: center;
+  font-weight: 600;
+  color: var(--text-charcoal);
+  font-variant-numeric: tabular-nums;
+}
+/* A page, Previous, Next or a page size. position: relative holds the
+   absolute .sr-only words ("Page 4", "50 per page") inside the link. */
+.pagination__link {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: max(2.75rem, 44px);
+  min-height: max(2.75rem, 44px);
+  padding: 0 var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--canvas-white);
+  color: var(--brand-blue);
+  font-weight: 600;
+  text-decoration: none;
+  font-variant-numeric: tabular-nums;
+}
+.pagination__link[href]:hover { background: var(--brand-blue-100); color: var(--brand-blue-800); }
+.pagination__step { padding-inline: var(--space-3); }
+/* The current page or size: a fill, heavier type and aria-current, not the
+   colour alone; in forced colours it is plain text among links. */
+.pagination__link[aria-current] {
+  border-color: var(--brand-blue);
+  background: var(--brand-blue);
+  color: #FFFFFF;
+  font-weight: 800;
+}
+/* Previous on page 1, Next on the last: no href, so not focusable. */
+.pagination__link[aria-disabled="true"] {
+  background: var(--surface-gray);
+  color: var(--text-muted);
+  cursor: default;
+}
+.pagination__gap { min-width: 1.5rem; text-align: center; color: var(--text-muted); }
+.pagination__per {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+  margin: 0;
+}
+.pagination__choices { display: inline-flex; align-items: center; gap: var(--space-1); }
+.pagination__dot { color: var(--text-muted); }
+/* Forced colours drop the fill, so the current page and an unavailable step
+   would be plain text in a box, told apart by weight alone: the current
+   page takes the system highlight, an unavailable step the disabled grey. */
+@media (forced-colors: active) {
+  .pagination__link[aria-current] {
+    forced-color-adjust: none;
+    border-color: Highlight;
+    background: Highlight;
+    color: HighlightText;
+  }
+  .pagination__link[aria-disabled="true"] {
+    border-color: GrayText;
+    color: GrayText;
+  }
+}
+
+/* --- Row actions (P2-06, ADR-04, 03 §6, 01 §6.3) --------------------------
+   components/RowActions.tsx: an "Actions" disclosure in a list row that
+   shows the row's own buttons under it. The panel is in the flow, never
+   floating: TableWrap scrolls sideways (overflow-x: auto), which would clip
+   a popover on the last rows, so the row grows instead. The button and each
+   item are at least max(2.75rem, 44px) tall: 2.75rem alone is 33px at the
+   12px text setting. white-space: normal undoes the nowrap of the older
+   inline .row-actions cell, so a long label wraps at 320px with 24px text.
+   In a phone card the action cell (empty header) is full width, and so is
+   the panel. */
+.row-menu {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: start;
+  gap: var(--space-2);
+  min-width: 0;
+  white-space: normal;
+}
+/* position: relative holds the .sr-only "for order #123" inside the button.
+   Two classes, so the height beats responsive.css's later .btn--sm (36px
+   from 768px up), which would otherwise win on file order. */
+.row-menu > .row-menu__toggle {
+  position: relative;
+  min-height: max(2.75rem, 44px);
+}
+.row-menu__toggle .icon { width: 1.25rem; height: 1.25rem; }
+/* Open: the tint, and the chevron turned up; aria-expanded says it in words.
+   Text and fill in one rule, so check-contrast.mjs measures the pair. */
+.row-menu__toggle[aria-expanded="true"] {
+  background: var(--brand-blue-100);
+  color: var(--brand-blue-800);
+  /* A doubled border (an inset ring, so nothing moves) tells open from a
+     hover, which shares the tint. Forced colours drop the ring; there the
+     turned chevron and the shown panel carry the state. */
+  border-color: var(--brand-blue-800);
+  box-shadow: inset 0 0 0 1px var(--brand-blue-800);
+}
+.row-menu__toggle[aria-expanded="true"] .icon { rotate: 180deg; }
+/* The turn is animated only with no motion preference; otherwise (and with
+   the toolbar's reduce-motion switch) the chevron flips at once. */
+@media (prefers-reduced-motion: no-preference) {
+  .row-menu__toggle .icon { transition: rotate var(--dur-1) var(--ease-out); }
+}
+.row-menu__panel {
+  justify-self: stretch;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+/* display: flex above would otherwise beat the browser's [hidden] rule. */
+.row-menu__panel[hidden] { display: none; }
+/* Items stack at full width, label at the start, wrapping anywhere rather
+   than widening the card. The items must be the buttons and links
+   themselves: a wrapper (a <form>, a <span>) would take these rules
+   instead of the control inside it. */
+.row-menu > .row-menu__panel > * {
+  min-width: 0;
+  min-height: max(2.75rem, 44px);
+  justify-content: flex-start;
+  text-align: start;
+  overflow-wrap: anywhere;
+}
+/* .data-table td .btn spaces inline buttons with a right margin; the menu
+   has its own gap. */
+.data-table td .row-menu .btn { margin: 0; }
+
+/* --- Rails and the hero carousel (P4-02, ADR-06, 05 §2, 01 §6.5) ---------
+   components/RailScroller.tsx. The phone layout and the hero are here; the
+   one-row rail from 768px up is in responsive.css. The section around a
+   rail (.home-section, .rail) is a plain block: nothing here lays it out.
+
+   --rail-pad is a bleed. A scrolling track clips what overflows it (the
+   focus ring, 5px outside a card; the 2px hover lift; the shadow), so a
+   scrolling track takes this padding on every side and the same negative
+   margin: the cards stay where a plain row would put them, with room around
+   them. The gap is twice the pad, so one view (clientWidth) is exactly
+   n cards plus n gaps, and Next lands on a snap point. The defaults of
+   --rail-pad, --rail-gap and --rail-per-view are in tokens.css. */
+.rail__track {
+  display: grid;
+  /* Phones: a 2-column wrap that never scrolls sideways. Two columns while
+     each can be 7.5rem (the narrowest card that keeps a "₱1,250.00" price
+     on one line at any text size), else one: at 320px with 24px text two
+     columns would leave a 92px card body, which cuts the price and splits
+     title words. max() caps it at two columns. */
+  grid-template-columns: repeat(
+    auto-fill,
+    minmax(min(100%, max(7.5rem, calc((100% - var(--rail-gap)) / 2))), 1fr)
+  );
+  gap: var(--rail-gap);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+/* Equal heights: the grid stretches each item, the item stretches its card. */
+.rail__item {
+  display: flex;
+  min-width: 0;
+}
+.rail__item > * {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* The header row is .section-head (01 §6.4, layout.css): the title on the
+   left, then this group on the right, the "View all" link and the buttons. */
+.rail__end {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  margin-inline-start: auto;
+}
+/* A rail's buttons show from 768px up (responsive.css); the hero's always. */
+.rail__controls {
+  display: none;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+/* Previous / Next. A 44px target that grows with the text, a 3:1 control
+   outline (--border-control; #000 in high contrast) and the page ring.
+   font: inherit, so the sr-only name follows the text setting. */
+.rail__btn {
+  position: relative; /* holds the .sr-only name */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  inline-size: max(2.75rem, 44px);
+  block-size: max(2.75rem, 44px);
+  padding: 0;
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius-sm);
+  background: var(--canvas-white);
+  color: var(--brand-blue);
+  font: inherit;
+  cursor: pointer;
+  transition:
+    background-color var(--dur-1) var(--ease-out),
+    border-color var(--dur-1) var(--ease-out);
+}
+.rail__btn .icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  stroke-width: var(--icon-stroke-bold);
+}
+.rail__btn:hover:not([aria-disabled="true"]) {
+  background: var(--brand-blue-100);
+  color: var(--brand-blue-800);
+  border-color: var(--brand-blue-800);
+}
+.rail__btn:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+/* At an end: aria-disabled, still focusable (the disabled attribute would
+   drop focus to <body>). A grey fill and a dashed edge, so the state is not
+   colour alone, and still visible in high contrast where the fill is white. */
+.rail__btn[aria-disabled="true"] {
+  background: var(--surface-gray);
+  color: var(--text-muted);
+  /* 2px: in high contrast both fills are white, so the dash is the cue. */
+  border-style: dashed;
+  border-width: 2px;
+  cursor: default;
+}
+
+/* Hero: one slide per view at every width, the buttons and "2 of 4" under
+   the slide (never over a banner image, which may carry baked-in text). */
+.rail-scroller--hero .rail__track {
+  --rail-gap: calc(var(--rail-pad) * 2);
+  grid-template-columns: none;
+  grid-auto-flow: column;
+  grid-auto-columns: 100%;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scroll-padding-inline: var(--rail-pad);
+  padding: var(--rail-pad);
+  margin: calc(var(--rail-pad) * -1);
+}
+.rail-scroller--hero .rail__item {
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+}
+/* The scrollbar goes only once the buttons replace it. */
+.rail-scroller--hero.has-controls .rail__track {
+  scrollbar-width: none;
+}
+.rail-scroller--hero.has-controls .rail__track::-webkit-scrollbar {
+  display: none;
+}
+.rail-scroller--hero .rail__controls {
+  display: flex;
+  /* Wrap rather than push Previous into the page padding (320px, 24px text). */
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  margin-top: var(--space-2);
+}
+.rail__counter {
+  margin: 0;
+  min-inline-size: 4.5em;
+  text-align: center;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-charcoal);
+}
+
+/* Forced colours drop the fill; an end button takes the disabled grey. */
+@media (forced-colors: active) {
+  .rail__btn[aria-disabled="true"] {
+    border-color: GrayText;
+    color: GrayText;
+  }
 }

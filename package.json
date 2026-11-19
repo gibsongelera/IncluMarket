@@ -1,21 +1,25 @@
 {
-  "name": "inklumarket-next",
+  "name": "inclusivemarket-next",
   "version": "1.0.0",
   "private": true,
-  "description": "IncluMarket — PWD livelihood marketplace (Next.js + Supabase)",
+  "description": "InclusiveMarket — a marketplace for products made by PWD trainees of AVRC Region IX (Next.js + Supabase), part of InkluTrack",
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "test": "node --test \"tests/**/*.test.mjs\"",
+    "test:db": "node supabase/tests/run.mjs",
     "smoke": "node scripts/smoke.mjs",
-    "verify": "node .claude/skills/inclumarket-design/scripts/check-contrast.mjs && node .claude/skills/inclumarket-security-audit/scripts/audit-actions.mjs && node .claude/skills/inclumarket-responsive/scripts/audit-responsive.mjs && node .claude/skills/inclumarket-feature-review/scripts/inventory.mjs && npm run smoke",
+    "verify": "node .claude/skills/inclumarket-design/scripts/check-contrast.mjs && node .claude/skills/inclumarket-security-audit/scripts/audit-actions.mjs && node .claude/skills/inclumarket-responsive/scripts/audit-responsive.mjs && node .claude/skills/inclumarket-feature-review/scripts/inventory.mjs && node scripts/check-page-props.mjs && node scripts/check-brand-name.mjs && node scripts/check-grid.mjs && node scripts/check-page-states.mjs && npm run smoke && npm test && npm run test:db",
     "smoke:loop": "node scripts/smoke-loop.mjs",
     "provision-users": "node --env-file=.env.local scripts/provision-users.mjs",
     "seed-demo-products": "node --env-file=.env.local scripts/seed-demo-products.mjs",
     "bench-chat": "node --env-file=.env.local scripts/bench-chat-models.mjs",
     "check-env": "node --env-file=.env.local scripts/check-env.mjs",
-    "test-email": "node scripts/test-email.mjs"
+    "test-email": "node scripts/test-email.mjs",
+    "check-migrations": "node --env-file=.env.local scripts/check-migrations.mjs",
+    "backfill-product-images": "node --env-file=.env.local scripts/backfill-product-images.mjs",
+    "make-icons": "node scripts/make-icons.mjs"
   },
   "dependencies": {
     "@fortawesome/fontawesome-svg-core": "^7.3.1",
@@ -30,6 +34,7 @@
     "server-only": "^0.0.1"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.2.17",
     "@types/node": "^22.10.7",
     "@types/react": "^19.0.7",
     "@types/react-dom": "^19.0.3",

@@ -19,6 +19,10 @@ import type { DeliveryResult } from "./types";
  * arriving, and an email outage must not look to a buyer like a failed order.
  * Verified against a live provider outage: sendEmail returned false, threw
  * nothing, and logged the reason.
+ *
+ * Auth mail (sign-up code, password reset) does NOT go through this module:
+ * Supabase Auth sends it from the dashboard's templates and SMTP settings
+ * (lib/actions/auth.ts).
  */
 
 export type { EmailKind } from "./templates";

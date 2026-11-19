@@ -1,34 +1,64 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { Product, ProductVariant } from "@/lib/types";
 import { money, productImageSrc } from "@/lib/format";
-import { addToCartAction } from "@/lib/actions/cart";
+import { applyPercentOff } from "@/lib/pricing/core";
+import { addToCartAction, buyNowAction } from "@/lib/actions/cart";
+import { toggleWishlistAction } from "@/lib/actions/wishlist";
 import { startConversation } from "@/lib/actions/messages";
 import { toast } from "@/lib/toast";
 import { StarRating } from "./StarRating";
+import { Icon } from "./Icon";
 
 export function ProductDetailClient({
   product,
   variants,
   sellerName,
+  sellerVerified = false,
   categoryFolder,
   userId,
   rating = 0,
   ratingCount = 0,
+  salePercent = null,
+  wishlisted = false,
+  soldCount = 0,
 }: {
   product: Product;
   variants: ProductVariant[];
   sellerName: string;
+  /** Active PWD verification (im_verified_pwd). */
+  sellerVerified?: boolean;
   categoryFolder: string;
   userId?: number;
   rating?: number;
   ratingCount?: number;
+  /** Active flash-sale percent, from the same table the server prices with. */
+  salePercent?: number | null;
+  /** Signed-in buyer has this listing in their wishlist. */
+  wishlisted?: boolean;
+  soldCount?: number;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
+  const [saved, setSaved] = useState(wishlisted);
+  // Animate the heart only after a tap, never on page load (M-13).
+  const [heartTouched, setHeartTouched] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  async function toggleSaved() {
+    if (requireLogin()) return;
+    setSaving(true);
+    const res = await toggleWishlistAction(product.id);
+    setSaving(false);
+    if (!res.ok) return toast(res.error || "Could not update your wishlist.", "error");
+    setHeartTouched(true);
+    setSaved(Boolean(res.inWishlist));
+    toast(res.inWishlist ? "Saved to your wishlist." : "Removed from your wishlist.", "success");
+    router.refresh();
+  }
 
   function requireLogin(): boolean {
     if (userId) return false;
@@ -86,26 +116,27 @@ export function ProductDetailClient({
 
   function changeQty(delta: number) {
     let next = Math.max(1, qty + delta);
-    if (activeVariant) next = Math.min(next, activeVariant.stock_qty);
+    if (activeVariant) next = Math.min(next, Math.max(1, activeVariant.stock_qty), 99);
     setQty(next);
   }
+
+  // Switching to an option with less stock lowers the quantity to match.
+  useEffect(() => {
+    if (activeVariant && activeVariant.stock_qty > 0 && qty > activeVariant.stock_qty) setQty(activeVariant.stock_qty);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeVariant]);
 
   async function addToCart() {
     if (requireLogin()) return;
     if (!activeVariant || activeVariant.stock_qty <= 0 || busy) return;
     setBusy(true);
-    const res = await addToCartAction(
-      product.id,
-      activeVariant.id,
-      qty,
-      activeVariant.stock_qty
-    );
+    const res = await addToCartAction(product.id, activeVariant.id, qty);
     setBusy(false);
     if (!res.ok) {
       toast(res.error || "Could not add to cart.", "error");
       return;
     }
-    toast("Added to cart.", "success");
+    toast(res.notice || "Added to cart.", res.notice ? "info" : "success");
     router.refresh();
   }
 
@@ -122,43 +153,77 @@ export function ProductDetailClient({
     router.push(`/buyer/messages?c=${res.conversationId}`);
   }
 
+  // Buy now checks out this line alone, at exactly this quantity (C-29).
   async function buyNow() {
     if (requireLogin()) return;
     if (!activeVariant || activeVariant.stock_qty <= 0 || busy) return;
     setBusy(true);
-    const res = await addToCartAction(
-      product.id,
-      activeVariant.id,
-      qty,
-      activeVariant.stock_qty
-    );
+    const res = await buyNowAction(product.id, activeVariant.id, qty);
     setBusy(false);
-    if (!res.ok) {
-      toast(res.error || "Could not add to cart.", "error");
+    if (!res.ok || !res.cartItemId) {
+      toast(res.error || "Could not start checkout.", "error");
       return;
     }
-    router.push("/buyer/checkout");
+    if (res.notice) toast(res.notice, "info");
+    router.push(`/buyer/checkout?items=${res.cartItemId}`);
   }
 
   const v = activeVariant;
   const soldOut = !v || v.stock_qty <= 0;
+  // A placeholder colour ("Standard") is not a choice; neither is a listing
+  // sold in a single standard option (N-07).
+  const placeholderColour = colors.length === 1 && /^(standard|default|one size)?$/i.test((colors[0] || "").trim());
+  const hasOptions = !(placeholderColour && sizes.length === 0);
+  const maxQty = v ? Math.max(1, Math.min(v.stock_qty, 99)) : 1;
 
   return (
     <div id="product-detail" className="product-detail">
       <div className="pd__gallery">
-        <div className="pd__main">
+        <div
+          className="pd__main"
+          id="pd-photo"
+          role={images.length > 1 ? "tabpanel" : undefined}
+          aria-labelledby={images.length > 1 ? `pd-thumb-${gallery}` : undefined}
+        >
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={images[gallery] || images[0]} alt={product.title} />
+          <img
+            src={images[gallery] || images[0]}
+            alt={images.length > 1 ? `${product.title}, photo ${gallery + 1} of ${images.length}` : product.title}
+          />
         </div>
         {images.length > 1 ? (
-          <div className="pd__thumbs" role="tablist">
+          // Photo thumbnails as a real tab list: one tab stop, arrow keys
+          // move between photos (Home/End to the ends).
+          <div className="pd__thumbs" role="tablist" aria-label="Product photos">
             {images.map((src, i) => (
               <button
                 key={i}
+                id={`pd-thumb-${i}`}
                 type="button"
+                role="tab"
+                aria-selected={i === gallery}
+                aria-controls="pd-photo"
+                tabIndex={i === gallery ? 0 : -1}
                 className={`pd__thumb ${i === gallery ? "is-active" : ""}`}
-                aria-label={`Show image ${i + 1}`}
+                aria-label={`Photo ${i + 1} of ${images.length}`}
                 onClick={() => setGallery(i)}
+                onKeyDown={(e) => {
+                  const last = images.length - 1;
+                  const to =
+                    e.key === "ArrowRight" || e.key === "ArrowDown"
+                      ? (i + 1) % images.length
+                      : e.key === "ArrowLeft" || e.key === "ArrowUp"
+                        ? (i - 1 + images.length) % images.length
+                        : e.key === "Home"
+                          ? 0
+                          : e.key === "End"
+                            ? last
+                            : null;
+                  if (to === null) return;
+                  e.preventDefault();
+                  setGallery(to);
+                  document.getElementById(`pd-thumb-${to}`)?.focus();
+                }}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={src} alt="" />
@@ -170,16 +235,53 @@ export function ProductDetailClient({
 
       <div className="pd__body">
         <span className="product-card__cat">{categoryFolder}</span>
-        <h1 className="pd__title">{product.title}</h1>
-        <p className="muted">
-          Sold by <strong>{sellerName}</strong>
+        <div className="pd__title-row">
+          <h1 className="pd__title">{product.title}</h1>
+          <button
+            type="button"
+            className="icon-btn pd__wishlist"
+            aria-pressed={saved}
+            aria-label={saved ? "Remove from wishlist" : "Save to wishlist"}
+            onClick={toggleSaved}
+            disabled={saving}
+          >
+            <span key={saved ? "on" : "off"} className={`icon-swap${heartTouched ? " icon-swap--animate" : ""}`}>
+            <Icon name={saved ? "heart-filled" : "heart"} size={22} />
+          </span>
+          </button>
+        </div>
+        <p className="muted pd__seller">
+          Sold by{" "}
+          <Link href={`/shop/${product.seller_id}`}>
+            <strong>{sellerName}</strong>
+          </Link>
+          {sellerVerified ? (
+            <span className="badge badge--verified">
+              <Icon name="check" size={12} /> Verified PWD seller
+            </span>
+          ) : null}
         </p>
         <p className="pd__rating">
           <StarRating score={rating} /> <small>({ratingCount} review{ratingCount === 1 ? "" : "s"})</small>
+          {soldCount > 0 ? <small> · {soldCount} sold</small> : null}
         </p>
-        <p className="pd__price">{money(product.base_price)}</p>
+        {salePercent ? (
+          <p className="pd__price">
+            <span className="price price--sale">{money(applyPercentOff(product.base_price, salePercent))}</span>{" "}
+            <s className="price price--was">
+              <span className="sr-only">was </span>
+              {money(product.base_price)}
+            </s>{" "}
+            <span className="badge badge--sale">−{salePercent}%</span>
+          </p>
+        ) : (
+          <p className="pd__price">
+            <span className="price">{money(product.base_price)}</span>
+          </p>
+        )}
         <p className="pd__desc">{product.description}</p>
 
+        {hasOptions && !placeholderColour ? (
         <div className="pd__section">
           <h3>
             Color: <span id="color-lbl">{color || ""}</span>
@@ -204,7 +306,9 @@ export function ProductDetailClient({
           </div>
         </div>
 
-        {sizes.length ? (
+        ) : null}
+
+        {hasOptions && sizes.length ? (
           <div className="pd__section">
             <h3>
               Size: <span id="size-lbl">{size || ""}</span>
@@ -231,7 +335,9 @@ export function ProductDetailClient({
         ) : null}
 
         <div className="pd__section" id="stock-note">
-          {!v ? (
+          {!variants.length ? (
+            <p className="stock-note stock-note--out">Not available to order right now.</p>
+          ) : !v ? (
             <p className="stock-note stock-note--out">This combination is not available.</p>
           ) : v.stock_qty <= 0 ? (
             <p className="stock-note stock-note--out">Out of stock.</p>
@@ -247,37 +353,40 @@ export function ProductDetailClient({
         </div>
 
         <div className="pd__section">
-          <label htmlFor="qty" className="sr-only">
-            Quantity
-          </label>
           <div className="qty-row">
-            <span>Quantity:</span>
+            <label htmlFor="qty">Quantity</label>
             <div className="qty-ctrl">
-              <button type="button" aria-label="Decrease quantity" onClick={() => changeQty(-1)}>
-                -
+              <button type="button" aria-label="Decrease quantity" onClick={() => changeQty(-1)} disabled={qty <= 1 || soldOut}>
+                −
               </button>
               <input
                 id="qty"
                 type="number"
+                inputMode="numeric"
                 min={1}
+                max={maxQty}
                 value={qty}
+                disabled={soldOut}
+                aria-describedby="qty-hint"
                 onChange={(e) => {
-                  let n = Math.max(1, Number(e.target.value) || 1);
-                  if (activeVariant) n = Math.min(n, activeVariant.stock_qty);
+                  const n = Math.max(1, Math.min(maxQty, Math.floor(Number(e.target.value)) || 1));
                   setQty(n);
                 }}
               />
-              <button type="button" aria-label="Increase quantity" onClick={() => changeQty(1)}>
+              <button type="button" aria-label="Increase quantity" onClick={() => changeQty(1)} disabled={qty >= maxQty || soldOut}>
                 +
               </button>
             </div>
+            <span className="hint" id="qty-hint">
+              {soldOut ? "" : `Up to ${maxQty}`}
+            </span>
           </div>
         </div>
 
         <div className="pd__actions">
           <button
             type="button"
-            className="btn btn--primary"
+            className="btn btn--outline"
             id="add-to-cart"
             disabled={soldOut}
             aria-disabled={soldOut}
@@ -287,7 +396,7 @@ export function ProductDetailClient({
           </button>
           <button
             type="button"
-            className="btn btn--danger"
+            className="btn btn--primary"
             id="buy-now"
             disabled={soldOut}
             aria-disabled={soldOut}

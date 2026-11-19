@@ -43,7 +43,7 @@ const RULES: { keywords: string[]; reply: string }[] = [
   {
     keywords: ["seller", "sell", "pwd", "become a seller"],
     reply:
-      "Every seller on IncluMarket is a person with a disability running their own livelihood. To sell, sign up with a seller account; listings are reviewed before they go live.",
+      "Every seller on InclusiveMarket is a person with a disability running their own livelihood. Seller accounts are set up by AVRC staff, not through sign-up: send a message from the Contact page (choose \"Selling here\"). Listings are reviewed before they go live.",
   },
   {
     keywords: ["wishlist", "save item", "heart"],
@@ -238,7 +238,7 @@ function fallbackFor(context: ChatContext): string {
     case "admin":
       return 'I can report pending approvals, unresolved tickets, user counts and recent order volume. For individual records, use the dashboard pages. Say "talk to a human" for our team.';
     default:
-      return 'I can help with how IncluMarket works, accessibility features, payments and selling here. Sign in and I can also look up your own orders. Say "talk to a human" to reach our support team.';
+      return 'I can help with how InclusiveMarket works, accessibility features, payments and selling here. Sign in and I can also look up your own orders. Say "talk to a human" to reach our support team.';
   }
 }
 

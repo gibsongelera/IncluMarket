@@ -302,6 +302,13 @@ async function checkEmail() {
   }
 
   add("Email", "ok", `provider: ${provider}`);
+  if (provider === "resend") {
+    add(
+      "Email",
+      "ok",
+      "signup confirmation and password-reset emails are sent through Resend (not Supabase SMTP)."
+    );
+  }
   return provider === "resend" ? checkResend() : checkBrevo();
 }
 
@@ -578,6 +585,27 @@ async function checkSite() {
 }
 
 // ---------------------------------------------------------------------------
+// Secrets that only need to exist (values are never printed)
+// ---------------------------------------------------------------------------
+function checkSecrets() {
+  const keys = [
+    ["PWD_ID_HASH_KEY", "PWD verification refuses to run in production without it."],
+    ["PWD_ID_ENC_KEY", "PWD verification refuses to run in production without it."],
+    ["RATE_LIMIT_SALT", "Without it, caller IPs are hashed with a public development salt."],
+  ];
+  for (const [name, why] of keys) {
+    const v = process.env[name] ?? "";
+    if (!v) add("Secrets", "warn", `${name} is not set.`, why);
+    else if (v.length < 16) add("Secrets", "error", `${name} is only ${v.length} characters; use 32 or more.`);
+    else add("Secrets", "ok", `${name} is set (${v.length} characters).`);
+  }
+  const hash = process.env.PWD_ID_HASH_KEY;
+  if (hash && hash === process.env.PWD_ID_ENC_KEY) {
+    add("Secrets", "error", "PWD_ID_HASH_KEY and PWD_ID_ENC_KEY are the same value; give each its own.");
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Run
 // ---------------------------------------------------------------------------
 console.log("\nChecking configured integrations (read-only)…\n");
@@ -588,6 +616,7 @@ for (const [name, fn] of [
   ["Email", checkEmail],
   ["OpenRouter", checkOpenRouter],
   ["Site", checkSite],
+  ["Secrets", checkSecrets],
 ]) {
   try {
     await fn();
@@ -612,4 +641,4 @@ const errors = results.filter((r) => r.level === "error").length;
 const warns = results.filter((r) => r.level === "warn").length;
 console.log(`\n${"=".repeat(70)}`);
 console.log(`${errors} error(s), ${warns} warning(s)\n`);
-process.exit(errors ? 1 : 0);
+process.exitCode = errors ? 1 : 0;

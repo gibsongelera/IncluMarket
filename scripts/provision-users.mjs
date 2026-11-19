@@ -1,8 +1,19 @@
 /**
- * Provision the demo IncluMarket accounts via the Supabase Auth Admin API.
+ * Provision the demo InclusiveMarket accounts via the Supabase Auth Admin API.
  *
  * Usage (from repo root, with .env.local loaded):
- *   node --env-file=.env.local scripts/provision-users.mjs
+ *   node --env-file=.env.local scripts/provision-users.mjs                 # all demo accounts
+ *   node --env-file=.env.local scripts/provision-users.mjs --only-pwd-demo # just the four below
+ *
+ * PWD demo accounts (one of each case the verification rules distinguish):
+ *   SEED_BUYER_NOPWD_EMAIL        buyer, no PWD verification   → pays full price
+ *   SEED_BUYER_PWD_EMAIL          buyer, verified PWD          → sees PWD discounts where a rule is on
+ *   SEED_SELLER_VERIFIED_EMAIL    seller, verified PWD         → listings can go live
+ *   SEED_SELLER_UNVERIFIED_EMAIL  seller, not verified, no grace period → listings stay hidden
+ * Verified ones get an approved "AVRC in person" verification with a demo ID
+ * number in region "00", which no real PWD ID uses, so they can never block a
+ * real person's ID. Needs PWD_ID_HASH_KEY — the same value as production — so
+ * the duplicate check matches.
  *
  * Requires SUPABASE_SERVICE_ROLE_KEY, NEXT_PUBLIC_SUPABASE_URL and
  * SEED_ACCOUNT_PASSWORD. Creates users with email_confirm: true so they can
@@ -15,6 +26,7 @@
  */
 
 import { createClient } from "@supabase/supabase-js";
+import { createHash, createHmac } from "node:crypto";
 
 function requireEnv(name) {
   const value = process.env[name];
@@ -64,7 +76,7 @@ const USERS = [
     story:
       "Maria weaves bags and home textiles using a foot-pedal loom adapted for her limited hand mobility. " +
       "What started as physical therapy after an accident became a full-time livelihood — every piece is " +
-      "handwoven in her home workshop in Laguna and sold directly through IncluMarket.",
+      "handwoven in her home workshop in Laguna and sold directly through InclusiveMarket.",
   },
   {
     email: email("SEED_SELLER3_EMAIL", "seller3@example.test"),
@@ -78,6 +90,34 @@ const USERS = [
       "confirmed entirely through in-app messaging so no phone call is ever required.",
   },
 ];
+
+// PWD demo accounts. `pwdId` set = verified; `noGrace` = a seller who may not
+// sell until verified.
+const PWD_DEMO = [
+  { email: email("SEED_BUYER_NOPWD_EMAIL", "buyer.nopwd@example.test"), password: PASSWORD, role: "buyer", name: "Ana Cruz" },
+  {
+    email: email("SEED_BUYER_PWD_EMAIL", "buyer.pwd@example.test"),
+    password: PASSWORD,
+    role: "buyer",
+    name: "Ben Lim",
+    pwdId: "00-0000-000-0000001",
+  },
+  {
+    email: email("SEED_SELLER_VERIFIED_EMAIL", "seller.verified@example.test"),
+    password: PASSWORD,
+    role: "seller",
+    name: "Carla Dizon",
+    pwdId: "00-0000-000-0000002",
+  },
+  {
+    email: email("SEED_SELLER_UNVERIFIED_EMAIL", "seller.unverified@example.test"),
+    password: PASSWORD,
+    role: "seller",
+    name: "Dino Ramos",
+    noGrace: true,
+  },
+];
+const onlyPwdDemo = process.argv.includes("--only-pwd-demo");
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -170,16 +210,100 @@ async function provisionOne(user) {
   await new Promise((r) => setTimeout(r, 400));
   const profileId = await ensureProfile(authUserId, user);
   console.log(`  profile id=${profileId}`);
+  return profileId;
+}
+
+/** Same derivation as lib/pwd/crypto.ts: SHA-256 of the trimmed key, then HMAC. */
+function hashPwdId(normalized) {
+  const raw = process.env.PWD_ID_HASH_KEY?.trim();
+  if (!raw || raw.length < 16) return null;
+  const key = createHash("sha256").update(raw).digest();
+  return createHmac("sha256", key).update(normalized).digest("hex");
+}
+
+/** Today + years, as a YYYY-MM-DD date in the Philippines. */
+function manilaDatePlusYears(years) {
+  const d = new Date(Date.now() + 8 * 3_600_000);
+  d.setUTCFullYear(d.getUTCFullYear() + years);
+  return d.toISOString().slice(0, 10);
+}
+
+async function seedVerification(profileId, user, reviewerId) {
+  const { data: current, error: viewErr } = await admin
+    .from("im_verified_pwd")
+    .select("profile_id")
+    .eq("profile_id", profileId)
+    .maybeSingle();
+  if (viewErr) throw new Error(`im_verified_pwd: ${viewErr.message} (apply migration 0017 first)`);
+  if (current) {
+    console.log("  already verified");
+    return;
+  }
+  const hash = hashPwdId(user.pwdId);
+  if (!hash) throw new Error("PWD_ID_HASH_KEY is not set (use the same value as production).");
+  const now = new Date().toISOString();
+  const { data: row, error } = await admin
+    .from("im_pwd_verifications")
+    .insert({
+      profile_id: profileId,
+      method: "avrc_in_person",
+      id_number_hash: hash,
+      id_number_last4: user.pwdId.replace(/\D/g, "").slice(-4),
+      issuing_lgu: "Demo account (not a real PWD ID)",
+      expires_on: manilaDatePlusYears(2),
+      status: "approved",
+      registry_result: "not_checked",
+      registry_check_note: "Seeded demo account by scripts/provision-users.mjs. Not a real PWD ID.",
+      reviewer_id: reviewerId,
+      reviewed_at: now,
+    })
+    .select("id")
+    .single();
+  if (error) {
+    if (error.code === "23505") throw new Error(`demo ID ${user.pwdId} is already approved on another account`);
+    throw error;
+  }
+  await admin.from("im_audit_logs").insert({
+    actor_id: null,
+    actor_role: "system",
+    action: "pwd_verification_seeded",
+    target: `verification:${row.id} profile:${profileId}`,
+  });
+  console.log(`  PWD verified (demo ID ending ${user.pwdId.slice(-4)}, verification id=${row.id})`);
 }
 
 async function main() {
-  for (const user of USERS) {
-    await provisionOne(user);
+  if (!onlyPwdDemo) {
+    for (const user of USERS) {
+      await provisionOne(user);
+    }
+  }
+
+  // Any active admin signs off the seeded verifications.
+  const { data: reviewer } = await admin
+    .from("im_profiles")
+    .select("id")
+    .eq("role", "admin")
+    .eq("account_status", "active")
+    .order("id")
+    .limit(1)
+    .maybeSingle();
+
+  for (const user of PWD_DEMO) {
+    const profileId = await provisionOne(user);
+    if (user.pwdId) await seedVerification(profileId, user, reviewer?.id ?? null);
+    if (user.noGrace) {
+      // No grace period: this seller cannot sell until verified.
+      const { error } = await admin.from("im_profiles").update({ pwd_grace_until: null }).eq("id", profileId);
+      if (error) throw error;
+      console.log("  not verified, no grace period (listings stay hidden until verified)");
+    }
   }
   console.log("Done. Rotate passwords before public deployment.");
 }
 
 main().catch((err) => {
   console.error(err);
-  process.exit(1);
+  // exitCode, not exit(): exiting while sockets close aborts Node on Windows.
+  process.exitCode = 1;
 });

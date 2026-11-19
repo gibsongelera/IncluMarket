@@ -1,13 +1,13 @@
 ---
 name: inclumarket-security-audit
-description: Audit IncluMarket's specific authorization model — service-role-everywhere, RLS as defence-in-depth only, and server actions as public HTTP endpoints. Use when asked to "security audit", "check for vulnerabilities", "is this safe", "who can call this", "review this action", before merging any change to lib/actions/, or when adding a migration. Encodes this repo's threat model and its history of real exploits; defer to best-practices and engineering-skills:senior-security for generic web security.
+description: Audit InclusiveMarket's specific authorization model — service-role-everywhere, RLS as defence-in-depth only, and server actions as public HTTP endpoints. Use when asked to "security audit", "check for vulnerabilities", "is this safe", "who can call this", "review this action", before merging any change to lib/actions/, or when adding a migration. Encodes this repo's threat model and its history of real exploits; defer to best-practices and engineering-skills:senior-security for generic web security.
 license: MIT
 metadata:
   project: inklumarket-next
   version: "1.0"
 ---
 
-# IncluMarket Security Audit
+# InclusiveMarket Security Audit
 
 ## When to Use This Skill
 
@@ -114,10 +114,16 @@ Rules:
   already in the client payload. Shape the data down on the server instead.
 - Public seller information goes through the `im_public_sellers` view, which
   exposes only id, name, story and featured flag.
-- When PWD ID upload is built, use a **private** Storage bucket with short-lived
-  signed URLs. Do **not** follow the product-image convention of base64 data
-  URLs in a table — that would put government disability IDs in every
-  `select *`.
+- PWD ID photos live in the **private** `pwd-ids` bucket (migration 0017),
+  readable only through 60-second signed URLs issued by an admin action that
+  writes the audit log. The ID number is stored as a keyed HMAC plus its last
+  four digits; the AES-GCM sealed full number exists only until the decision.
+  Check any change against all three: no public URL, no number in a
+  `select *`, nothing sent to a client except last4.
+- Product, shop and banner photos are public by design (`product-media`
+  bucket via `lib/media.ts`); never route a private document through it.
+- The only route handlers are `app/auth/callback`, `app/auth/confirm` and
+  `app/api/webhooks/paymongo`. A new one is a new unauthenticated surface.
 
 ---
 
@@ -136,7 +142,7 @@ Each of these was live. Re-check them whenever the relevant file changes.
 | 7 | Open redirect via unvalidated `next` param | `app/auth/callback/route.ts` | `safeNext()` shape-check + origin assert |
 | 8 | No rate limiting on login/signup/resend/newsletter/chat/search | several | `lib/security/rate-limit.ts`, Postgres-backed |
 | 9 | `images: string[]` accepted with no validation server-side | `lib/actions/seller.ts` | `lib/validation/data-url.ts` |
-| 10 | `getCartCount(userId?)` — caller id beat session id | `lib/actions/cart.ts` | Parameter removed |
+| 10 | `getCartCount(userId?)` — caller id beat session id | `lib/actions/cart.ts` | Parameter removed; later the action itself (the header reads `readCartCount` in `lib/header-data.ts`, server-only) |
 | 11 | `applyThemePreset` accepted any string; theme values concatenated into a global `<style>` | `lib/actions/theme.ts`, `lib/theme.ts` | Allowlist + value filter in `themeVarsToCss` |
 | 12 | `listPaymentProviders` unauthenticated, returned all provider config | `lib/actions/payments.ts` | Admin-gated; checkout uses a narrow projection |
 | 13 | Six working accounts sharing `Admin123`, published in the README | `scripts/`, `README.md` | Env-driven, weak values rejected |
