@@ -200,6 +200,14 @@ assert(
   /supabase\.auth\.signUp\(/.test(authAction) && authAction.includes("resetPasswordForEmail("),
   "signup and reset emails are sent by Supabase Auth (dashboard templates + SMTP)"
 );
+// The code screens need {{ .Token }} in the email; Supabase's default template sends a link only.
+for (const [file, type] of [["confirm-signup", "type=email"], ["reset-password", "type=recovery"]]) {
+  const tpl = read(`supabase/templates/${file}.html`);
+  assert(
+    tpl.includes("{{ .Token }}") && tpl.includes(`/auth/confirm?token_hash={{ .TokenHash }}&amp;${type}`),
+    `${file} email template shows the code and links to /auth/confirm`
+  );
+}
 assert(
   /export async function signupAction\(\s*name: string,\s*email: string,\s*password: string,\s*consent: boolean\s*\)/.test(authAction),
   "signupAction takes no role: self sign-up is buyer-only"

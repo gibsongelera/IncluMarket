@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="x-apple-disable-message-reformatting">
+<meta name="format-detection" content="telephone=no, date=no, address=no, email=no">
+<meta name="color-scheme" content="light">
+<meta name="supported-color-schemes" content="light">
+<title>Confirm your InclusiveMarket account</title>
+<!--
+  Supabase → Authentication → Emails → Templates → Confirm signup.
+  Paste this whole file as the message body. Subject and setup: README,
+  "Email and sign-up codes". Colours mirror styles/tokens.css.
+-->
+<style>
+  @media (max-width: 480px) {
+    .im-outer { padding: 20px 10px !important; }
+    .im-pad { padding-left: 20px !important; padding-right: 20px !important; }
+    .im-top { padding-top: 28px !important; }
+    .im-h1 { font-size: 24px !important; }
+    .im-code { font-size: 28px !important; letter-spacing: 4px !important; }
+  }
+</style>
+</head>
+<body style="margin:0;padding:0;background-color:#F5F7FA;-webkit-text-size-adjust:100%;">
+  <div style="display:none;max-height:0;max-width:0;overflow:hidden;opacity:0;mso-hide:all;font-size:1px;line-height:1px;color:#F5F7FA;">Enter the code inside to finish creating your InclusiveMarket account.</div>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#F5F7FA;">
+    <tr>
+      <td class="im-outer" align="center" style="padding:32px 12px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;width:100%;">
+
+          <!-- Brand -->
+          <tr>
+            <td align="center" style="padding:0 0 24px;">
+              <a href="{{ .SiteURL }}" style="text-decoration:none;">
+                <img src="{{ .SiteURL }}/assets/img/partners/avrc-mark.png" width="56" height="56" alt="" style="display:block;margin:0 auto 10px;border:0;border-radius:12px;background-color:#FFFFFF;">
+                <span style="font-family:'Nunito Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:22px;line-height:1.2;font-weight:800;color:#00287A;">InclusiveMarket</span>
+              </a>
+            </td>
+          </tr>
+
+          <!-- Card -->
+          <tr>
+            <td style="background-color:#FFFFFF;border:1px solid #DEE2E6;border-radius:16px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td style="height:6px;line-height:6px;font-size:0;background-color:#0038A8;border-radius:16px 16px 0 0;">&nbsp;</td>
+                </tr>
+                <tr>
+                  <td class="im-pad im-top" style="padding:36px 32px 0;font-family:'Nunito Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#212529;">
+                    <p style="margin:0 0 8px;font-size:14px;line-height:1.4;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#0038A8;">Confirm your email</p>
+                    <h1 class="im-h1" style="margin:0 0 16px;font-size:28px;line-height:1.25;font-weight:800;color:#212529;">Welcome to InclusiveMarket</h1>
+                    <p style="margin:0 0 24px;font-size:16px;line-height:1.6;color:#212529;">Enter this code on the sign-up page to confirm your email and finish creating your account.</p>
+                  </td>
+                </tr>
+
+                <!-- Code -->
+                <tr>
+                  <td class="im-pad" style="padding:0 32px;">
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#E8EEF9;border-radius:12px;">
+                      <tr>
+                        <td align="center" style="padding:20px 12px;font-family:'Nunito Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+                          <p style="margin:0 0 6px;font-size:14px;line-height:1.4;font-weight:700;color:#00287A;">Your confirmation code</p>
+                          <p class="im-code" style="margin:0;font-family:'SFMono-Regular','Cascadia Mono',Consolas,'Liberation Mono',Menlo,monospace;font-size:32px;line-height:1.3;font-weight:700;letter-spacing:6px;color:#00287A;word-break:break-all;">{{ .Token }}</p>
+                          <p style="margin:8px 0 0;font-size:14px;line-height:1.5;color:#3D4650;">Expires in 1 hour. Works once.</p>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+
+                <!-- Button -->
+                <tr>
+                  <td class="im-pad" align="center" style="padding:28px 32px 0;font-family:'Nunito Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+                    <p style="margin:0 0 14px;font-size:15px;line-height:1.5;color:#5A6169;">Or confirm with one click</p>
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center">
+                      <tr>
+                        <td align="center" bgcolor="#0038A8" style="border-radius:10px;">
+                          <a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&amp;type=email" style="display:inline-block;padding:14px 32px;font-family:'Nunito Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:16px;line-height:1.25;font-weight:700;color:#FFFFFF;text-decoration:none;border-radius:10px;">Confirm my email</a>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+
+                <!-- Note -->
+                <tr>
+                  <td class="im-pad" style="padding:32px 32px 32px;font-family:'Nunito Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                      <tr>
+                        <td style="border-top:1px solid #DEE2E6;padding-top:20px;font-size:14px;line-height:1.6;color:#5A6169;">
+                          Didn’t sign up? You can ignore this email. Your account isn’t confirmed until someone enters this code.
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td align="center" style="padding:24px 16px 0;font-family:'Nunito Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:14px;line-height:1.6;color:#5A6169;">
+              <p style="margin:0 0 4px;font-weight:700;color:#212529;">InclusiveMarket</p>
+              <p style="margin:0 0 4px;">A livelihood marketplace for Persons with Disabilities</p>
+              <p style="margin:0 0 12px;">In partnership with AVRC III, DSWD Field Office IX – Zamboanga Peninsula</p>
+              <p style="margin:0;"><a href="{{ .SiteURL }}" style="color:#0038A8;text-decoration:underline;">Visit InclusiveMarket</a>&nbsp;&nbsp;·&nbsp;&nbsp;<a href="{{ .SiteURL }}/contact" style="color:#0038A8;text-decoration:underline;">Contact us</a></p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
