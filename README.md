@@ -104,28 +104,26 @@ the app's email provider. Set them up once in the Supabase dashboard:
    address verified in Brevo.
 2. **Authentication → Rate Limits:** raise "emails sent per hour" from the
    default to what you expect (for example 100).
-3. **Authentication → Emails → Templates → Confirm signup:** show the code and
-   link to `/auth/confirm` (works on any device):
+3. **Authentication → Emails → Templates.** The designed templates live in
+   `supabase/templates/`; open the file, copy all of it, and paste it over the
+   template body:
 
-   ```html
-   <h2>Confirm your InclusiveMarket account</h2>
-   <p>Enter this code on the sign-in page:</p>
-   <p style="font-size:28px;letter-spacing:.18em;font-weight:800">{{ .Token }}</p>
-   <p>Or <a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email">confirm your email</a>.</p>
-   ```
+   | Template | Subject | Body |
+   |---|---|---|
+   | Confirm signup | `Confirm your InclusiveMarket account` | `supabase/templates/confirm-signup.html` |
+   | Reset password | `Reset your InclusiveMarket password` | `supabase/templates/reset-password.html` |
 
-4. **Templates → Reset password:**
+   Each shows the code (`{{ .Token }}`, which the sign-up and reset screens
+   ask for) and a one-click button to `/auth/confirm` that works on any device.
+   Supabase's default templates send a link only, so the code screens have
+   nothing to enter. The emails say the code expires in 1 hour, which is
+   Supabase's default (Authentication → Sign In / Providers → Email → Email
+   OTP Expiration); change the text if you change that setting.
 
-   ```html
-   <h2>Reset your InclusiveMarket password</h2>
-   <p>Enter this code on the reset page (it expires in one hour):</p>
-   <p style="font-size:28px;letter-spacing:.18em;font-weight:800">{{ .Token }}</p>
-   <p>Or <a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery&next=/reset-password">reset your password</a>.
-   If you did not ask for this, ignore this email.</p>
-   ```
-
-5. **Authentication → URL Configuration:** Site URL = your site
-   (`http://localhost:3000` in development), and add `<site>/auth/confirm`
+4. **Authentication → URL Configuration:** Site URL = your site
+   (`https://inclumarket.vercel.app` in production, `http://localhost:3000` in
+   development). The templates build their links and logo from it, so a
+   localhost Site URL sends people to their own computer. Add `<site>/auth/confirm`
    and `<site>/auth/callback` to the redirect URLs.
 
 Everything else (order confirmations, seller notices, ticket replies,
