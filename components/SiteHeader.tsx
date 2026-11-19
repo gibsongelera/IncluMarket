@@ -9,6 +9,7 @@ import { LogoutButton } from "./HeaderActions";
 import { MobileNav } from "./MobileNav";
 import { HeaderNavLinks } from "./HeaderNavLinks";
 import { HOME_HREF } from "@/lib/nav";
+import { BrandMark } from "./BrandMark";
 
 export async function SiteHeader({
   variant,
@@ -26,9 +27,7 @@ export async function SiteHeader({
       <header className="site-header site-header--buyer" role="banner">
         <div className="container header-row">
           <Link className="brand" href="/home" aria-label="InclusiveMarket home">
-            <span className="brand-mark" aria-hidden="true">
-              IM
-            </span>
+            <BrandMark />
             <span className="brand-word">InclusiveMarket</span>
           </Link>
 
@@ -58,9 +57,7 @@ export async function SiteHeader({
             bar has the links and the bell, its More sheet has Sign out. */}
         <div className="container header-row header-row--signed-in">
           <Link className="brand" href={HOME_HREF[variant]} aria-label="InclusiveMarket home">
-            <span className="brand-mark" aria-hidden="true">
-              IM
-            </span>
+            <BrandMark />
             <span className="brand-word">
               InclusiveMarket{variant !== "buyer" ? <small>{variant === "admin" ? "Admin" : "Seller"}</small> : null}
             </span>

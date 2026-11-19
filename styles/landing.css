@@ -55,12 +55,12 @@
 .landing-brand__mark {
   width: 44px; height: 44px;
   display: grid; place-items: center;
-  background: var(--brand-yellow);
-  color: var(--text-charcoal); /* Guardrail 1: dark text on yellow */
+  padding: 4px;
+  background: #fff;
   border-radius: 12px;
-  font-weight: 900;
-  box-shadow: 0 6px 18px rgba(0,0,0,.25), inset 0 -3px 0 var(--brand-yellow-800);
+  box-shadow: 0 6px 18px rgba(0,0,0,.25);
 }
+.landing-brand__mark img { display: block; width: 100%; height: 100%; }
 
 .landing-eyebrow {
   margin: 2.5rem 0 1rem;

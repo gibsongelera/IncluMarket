@@ -30,16 +30,17 @@
   font-size: 1.15rem;
   letter-spacing: .01em;
 }
+/* The AVRC III house mark on a white tile, so its reds and yellow read the
+   same on every header preset (F-07). */
 .brand-mark {
   display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  flex: none;
   width: 32px; height: 32px;
-  background: var(--palette-primary); color: var(--palette-primary-text); /* dark or white per preset */
+  padding: 2px;
+  background: #fff;
   border-radius: var(--radius-sm);
-  font-weight: 900;
-  font-size: .95rem;
 }
+.brand-mark img { display: block; width: 100%; height: 100%; }
 .brand-word small { font-size: .7rem; opacity: .85; font-weight: 500; margin-left: .25rem; }
 
 /* Never wider than the row: on a line of its own at 24px text the links wrap

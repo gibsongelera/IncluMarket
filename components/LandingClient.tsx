@@ -12,6 +12,7 @@ import {
 } from "@/lib/actions/auth";
 import { errorText, toast } from "@/lib/toast";
 import type { Role } from "@/lib/types";
+import { BrandMark } from "./BrandMark";
 
 const HOME_BY_ROLE: Record<Role, string> = {
   buyer: "/home",
@@ -187,9 +188,7 @@ export function LandingClient({
 
           <div className="landing-hero__content">
             <a className="landing-brand" href="/" aria-label="InclusiveMarket home">
-              <span className="landing-brand__mark" aria-hidden="true">
-                IM
-              </span>
+              <BrandMark className="landing-brand__mark" />
               <span className="landing-brand__name">InclusiveMarket</span>
             </a>
 
