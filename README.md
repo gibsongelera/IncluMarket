@@ -157,8 +157,9 @@ a rollback in `supabase/rollback/00xx_down.sql` and tests in `supabase/tests/`.
 | 0023 | Moving product photos from Postgres to Storage |
 | 0024 | Flash sale rules |
 | 0025 | Self sign-up creates buyers only |
+| 0026 | Photos in buyer–seller messages (private `message-media` bucket) |
 
-**Apply 0013–0025 to a development project first**, run the app against it,
+**Apply 0013–0026 to a development project first**, run the app against it,
 then production. Every page that depends on a newer migration says which one it
 needs instead of failing. After 0019 and 0023, move existing product photos out
 of the database:

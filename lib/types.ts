@@ -118,6 +118,12 @@ export interface Message {
   body: string;
   created_at: string;
   read_at: string | null;
+  /** Set when the message carries a photo (migration 0026). */
+  has_photo?: boolean;
+  /** Signed, expiring URL of the photo; null if it could not be signed. */
+  image_url?: string | null;
+  /** The sender's description of the photo, read in its place. */
+  image_alt?: string | null;
 }
 
 export interface FlashSale {

@@ -81,6 +81,13 @@ const ICONS: Record<string, React.ReactNode> = {
     </>
   ),
   minus: <path d="M5 12h14" />,
+  image: (
+    <>
+      <rect x="3" y="4" width="18" height="16" rx="2" />
+      <circle cx="9" cy="10" r="2" />
+      <path d="M21 16l-5-5-9 9" />
+    </>
+  ),
   logout: (
     <>
       <path d="M15 4h4v16h-4" />

@@ -208,6 +208,17 @@ for (const [file, type] of [["confirm-signup", "type=email"], ["reset-password",
     `${file} email template shows the code and links to /auth/confirm`
   );
 }
+// Message photos (0026) are private: stored through storePrivateImage, shown
+// only through signed URLs, never a public URL or a data URL.
+const messagesAction = read("lib/actions/messages.ts");
+assert(
+  messagesAction.includes('storePrivateImage("message-media"') && !messagesAction.includes("getPublicUrl"),
+  "message photos go to the private message-media bucket"
+);
+assert(
+  read("lib/data.ts").includes('signPrivateImages("message-media"'),
+  "message photos are shown through signed URLs"
+);
 assert(
   /export async function signupAction\(\s*name: string,\s*email: string,\s*password: string,\s*consent: boolean\s*\)/.test(authAction),
   "signupAction takes no role: self sign-up is buyer-only"

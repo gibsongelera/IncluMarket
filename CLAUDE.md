@@ -18,7 +18,7 @@ different application.
 |---|---|
 | Framework | **Next.js 15 App Router**. Not Vite, not an SPA. |
 | Styling | **Hand-written CSS** in `styles/`. **No Tailwind**, no PostCSS pipeline, no CSS-in-JS. Do not suggest adding one. |
-| Data | **Supabase Postgres**, 40 `im_`-prefixed tables (migrations 0001–0025). Not localStorage. |
+| Data | **Supabase Postgres**, 40 `im_`-prefixed tables (migrations 0001–0026). Not localStorage. |
 | Pages | All async **Server Components**. No React Context providers anywhere. |
 | Mutations | **Server actions** in `lib/actions/*.ts`. Three route handlers only: `app/auth/callback` and `app/auth/confirm` (Supabase email links) and `app/api/webhooks/paymongo`. Do not add another; background work runs as throttled sweeps on page loads (no cron). |
 | Reads | `lib/data.ts` and the other `import "server-only"` modules (`storefront.ts`, `admin-content.ts`, `finance.ts`, `pwd/data.ts`, …) that shape DTOs — never raw rows to the client |
@@ -35,7 +35,9 @@ different application.
 - Images go to **Supabase Storage**: product, shop and banner photos to the
   public `product-media` bucket through `lib/media.ts` (magic-byte type
   check, EXIF refused, 1 MB, generated paths); PWD ID photos to the private
-  `pwd-ids` bucket, read only through 60-second signed URLs. Older product
+  `pwd-ids` bucket, read only through 60-second signed URLs; message photos
+  to the private `message-media` bucket (`storePrivateImage`), signed for the
+  two people in the conversation only (`signPrivateImages`). Older product
   photos may still be data URLs until `npm run backfill-product-images` runs
   (migration 0023); readers accept both. Never add a new base64-in-Postgres
   image.

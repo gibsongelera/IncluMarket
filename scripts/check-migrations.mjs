@@ -60,6 +60,7 @@ const CHECKS = [
   // Triggers only: nothing PostgREST can see. Reported, not counted.
   ["0024_flash_sale_rules", null],
   ["0025_buyer_only_signup", null],
+  ["0026_message_photos", () => hasTable("im_messages", "image_path")],
 ];
 
 let missing = 0;
