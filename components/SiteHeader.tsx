@@ -25,7 +25,10 @@ export async function SiteHeader({
     return (
       <>
       <header className="site-header site-header--buyer" role="banner">
-        <div className="container header-row">
+        {/* --tabbed: on a phone this row is the brand and the search only,
+            as when signed in. Sign in is a tab in the bar (MobileNav), and
+            Create account is in its More sheet. */}
+        <div className="container header-row header-row--tabbed">
           <Link className="brand" href="/home" aria-label="InclusiveMarket home">
             <BrandMark />
             <span className="brand-word">InclusiveMarket</span>
@@ -53,10 +56,10 @@ export async function SiteHeader({
   return (
     <>
       <header className={`site-header site-header--${variant}`} role="banner">
-        {/* --signed-in: on a phone this row is the brand and the search only.
+        {/* --tabbed: on a phone this row is the brand and the search only.
             Its nav (links, Cart, the bell, Sign out) is hidden there: the tab
             bar has the links and the bell, its More sheet has Sign out. */}
-        <div className="container header-row header-row--signed-in">
+        <div className="container header-row header-row--tabbed">
           {/* The name carries the visible "Seller"/"Admin" too (label in name,
               WCAG 2.5.3); it is an aria-label because on a phone only the
               mark shows. The space before <small> keeps the words apart. */}

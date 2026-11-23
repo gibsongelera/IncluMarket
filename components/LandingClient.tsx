@@ -22,11 +22,14 @@ const HOME_BY_ROLE: Record<Role, string> = {
 
 export function LandingClient({
   stats,
+  initialTab = "signin",
 }: {
   stats: { products: number; sellers: number; orders: number };
+  /** "signup" when the visitor came for Create account (?tab=signup). */
+  initialTab?: "signin" | "signup";
 }) {
   const router = useRouter();
-  const [tab, setTab] = useState<"signin" | "signup">("signin");
+  const [tab, setTab] = useState<"signin" | "signup">(initialTab);
   const [showPw, setShowPw] = useState(false);
   const [loginErr, setLoginErr] = useState<string | null>(null);
   const [signupErr, setSignupErr] = useState<string | null>(null);

@@ -28,6 +28,8 @@ export const NAV: Record<NavRole, NavItem[]> = {
   guest: [
     { href: "/home", label: "Shop", icon: "grid", mobile: "primary", match: ["/buyer/product", "/search", "/shop"] },
     { href: "/login", label: "Sign in", icon: "user", mobile: "primary" },
+    // Phones only: the header has no Create account (or Sign in) there.
+    { href: "/login?tab=signup", label: "Create account", icon: "plus", mobile: "more" },
     { href: "/about", label: "About us", icon: "sparkles", mobile: "more" },
     { href: "/faq", label: "Help & FAQ", icon: "chat", mobile: "more" },
     { href: "/contact", label: "Contact", icon: "message-circle", mobile: "more" },
