@@ -118,6 +118,12 @@ export interface Message {
   body: string;
   created_at: string;
   read_at: string | null;
+  /** Set when the message carries a photo (migration 0026). */
+  has_photo?: boolean;
+  /** Signed, expiring URL of the photo; null if it could not be signed. */
+  image_url?: string | null;
+  /** The sender's description of the photo, read in its place. */
+  image_alt?: string | null;
 }
 
 export interface FlashSale {
@@ -147,7 +153,7 @@ export interface Order {
   total_amount: number;
   order_status: OrderStatus;
   payment_status: PaymentStatus;
-  /** "cod" | "paymongo"; null on orders placed before migration 0010. */
+  /** "cod" | "paymongo" | "otc" (paid to the Workshop, 0028); null on orders placed before migration 0010. */
   payment_provider: string | null;
   payment_reference: string | null;
   shipping_name: string | null;
@@ -268,6 +274,11 @@ export interface SessionUser {
   role: Role;
   email: string;
   name: string;
+  /**
+   * Set while an admin works in this seller's Seller Centre for them
+   * (lib/assist): the session is the seller's, this is who is really there.
+   */
+  assistedBy?: { user_id: number; name: string; until: string };
 }
 
 /**
@@ -287,4 +298,6 @@ export type ReportType =
   | "reviews"
   | "tickets"
   | "audit_logs"
+  | "sold_out"
+  | "item_history"
   | "all";

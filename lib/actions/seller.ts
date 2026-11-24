@@ -9,6 +9,7 @@ import { isMissingObject } from "@/lib/db-errors";
 import { rateLimit } from "@/lib/security/rate-limit";
 import { storePublicImage } from "@/lib/media";
 import { orderSellerIds } from "@/lib/orders/sellers";
+import { actorOf, auditActor } from "@/lib/assist/rules";
 import type { OrderState } from "@/lib/orders/state";
 import {
   boundedText,
@@ -76,18 +77,54 @@ export async function uploadProductPhoto(form: FormData): Promise<ActionResult &
   return stored.ok ? { ok: true, url: stored.url } : { ok: false, error: stored.error };
 }
 
+/**
+ * Make the listing's photos exactly `images`, in that order (at most 3),
+ * writing only what changed. A photo taken off goes through
+ * im_remove_product_photos (migration 0027), which keeps it in the item
+ * history with who removed it; photos kept only move; new ones are added.
+ * This used to delete every row and insert the list again, so a removed
+ * photo left no trace.
+ */
 async function replaceImages(
   db: ReturnType<typeof createAdminClient>,
   productId: number,
-  images: string[]
+  images: string[],
+  actor: { user_id: number; role: string }
 ) {
-  await db.from("im_product_images").delete().eq("product_id", productId);
-  const rows = (images || []).slice(0, 3).map((url, i) => ({
-    product_id: productId,
-    url,
-    position: i,
-  }));
-  if (rows.length) await db.from("im_product_images").insert(rows);
+  const wanted = (images || []).slice(0, 3);
+  const { data } = await db
+    .from("im_product_images")
+    .select("id, url, position")
+    .eq("product_id", productId)
+    .order("position");
+  const unused = ((data ?? []) as { id: number; url: string; position: number }[]).slice();
+  // Each wanted photo keeps the first current row with the same URL.
+  const plan = wanted.map((url, position) => {
+    const i = unused.findIndex((r) => r.url === url);
+    return { url, position, row: i >= 0 ? unused.splice(i, 1)[0] : null };
+  });
+
+  if (unused.length) {
+    const ids = unused.map((r) => r.id);
+    const { error } = await db.rpc("im_remove_product_photos", {
+      p_product_id: productId,
+      p_image_ids: ids,
+      p_actor_id: actor.user_id,
+      p_actor_role: actor.role,
+    });
+    if (error) {
+      // Before migration 0027 there is no history to keep them in.
+      if (!isMissingObject(error)) console.error(`[seller] remove photos: ${error.message}`);
+      await db.from("im_product_images").delete().eq("product_id", productId).in("id", ids);
+    }
+  }
+  for (const p of plan) {
+    if (p.row && p.row.position !== p.position) {
+      await db.from("im_product_images").update({ position: p.position }).eq("id", p.row.id).eq("product_id", productId);
+    }
+  }
+  const fresh = plan.filter((p) => !p.row).map((p) => ({ product_id: productId, url: p.url, position: p.position }));
+  if (fresh.length) await db.from("im_product_images").insert(fresh);
 }
 
 /**
@@ -186,15 +223,10 @@ export async function createProduct(input: ProductInput): Promise<ActionResult> 
     };
   }
 
-  if (imageCheck.value) await replaceImages(db, product.id, imageCheck.value);
+  if (imageCheck.value) await replaceImages(db, product.id, imageCheck.value, actorOf(seller));
   await saveTags(db, product.id, cleanTags(input.adaptiveTags));
 
-  await db.from("im_audit_logs").insert({
-    actor_id: seller.user_id,
-    actor_role: seller.role,
-    action: "created_product",
-    target: `product:${product.id}`,
-  });
+  await db.from("im_audit_logs").insert({ ...auditActor(seller, `product:${product.id}`), action: "created_product" });
   if (seller.role !== "admin") {
     await notifyAdmins({
       type: "system",
@@ -339,7 +371,7 @@ export async function updateProduct(
     }
   }
 
-  if (imagesChanged && imageCheck.value) await replaceImages(db, productId, imageCheck.value);
+  if (imagesChanged && imageCheck.value) await replaceImages(db, productId, imageCheck.value, actorOf(seller));
 
   if (backToReview) {
     await notifyAdmins({
@@ -350,12 +382,7 @@ export async function updateProduct(
     });
   }
 
-  await db.from("im_audit_logs").insert({
-    actor_id: seller.user_id,
-    actor_role: seller.role,
-    action: backToReview ? "updated_product_resubmitted" : "updated_product",
-    target: `product:${productId}`,
-  });
+  await db.from("im_audit_logs").insert({ ...auditActor(seller, `product:${productId}`), action: backToReview ? "updated_product_resubmitted" : "updated_product" });
   revalidatePath("/seller/products");
   revalidatePath("/home");
   revalidatePath(`/buyer/product/${productId}`);
@@ -436,12 +463,7 @@ export async function updateOrderStatus(
   });
   if (!result.ok) return { ok: false, error: result.error };
 
-  await db.from("im_audit_logs").insert({
-    actor_id: seller.user_id,
-    actor_role: seller.role,
-    action: `order_status_${status}`,
-    target: `order:${orderId}`,
-  });
+  await db.from("im_audit_logs").insert({ ...auditActor(seller, `order:${orderId}`), action: `order_status_${status}` });
 
   const rejectedReturn = order.order_status === "return_requested" && status === "delivered";
   await createNotification({
@@ -521,22 +543,12 @@ export async function createFlashSale(
   }
   const scheduled = startsAt.getTime() > now + 60_000;
   if (scheduled) {
-    await db.from("im_audit_logs").insert({
-      actor_id: seller.user_id,
-      actor_role: seller.role,
-      action: "scheduled_flash_sale",
-      target: `product:${productId} at:${startsAt.toISOString()}`,
-    });
+    await db.from("im_audit_logs").insert({ ...auditActor(seller, `product:${productId} at:${startsAt.toISOString()}`), action: "scheduled_flash_sale" });
     revalidatePath("/seller/flash-sales");
     return { ok: true, productId };
   }
 
-  await db.from("im_audit_logs").insert({
-    actor_id: seller.user_id,
-    actor_role: seller.role,
-    action: "started_flash_sale",
-    target: `product:${productId}`,
-  });
+  await db.from("im_audit_logs").insert({ ...auditActor(seller, `product:${productId}`), action: "started_flash_sale" });
 
   // Tell everyone who saved it — in the app and by email, each only if
   // they have not turned flash-sale notices off (C-24).
@@ -591,12 +603,7 @@ export async function endFlashSale(saleId: number): Promise<ActionResult> {
       ? await db.from("im_flash_sales").delete().eq("id", sale.id)
       : await db.from("im_flash_sales").update({ ends_at: now.toISOString() }).eq("id", sale.id);
   if (error) return { ok: false, error: "Could not end the sale. Please try again." };
-  await db.from("im_audit_logs").insert({
-    actor_id: seller.user_id,
-    actor_role: seller.role,
-    action: "ended_flash_sale",
-    target: `flash_sale:${sale.id} product:${sale.product_id}`,
-  });
+  await db.from("im_audit_logs").insert({ ...auditActor(seller, `flash_sale:${sale.id} product:${sale.product_id}`), action: "ended_flash_sale" });
   revalidatePath("/home");
   revalidatePath("/buyer/product", "layout");
   revalidatePath("/seller/flash-sales");
@@ -640,12 +647,7 @@ export async function setProductPublished(productId: number, published: boolean)
         : "Could not update the listing. Please try again.",
     };
   }
-  await db.from("im_audit_logs").insert({
-    actor_id: seller.user_id,
-    actor_role: seller.role,
-    action: published ? "republished_product" : "unpublished_product",
-    target: `product:${productId}`,
-  });
+  await db.from("im_audit_logs").insert({ ...auditActor(seller, `product:${productId}`), action: published ? "republished_product" : "unpublished_product" });
   if (published && seller.role !== "admin") {
     await notifyAdmins({
       type: "system",
@@ -694,12 +696,7 @@ export async function replyToReview(reviewId: number, text: string): Promise<Act
     return { ok: false, error: "Could not save your reply. Please try again." };
   }
 
-  await db.from("im_audit_logs").insert({
-    actor_id: seller.user_id,
-    actor_role: "seller",
-    action: reply ? "replied_to_review" : "removed_review_reply",
-    target: `review:${reviewId}`,
-  });
+  await db.from("im_audit_logs").insert({ ...auditActor(seller, `review:${reviewId}`), action: reply ? "replied_to_review" : "removed_review_reply" });
   if (reply) {
     await createNotification({
       userId: review.buyer_id,
@@ -742,12 +739,7 @@ export async function updateShopSettings(input: {
     ({ error } = await db.from("im_profiles").update({ seller_story: story || null, updated_at: now }).eq("id", seller.user_id));
   }
   if (error) return { ok: false, error: "Could not save your shop settings. Please try again." };
-  await db.from("im_audit_logs").insert({
-    actor_id: seller.user_id,
-    actor_role: "seller",
-    action: "updated_shop",
-    target: `profile:${seller.user_id}`,
-  });
+  await db.from("im_audit_logs").insert({ ...auditActor(seller, `profile:${seller.user_id}`), action: "updated_shop" });
   revalidatePath("/seller/shop");
   revalidatePath(`/shop/${seller.user_id}`);
   revalidatePath("/seller/dashboard");
@@ -796,15 +788,10 @@ export async function duplicateProduct(productId: number): Promise<ActionResult>
       sku_code: autoSku(copy.id, i),
     }))
   );
-  if (images?.length) await replaceImages(db, copy.id, (images as { url: string }[]).map((i) => i.url));
+  if (images?.length) await replaceImages(db, copy.id, (images as { url: string }[]).map((i) => i.url), actorOf(seller));
   await saveTags(db, copy.id, Array.isArray(src.adaptive_tags) ? src.adaptive_tags : undefined);
 
-  await db.from("im_audit_logs").insert({
-    actor_id: seller.user_id,
-    actor_role: "seller",
-    action: "duplicated_product",
-    target: `product:${src.id} -> product:${copy.id}`,
-  });
+  await db.from("im_audit_logs").insert({ ...auditActor(seller, `product:${src.id} -> product:${copy.id}`), action: "duplicated_product" });
   revalidatePath("/seller/products");
   return { ok: true, productId: copy.id };
 }
@@ -829,6 +816,9 @@ export async function setShopImage(kind: "logo" | "banner", url: string | null):
     if (isMissingObject(error)) return { ok: false, error: "Shop images need database migration 0019." };
     return { ok: false, error: "Could not save the image. Please try again." };
   }
+  await createAdminClient()
+    .from("im_audit_logs")
+    .insert({ ...auditActor(seller, `profile:${seller.user_id}`), action: url ? `set_shop_${kind}` : `removed_shop_${kind}` });
   revalidatePath("/seller/shop");
   revalidatePath(`/shop/${seller.user_id}`);
   return { ok: true };

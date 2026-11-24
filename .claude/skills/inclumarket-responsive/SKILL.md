@@ -123,8 +123,10 @@ disabilities.
 
 Signed in, the bar is six tabs: four from `lib/nav.ts`, then **Alerts** (the
 notification bell, `NotificationBell variant="tab"`), then More. The phone
-header is then just the brand and the search (`.header-row--signed-in` hides
-its nav); Sign out is in the More sheet. The header's own bell still renders
+header is then just the brand and the search (`.header-row--tabbed` hides
+its nav); Sign out is in the More sheet. A guest's phone header is the same
+one row: Sign in is a tab, and Create account (`/login?tab=signup`) is in
+More. The header's own bell still renders
 for 768px and up, so both copies are in the DOM: CSS shows one, and only the
 one with client rects polls. The tab's panel opens upward from the bar and
 ends above the floating buttons (`bottom: --bottom-inset + --commit-bar-h +

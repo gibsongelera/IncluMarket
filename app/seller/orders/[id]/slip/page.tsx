@@ -13,6 +13,7 @@ import {
 import { verificationLast4 } from "@/lib/pwd/data";
 import { variantLabel, roundMoney } from "@/lib/pricing/core";
 import { formatDate, money } from "@/lib/format";
+import { isPrepaid } from "@/lib/orders/state";
 import { PrintButton } from "@/components/PrintButton";
 
 export const dynamic = "force-dynamic";
@@ -50,7 +51,7 @@ export default async function PackingSlipPage({ params }: { params: Promise<{ id
   // An order split per seller (0015) is wholly this seller's: collect its total.
   const ownsOrder = order.seller_id === session.user_id;
   const collect = ownsOrder ? Number(order.total_amount) : linesTotal;
-  const cod = order.payment_provider !== "paymongo";
+  const cod = !isPrepaid(order.payment_provider);
   const pwd = lines.filter((l) => Number(l.pwd_discount_amount ?? 0) > 0);
   const pwdLast4 = pwd.find((l) => l.verification_id)?.verification_id;
 
@@ -122,7 +123,9 @@ export default async function PackingSlipPage({ params }: { params: Promise<{ id
               <strong>Cash on delivery: collect {money(collect)}.</strong>
             </p>
           ) : (
-            <p>Paid online. Do not collect any payment.</p>
+            <p>
+              {order.payment_provider === "otc" ? "Paid to the Workshop" : "Paid online"}. Do not collect any payment.
+            </p>
           )}
           {pwd.length ? (
             <p>

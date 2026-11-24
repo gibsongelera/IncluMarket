@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getSession } from "@/lib/session";
+import { ASSIST_CLOSED } from "@/lib/assist/rules";
 import { rateLimit, callerFingerprint, RATE_LIMITED_MESSAGE } from "@/lib/security/rate-limit";
 import { notifyAdmins } from "@/lib/notify";
 import { isMissingObject } from "@/lib/db-errors";
@@ -56,6 +57,7 @@ export async function submitPwdVerification(form: FormData): Promise<SubmitVerif
   try {
     const session = await getSession();
     if (!session) return fail("Please sign in again, then send your ID.");
+    if (session.assistedBy) return fail(ASSIST_CLOSED);
     if (session.role === "admin") return fail("Administrators review IDs rather than submit them.");
     if (!pwdKeysConfigured()) {
       console.error("[pwd] PWD_ID_HASH_KEY / PWD_ID_ENC_KEY are not set; verification is disabled.");

@@ -2,7 +2,7 @@
  * The values an admin may change on Admin → Settings (C-40), with their
  * bounds. Pure data — the settings page shows it, the action enforces it, and
  * a key not listed here cannot be written. Defaults match the seeds in
- * migrations 0014, 0017 and 0020, which the database functions also fall back
+ * migrations 0014, 0017, 0020 and 0028, which the database functions also fall back
  * to.
  */
 
@@ -36,6 +36,16 @@ export const SETTING_SPECS: SettingSpec[] = [
     min: 15,
     max: 1440,
     default: 60,
+    group: "Orders",
+  },
+  {
+    key: "otc_hold_hours",
+    label: "Unpaid Workshop payment hold",
+    unit: "hours",
+    help: "How long an order paid to the Workshop (GCash, Maribank, LBP) keeps its items while the buyer pays. A payment sent for checking keeps them longer.",
+    min: 12,
+    max: 168,
+    default: 48,
     group: "Orders",
   },
   {

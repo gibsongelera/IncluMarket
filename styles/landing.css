@@ -119,7 +119,9 @@
 
 .landing-metrics {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  /* Three figures to a row while they fit, else two and one: at 24px text a
+     375px phone pushed the third past the edge, where it was cut off. */
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 5rem), 1fr));
   gap: 1rem;
   padding: 1rem;
   background: rgba(255,255,255,.06);
@@ -382,7 +384,7 @@
 }
 @media (max-width: 520px) {
   .landing-auth .quick-accounts { grid-template-columns: 1fr; }
-  .landing-metrics { grid-template-columns: repeat(3, 1fr); padding: .75rem; }
+  .landing-metrics { padding: .75rem; }
   .landing-metrics dd { font-size: 1.3rem; }
   .landing-hero__title { font-size: 2rem; }
   .auth-card { border: 0; box-shadow: none; padding: 0; }

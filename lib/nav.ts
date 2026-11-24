@@ -28,6 +28,8 @@ export const NAV: Record<NavRole, NavItem[]> = {
   guest: [
     { href: "/home", label: "Shop", icon: "grid", mobile: "primary", match: ["/buyer/product", "/search", "/shop"] },
     { href: "/login", label: "Sign in", icon: "user", mobile: "primary" },
+    // Phones only: the header has no Create account (or Sign in) there.
+    { href: "/login?tab=signup", label: "Create account", icon: "plus", mobile: "more" },
     { href: "/about", label: "About us", icon: "sparkles", mobile: "more" },
     { href: "/faq", label: "Help & FAQ", icon: "chat", mobile: "more" },
     { href: "/contact", label: "Contact", icon: "message-circle", mobile: "more" },
@@ -66,10 +68,11 @@ export const NAV: Record<NavRole, NavItem[]> = {
     { href: "/admin/tickets", label: "Tickets", icon: "flag", mobile: "primary", header: true, section: "Support" },
     { href: "/admin/reports", label: "Reports", icon: "chart", mobile: "more", header: true, section: "Insight" },
     { href: "/admin/payouts", label: "Payouts", icon: "download", mobile: "more", header: true, section: "Insight" },
+    { href: "/admin/sold-out", label: "Sold-out audit", icon: "box", mobile: "more", section: "Insight" },
     { href: "/admin/compliance", label: "Compliance", icon: "shield", mobile: "more", header: true, section: "Insight" },
     { href: "/admin/newsletter", label: "Newsletter", icon: "message-circle", mobile: "more", section: "Insight" },
     { href: "/admin/discounts", label: "Discounts", icon: "sparkles", mobile: "more", header: true, section: "Settings" },
-    { href: "/admin/payments", label: "Payments", icon: "download", mobile: "more", header: true, section: "Settings" },
+    { href: "/admin/payments", label: "Payments", icon: "wallet", mobile: "more", header: true, section: "Settings" },
     { href: "/admin/theme", label: "Theme", icon: "sparkles", mobile: "more", header: true, section: "Settings" },
     { href: "/admin/settings", label: "Settings", icon: "edit", mobile: "more", section: "Settings" },
   ],

@@ -18,7 +18,14 @@ const PAYOUT_TEXT = { requested: "Waiting", approved: "Approved", paid: "Paid", 
 const METHOD_TEXT: Record<string, string> = { gcash: "GCash", maya: "Maya", bank: "Bank transfer" };
 
 /** Seller Centre → Finance (C-35). */
-export function SellerFinanceClient({ finance }: { finance: SellerFinance }) {
+export function SellerFinanceClient({
+  finance,
+  closed = false,
+}: {
+  finance: SellerFinance;
+  /** An admin is assisting this seller (lib/assist): payouts stay the seller's. */
+  closed?: boolean;
+}) {
   const router = useRouter();
   const b = finance.balance;
   const [form, setForm] = useState({ amount: b.available >= finance.minPayout ? String(b.available) : "", method: "gcash", account: "", note: "" });
@@ -75,6 +82,15 @@ export function SellerFinanceClient({ finance }: { finance: SellerFinance }) {
       </p>
 
       <div className="account-grid">
+        {closed ? (
+          <section className="card" aria-labelledby="po-title">
+            <h2 id="po-title">Request a payout</h2>
+            <p className="notice notice--info">
+              Payouts stay closed while you assist a seller: only they choose where their money goes. They can
+              request one from their own sign-in, and you can help them with it there.
+            </p>
+          </section>
+        ) : (
         <form className="card form" onSubmit={submit} noValidate aria-labelledby="po-title">
           <h2 id="po-title">Request a payout</h2>
           <div className="field">
@@ -114,6 +130,7 @@ export function SellerFinanceClient({ finance }: { finance: SellerFinance }) {
           </div>
           {b.available < finance.minPayout ? <p className="hint">You can request a payout once {money(finance.minPayout)} is available.</p> : null}
         </form>
+        )}
 
         <section className="card" aria-labelledby="ph-title">
           <h2 id="ph-title">Payouts</h2>
@@ -135,7 +152,7 @@ export function SellerFinanceClient({ finance }: { finance: SellerFinance }) {
                     </p>
                     {p.status === "rejected" && p.note ? <p className="small">{p.note}</p> : null}
                   </div>
-                  {p.status === "requested" ? (
+                  {p.status === "requested" && !closed ? (
                     <div className="notif-item__actions">
                       <button type="button" className="btn btn--ghost btn--sm" onClick={() => cancel(p.id)}>
                         Cancel request
@@ -170,7 +187,7 @@ export function SellerFinanceClient({ finance }: { finance: SellerFinance }) {
                   <tr key={e.orderId}>
                     <td>#{e.orderId}</td>
                     <td>{formatDate(e.createdAt)}</td>
-                    <td>{e.online ? "Online" : "Cash on delivery"}</td>
+                    <td>{e.paidVia}</td>
                     <td className="price">{money(e.net)}</td>
                     <td>{AVAIL_TEXT[e.availability]}</td>
                   </tr>

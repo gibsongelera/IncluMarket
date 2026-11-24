@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { adminCancelOrder, adminSettleReturn, markRefundSent } from "@/lib/actions/admin-orders";
 import type { AdminOrderRow } from "@/lib/admin-list-types";
-import { buyerStatusText } from "@/lib/orders/state";
+import { buyerStatusText, paymentShortLabel } from "@/lib/orders/state";
 import { formatDateTime, initials, money } from "@/lib/format";
 import { toast } from "@/lib/toast";
 import { ConfirmDialog } from "./ConfirmDialog";
@@ -134,7 +134,7 @@ export function AdminOrdersClient({ rows, empty }: { rows: AdminOrderRow[]; empt
                 <td className="num">{money(o.total)}</td>
                 <td>
                   <Pill status={o.paymentStatus} />
-                  <div className="small muted">{o.paymentProvider === "paymongo" ? "Online" : "Cash on delivery"}</div>
+                  <div className="small muted">{paymentShortLabel(o.paymentProvider)}</div>
                 </td>
                 <td>
                   <span className={`pill pill--${o.status}`}>

@@ -4,6 +4,11 @@ import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getSession } from "@/lib/session";
 import { createNotification } from "@/lib/notify";
+import { storePrivateImage } from "@/lib/media";
+import { boundedText } from "@/lib/validation/data-url";
+import { rateLimit } from "@/lib/security/rate-limit";
+import { isMissingObject } from "@/lib/db-errors";
+import { auditActor } from "@/lib/assist/rules";
 
 export interface ActionResult {
   ok: boolean;
@@ -51,47 +56,121 @@ export async function startConversation(
   return { ok: true, conversationId: data.id };
 }
 
-export async function sendMessage(conversationId: number, body: string): Promise<ActionResult> {
-  const session = await getSession();
+const MAX_BODY = 2000;
+const MAX_ALT = 300;
+
+/** assistedBy: the admin sending for this seller (lib/assist), if any. */
+type Sender = { user_id: number; role: "buyer" | "seller"; assistedBy?: number };
+type Convo = { buyer_id: number; seller_id: number };
+
+/** The signed-in buyer or seller, and the conversation if they are in it. */
+async function senderIn(
+  session: Awaited<ReturnType<typeof getSession>>,
+  conversationId: number
+): Promise<{ ok: true; sender: Sender; convo: Convo } | { ok: false; error: string }> {
   if (!session || (session.role !== "buyer" && session.role !== "seller"))
     return { ok: false, error: "Sign in required." };
-  const text = body.trim();
-  if (!text) return { ok: false, error: "Message cannot be empty." };
+  const id = Number(conversationId);
+  if (!Number.isInteger(id) || id <= 0) return { ok: false, error: "Conversation not found." };
 
-  const db = createAdminClient();
-  const { data: convo } = await db
+  const { data: convo } = await createAdminClient()
     .from("im_conversations")
     .select("buyer_id, seller_id")
-    .eq("id", conversationId)
+    .eq("id", id)
     .maybeSingle();
   if (!convo) return { ok: false, error: "Conversation not found." };
   if (convo.buyer_id !== session.user_id && convo.seller_id !== session.user_id)
     return { ok: false, error: "You are not part of this conversation." };
+  return {
+    ok: true,
+    sender: { user_id: session.user_id, role: session.role, assistedBy: session.assistedBy?.user_id },
+    convo,
+  };
+}
 
+/** Save one message, touch the conversation and tell the other person. */
+async function deliver(
+  conversationId: number,
+  sender: Sender,
+  convo: Convo,
+  row: { body: string; image_path?: string; image_alt?: string | null }
+): Promise<ActionResult> {
+  const db = createAdminClient();
+  // The message is the seller's (the buyer is talking to their shop); the
+  // audit log says which admin wrote it for them.
   const { error } = await db.from("im_messages").insert({
     conversation_id: conversationId,
-    sender_id: session.user_id,
-    sender_role: session.role,
-    body: text,
+    sender_id: sender.user_id,
+    sender_role: sender.role,
+    ...row,
   });
-  if (error) return { ok: false, error: error.message };
+  if (!error && sender.assistedBy) {
+    await db.from("im_audit_logs").insert({
+      actor_id: sender.assistedBy,
+      actor_role: "admin",
+      action: row.image_path ? "sent_message_photo" : "sent_message",
+      target: `conversation:${conversationId} for seller:${sender.user_id}`,
+    });
+  }
+  if (error) {
+    if (row.image_path && isMissingObject(error)) return { ok: false, error: PHOTOS_NEED_MIGRATION };
+    console.error(`[messages] insert: ${error.message}`);
+    return { ok: false, error: "Could not send the message. Please try again." };
+  }
 
   await db
     .from("im_conversations")
     .update({ updated_at: new Date().toISOString() })
     .eq("id", conversationId);
 
-  const recipientId = session.user_id === convo.buyer_id ? convo.seller_id : convo.buyer_id;
+  const recipientId = sender.user_id === convo.buyer_id ? convo.seller_id : convo.buyer_id;
   await createNotification({
     userId: recipientId,
     type: "message",
-    title: "New message",
-    body: text.slice(0, 80),
-    link: session.role === "buyer" ? "/seller/messages" : "/buyer/messages",
+    title: row.image_path ? "New photo message" : "New message",
+    body: row.body ? row.body.slice(0, 80) : "Sent you a photo.",
+    link: sender.role === "buyer" ? "/seller/messages" : "/buyer/messages",
   });
 
   revalidateMessages();
   return { ok: true };
+}
+
+const PHOTOS_NEED_MIGRATION = "Photos in messages need database migration 0026. Send text for now.";
+
+export async function sendMessage(conversationId: number, body: string): Promise<ActionResult> {
+  const text = typeof body === "string" ? body.trim() : "";
+  if (!text) return { ok: false, error: "Message cannot be empty." };
+  if (text.length > MAX_BODY) return { ok: false, error: `Keep a message under ${MAX_BODY} characters.` };
+
+  const who = await senderIn(await getSession(), conversationId);
+  if (!who.ok) return who;
+  return deliver(Number(conversationId), who.sender, who.convo, { body: text });
+}
+
+/**
+ * Send a photo, with optional text and an optional description that screen
+ * readers read in its place. FormData: conversationId, photo (a JPEG or PNG
+ * the browser has already resized and re-encoded), body, alt.
+ */
+export async function sendMessagePhoto(form: FormData): Promise<ActionResult> {
+  const conversationId = Number(form.get("conversationId"));
+  const text = String(form.get("body") ?? "").trim();
+  if (text.length > MAX_BODY) return { ok: false, error: `Keep a message under ${MAX_BODY} characters.` };
+  const alt = boundedText(form.get("alt"), MAX_ALT);
+
+  const who = await senderIn(await getSession(), conversationId);
+  if (!who.ok) return who;
+
+  const limited = await rateLimit("message_photo", `user:${who.sender.user_id}`, { limit: 30, windowSeconds: 3600 });
+  if (!limited.ok) return { ok: false, error: "You have sent a lot of photos. Please wait a few minutes." };
+
+  const stored = await storePrivateImage("message-media", conversationId, form.get("photo"));
+  if (!stored.ok) return { ok: false, error: stored.missing ? PHOTOS_NEED_MIGRATION : stored.error };
+
+  const sent = await deliver(conversationId, who.sender, who.convo, { body: text, image_path: stored.path, image_alt: alt });
+  if (!sent.ok) await createAdminClient().storage.from("message-media").remove([stored.path]);
+  return sent;
 }
 
 export async function markConversationRead(conversationId: number): Promise<ActionResult> {
@@ -115,6 +194,14 @@ export async function markConversationRead(conversationId: number): Promise<Acti
     .neq("sender_id", session.user_id)
     .is("read_at", null);
   if (error) return { ok: false, error: error.message };
+
+  // Opening a seller's conversation is reading a buyer's private messages,
+  // so an assisting admin's reading is on the record too.
+  if (session.assistedBy) {
+    await db
+      .from("im_audit_logs")
+      .insert({ ...auditActor(session, `conversation:${conversationId}`), action: "read_conversation" });
+  }
 
   revalidateMessages();
   return { ok: true };

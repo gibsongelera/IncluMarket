@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getSession } from "@/lib/session";
+import { ASSIST_CLOSED } from "@/lib/assist/rules";
 import { isMissingObject } from "@/lib/db-errors";
 import { cleanUiPrefs, type UiPrefs } from "@/lib/a11y/prefs";
 import { PH_PHONE_RE, cleanAddress, cleanPhone, type AddressFields } from "@/lib/address";
@@ -24,6 +25,7 @@ export interface AccountActionResult {
 export async function setPersonalization(enabled: boolean): Promise<AccountActionResult> {
   const session = await getSession();
   if (!session) return { ok: false, error: "Please sign in again." };
+  if (session.assistedBy) return { ok: false, error: ASSIST_CLOSED };
   const db = createAdminClient();
   const { error } = await db
     .from("im_profiles")
@@ -66,7 +68,9 @@ type PrefsRow = {
  */
 export async function getUiPrefs(): Promise<{ signedIn: boolean; userId?: number; prefs?: UiPrefs | null }> {
   const session = await getSession();
-  if (!session) return { signedIn: false };
+  // While an admin assists a seller (lib/assist), the seller's settings stay
+  // theirs and the admin's browser keeps its own, as for a guest.
+  if (!session || session.assistedBy) return { signedIn: false };
   const { data, error } = await createAdminClient()
     .from("im_ui_prefs")
     .select("*")
@@ -95,7 +99,7 @@ export async function getUiPrefs(): Promise<{ signedIn: boolean; userId?: number
 /** Save changed accessibility settings to the account. Guests: no-op. */
 export async function saveUiPrefs(input: Partial<UiPrefs>): Promise<AccountActionResult> {
   const session = await getSession();
-  if (!session) return { ok: true };
+  if (!session || session.assistedBy) return { ok: true };
   const p = cleanUiPrefs(input);
   const row: Record<string, unknown> = { user_id: session.user_id, updated_at: new Date().toISOString() };
   if (p.fontSize !== undefined) row.font_size_px = p.fontSize;
@@ -144,6 +148,7 @@ export async function saveAddress(
 ): Promise<AccountActionResult & { id?: number; field?: string }> {
   const session = await getSession();
   if (!session) return { ok: false, error: "Please sign in again." };
+  if (session.assistedBy) return { ok: false, error: ASSIST_CLOSED };
   const clean = cleanAddress(input);
   if (!clean.ok) return { ok: false, error: clean.error, field: clean.field };
 
@@ -185,6 +190,7 @@ export async function saveAddress(
 export async function deleteAddress(id: number): Promise<AccountActionResult> {
   const session = await getSession();
   if (!session) return { ok: false, error: "Please sign in again." };
+  if (session.assistedBy) return { ok: false, error: ASSIST_CLOSED };
   const db = createAdminClient();
   const { data, error } = await db
     .from("im_addresses")
@@ -207,6 +213,7 @@ export async function deleteAddress(id: number): Promise<AccountActionResult> {
 export async function setDefaultAddress(id: number): Promise<AccountActionResult> {
   const session = await getSession();
   if (!session) return { ok: false, error: "Please sign in again." };
+  if (session.assistedBy) return { ok: false, error: ASSIST_CLOSED };
   const db = createAdminClient();
   const { data: own } = await db.from("im_addresses").select("id").eq("id", Number(id)).eq("profile_id", session.user_id).maybeSingle();
   if (!own) return { ok: false, error: "That address is not yours." };
@@ -223,6 +230,7 @@ export async function setDefaultAddress(id: number): Promise<AccountActionResult
 export async function updateProfile(input: { name: string; phone: string }): Promise<AccountActionResult & { field?: string }> {
   const session = await getSession();
   if (!session) return { ok: false, error: "Please sign in again." };
+  if (session.assistedBy) return { ok: false, error: ASSIST_CLOSED };
   const name = String(input?.name ?? "").replace(/\s+/g, " ").trim();
   if (name.length < 2 || name.length > 80) return { ok: false, field: "name", error: "Enter your name (2 to 80 characters)." };
   const phone = cleanPhone(input?.phone);
@@ -253,6 +261,7 @@ const MIN_PASSWORD = 8;
 export async function changePassword(current: string, next: string): Promise<AccountActionResult & { field?: string }> {
   const session = await getSession();
   if (!session) return { ok: false, error: "Please sign in again." };
+  if (session.assistedBy) return { ok: false, error: ASSIST_CLOSED };
   const limited = await rateLimit("change_password", `user:${session.user_id}`, { limit: 5, windowSeconds: 900 });
   if (!limited.ok) return { ok: false, error: RATE_LIMITED_MESSAGE };
   const pw = String(next ?? "");
@@ -294,6 +303,7 @@ type PrivacyKind = (typeof PRIVACY_KINDS)[number];
 export async function submitPrivacyRequest(kind: string, details: string): Promise<AccountActionResult> {
   const session = await getSession();
   if (!session) return { ok: false, error: "Please sign in again." };
+  if (session.assistedBy) return { ok: false, error: ASSIST_CLOSED };
   if (!PRIVACY_KINDS.includes(kind as PrivacyKind)) return { ok: false, error: "Choose what you are asking for." };
   const text = String(details ?? "").trim().slice(0, 2000);
   if ((kind === "correction" || kind === "objection") && text.length < 5) {

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type { EmailOtpType } from "@supabase/supabase-js";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { completeEmailLink, safeNext } from "@/lib/auth/email-link";
+import { completeEmailLink, failedLinkPath, safeNext } from "@/lib/auth/email-link";
 
 /**
  * Email links that work on a different device from the one that asked.
@@ -33,5 +33,5 @@ export async function GET(request: Request) {
     }
   }
 
-  return NextResponse.redirect(`${origin}/?error=auth_callback`);
+  return NextResponse.redirect(`${origin}${failedLinkPath(next)}`);
 }

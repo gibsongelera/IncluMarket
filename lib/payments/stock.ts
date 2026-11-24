@@ -2,7 +2,8 @@ import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createNotification } from "@/lib/notify";
 import { rateLimit } from "@/lib/security/rate-limit";
-import { PAYMENT_HOLD_MINUTES } from "@/lib/pricing/constants";
+import { OTC_HOLD_HOURS, PAYMENT_HOLD_MINUTES } from "@/lib/pricing/constants";
+import { getSettingInts } from "@/lib/settings";
 import { transitionOrder } from "@/lib/orders/transition";
 
 /**
@@ -101,8 +102,23 @@ export async function failPendingPayment(db: Db, orderId: number, note: string):
   return true;
 }
 
+/** When the latest step of an order was recorded, in ms (0 when none). */
+async function lastActivityMs(db: Db, orderId: number): Promise<number> {
+  const { data: last } = await db
+    .from("im_order_status_history")
+    .select("created_at")
+    .eq("order_id", orderId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  // Compare as instants: Postgres returns "+00:00", toISOString() gives "Z".
+  return last ? new Date(last.created_at).getTime() : 0;
+}
+
 /**
- * Release stock held by online orders left unpaid for PAYMENT_HOLD_MINUTES.
+ * Release stock held by online orders left unpaid for the hold an admin set
+ * (payment_hold_minutes, default PAYMENT_HOLD_MINUTES), and cancel counter
+ * orders the Workshop was not paid for in time (otc_hold_hours).
  *
  * There is no scheduler on this deployment, so this runs opportunistically
  * from pages that care (My Orders, checkout, admin) and is throttled through
@@ -115,7 +131,9 @@ export async function expireStalePayments(): Promise<number> {
   if (!gate.ok) return 0;
 
   const db = createAdminClient();
-  const cutoffMs = Date.now() - PAYMENT_HOLD_MINUTES * 60_000;
+  const hold = await getSettingInts({ payment_hold_minutes: PAYMENT_HOLD_MINUTES, otc_hold_hours: OTC_HOLD_HOURS });
+  const holdMinutes = hold.payment_hold_minutes;
+  const cutoffMs = Date.now() - holdMinutes * 60_000;
   const cutoff = new Date(cutoffMs).toISOString();
   const { data: stale } = await db
     .from("im_orders")
@@ -127,20 +145,12 @@ export async function expireStalePayments(): Promise<number> {
 
   let released = 0;
   for (const order of stale ?? []) {
-    const { data: last } = await db
-      .from("im_order_status_history")
-      .select("created_at")
-      .eq("order_id", order.id)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    // Compare as instants: Postgres returns "+00:00", toISOString() gives "Z".
-    if (last && new Date(last.created_at).getTime() > cutoffMs) continue;
+    if ((await lastActivityMs(db, order.id)) > cutoffMs) continue;
 
     const did = await failPendingPayment(
       db,
       order.id,
-      `Payment not completed within ${PAYMENT_HOLD_MINUTES} minutes. Items released back to stock.`
+      `Payment not completed within ${holdMinutes} minutes. Items released back to stock.`
     );
     if (!did) continue;
     released++;
@@ -166,20 +176,85 @@ export async function expireStalePayments(): Promise<number> {
     .lt("created_at", new Date(dayAgoMs).toISOString())
     .limit(50);
   for (const order of failed ?? []) {
-    const { data: last } = await db
-      .from("im_order_status_history")
-      .select("created_at")
-      .eq("order_id", order.id)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    if (last && new Date(last.created_at).getTime() > dayAgoMs) continue;
+    if ((await lastActivityMs(db, order.id)) > dayAgoMs) continue;
     await transitionOrder(db, {
       orderId: order.id,
       to: "cancelled",
       actorId: null,
       actorRole: "system",
       meta: { reason: "Payment was not completed." },
+    });
+  }
+  return released + (await expireCounterHolds(db, hold.otc_hold_hours));
+}
+
+/**
+ * Cancel counter orders (migration 0028) that the Workshop was not paid for
+ * within the hold, and put their items back on sale. A reference the buyer
+ * sent that an admin has not checked yet keeps the hold, and so does any
+ * recent step (sending a reference, or an admin refusing one, writes a
+ * history row). There is no "try again" stage as for online payments: the
+ * buyer pays by sending money, not by opening a page, so once the hold is
+ * over the order is cancelled. A payment that still arrives is confirmed by
+ * an admin as usual, and flags the cancelled orders for a refund.
+ */
+async function expireCounterHolds(db: Db, holdHours: number): Promise<number> {
+  const cutoffMs = Date.now() - holdHours * 3_600_000;
+  const { data: stale, error } = await db
+    .from("im_orders")
+    .select("id, buyer_id, seller_id, checkout_id")
+    .eq("payment_provider", "otc")
+    .eq("payment_status", "pending")
+    .eq("order_status", "pending")
+    .lt("created_at", new Date(cutoffMs).toISOString())
+    .limit(50);
+  if (error || !stale?.length) return 0;
+
+  const checkoutIds = [...new Set(stale.map((o) => o.checkout_id).filter((n): n is number => n != null))];
+  const { data: open, error: openErr } = checkoutIds.length
+    ? await db.from("im_payment_proofs").select("checkout_id").eq("status", "submitted").in("checkout_id", checkoutIds)
+    : { data: [] as { checkout_id: number }[], error: null };
+  if (openErr) return 0;
+  const waiting = new Set((open ?? []).map((p) => Number(p.checkout_id)));
+
+  let released = 0;
+  const toldBuyer = new Set<number>();
+  for (const order of stale) {
+    if (order.checkout_id != null && waiting.has(Number(order.checkout_id))) continue;
+    if ((await lastActivityMs(db, order.id)) > cutoffMs) continue;
+
+    const did = await failPendingPayment(
+      db,
+      order.id,
+      `No payment to the Workshop arrived within ${holdHours} hours. Items released back to stock.`
+    );
+    if (!did) continue;
+    released++;
+    await transitionOrder(db, {
+      orderId: order.id,
+      to: "cancelled",
+      actorId: null,
+      actorRole: "system",
+      meta: { reason: `The payment to the Workshop did not arrive within ${holdHours} hours.` },
+    });
+    if (order.seller_id != null) {
+      await createNotification({
+        userId: order.seller_id,
+        type: "order_status",
+        title: `Order #${order.id} was cancelled`,
+        body: "The buyer did not pay the Workshop in time, so there is nothing to prepare. Its items are back on sale.",
+        link: "/seller/orders",
+      });
+    }
+    const key = Number(order.checkout_id ?? -order.id);
+    if (toldBuyer.has(key)) continue;
+    toldBuyer.add(key);
+    await createNotification({
+      userId: order.buyer_id,
+      type: "order_status",
+      title: `Order #${order.id} was cancelled`,
+      body: "We did not receive your payment to the Workshop in time, and the items are back on sale. If you did pay, send the reference number and we will refund you.",
+      link: order.checkout_id != null ? `/buyer/pay/${order.checkout_id}` : "/buyer/orders",
     });
   }
   return released;

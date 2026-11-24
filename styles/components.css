@@ -663,7 +663,10 @@ a.chart-legend__link:hover .chart-legend__label { color: var(--brand-blue-800); 
 /* Inline error under one field. The words carry the meaning; colour and
    weight repeat it (WCAG 1.4.1). */
 .field-error { color: var(--brand-red-800); font-weight: 600; margin: 0; }
-.field input[aria-invalid="true"] { border-color: var(--brand-red); border-width: 2px; }
+.field input[aria-invalid="true"],
+.field textarea[aria-invalid="true"],
+.field select[aria-invalid="true"] { border-color: var(--brand-red); border-width: 2px; }
+.field--check input[aria-invalid="true"] { outline: 2px solid var(--brand-red); outline-offset: 2px; }
 
 /* Checkbox with a long label: box and text side by side, 44px target. */
 .field--check { display: flex; align-items: flex-start; gap: var(--space-3); }
@@ -855,7 +858,7 @@ a.chart-legend__link:hover .chart-legend__label { color: var(--brand-blue-800); 
    the row" symptom. */
 input:not([type]),
 input[type="text"], input[type="email"], input[type="password"],
-input[type="number"], input[type="search"], input[type="tel"], select, textarea {
+input[type="number"], input[type="search"], input[type="tel"], input[type="date"], select, textarea {
   width: 100%;
   padding: .55rem .75rem;
   border: 1px solid var(--border-control);

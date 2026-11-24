@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { DataUnavailableError, getDisplayNames } from "@/lib/data";
 import { isMissingObject } from "@/lib/db-errors";
 import { getSettingInts } from "@/lib/settings";
+import { paymentShortLabel } from "@/lib/orders/state";
 
 /**
  * Seller earnings and payouts (C-35, migration 0020). Who holds the money
@@ -27,7 +28,8 @@ export interface EarningLite {
   deliveredAt: string | null;
   net: number;
   availability: Availability;
-  online: boolean;
+  /** How the buyer paid, in words ("Online", "Paid to the Workshop", "Cash on delivery"). */
+  paidVia: string;
 }
 
 export type PayoutStatus = "requested" | "approved" | "paid" | "rejected";
@@ -141,7 +143,7 @@ export async function getSellerFinance(sellerId: number): Promise<SellerFinance>
       deliveredAt: e.delivered_at,
       net: Number(e.net),
       availability: e.availability,
-      online: e.payment_provider === "paymongo",
+      paidVia: paymentShortLabel(e.payment_provider),
     })),
     payouts: ((pays.data ?? []) as PayoutRow[]).map((p) => payout(p, false)),
   };

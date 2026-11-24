@@ -22,11 +22,14 @@ const HOME_BY_ROLE: Record<Role, string> = {
 
 export function LandingClient({
   stats,
+  initialTab = "signin",
 }: {
   stats: { products: number; sellers: number; orders: number };
+  /** "signup" when the visitor came for Create account (?tab=signup). */
+  initialTab?: "signin" | "signup";
 }) {
   const router = useRouter();
-  const [tab, setTab] = useState<"signin" | "signup">("signin");
+  const [tab, setTab] = useState<"signin" | "signup">(initialTab);
   const [showPw, setShowPw] = useState(false);
   const [loginErr, setLoginErr] = useState<string | null>(null);
   const [signupErr, setSignupErr] = useState<string | null>(null);
@@ -43,13 +46,26 @@ export function LandingClient({
   const [resetErr, setResetErr] = useState<string | null>(null);
 
   // /reset-password sends people back here with ?reset=1 when their link has
-  // expired, so open straight onto the request form.
+  // expired, so open straight onto the request form. An emailed link that
+  // could not be redeemed comes with ?expired=1 too (lib/auth/email-link.ts),
+  // and the panel says so rather than leave the person wondering.
+  const [linkExpired, setLinkExpired] = useState(false);
   useEffect(() => {
-    if (new URLSearchParams(window.location.search).has("reset")) {
+    const q = new URLSearchParams(window.location.search);
+    if (q.has("expired")) setLinkExpired(true);
+    if (q.has("reset")) {
       setTab("signin");
       setForgot(true);
     }
   }, []);
+  const expiredNotice = linkExpired ? (
+    <p className="notice notice--warning" role="status">
+      That link has expired or was already used.{" "}
+      {forgot
+        ? "Enter your email and we will send you a code instead."
+        : "Sign in, or choose Forgot password to get a code."}
+    </p>
+  ) : null;
 
   // The reset panel has two steps: ask for the email, then redeem the code that
   // arrives. Kept in one panel so the address stays on screen while the code is
@@ -285,6 +301,7 @@ export function LandingClient({
                       ? "Enter the email address on your account. We will email you a sign-in code."
                       : "Enter the code we emailed you. It expires in one hour."}
                   </p>
+                  {resetStep === "request" ? expiredNotice : null}
 
                   <form
                     className="form"
@@ -387,6 +404,7 @@ export function LandingClient({
                 <>
               <h2 id="auth-title">Welcome back</h2>
               <p className="muted">Sign in with your email and password.</p>
+              {expiredNotice}
 
               <form
                 className="form"

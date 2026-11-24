@@ -5,9 +5,11 @@ import { LandingClient } from "@/components/LandingClient";
 
 export const dynamic = "force-dynamic";
 
-export default async function LoginPage() {
+export default async function LoginPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
   const session = await getSession().catch(() => null);
   if (session) redirect(homeForRole(session.role));
+  // ?tab=signup opens Create account: the phone tab bar's More sheet links here.
+  const initialTab = (await searchParams).tab === "signup" ? "signup" : "signin";
 
   let stats = { products: 0, sellers: 0, orders: 0 };
   try {
@@ -28,5 +30,5 @@ export default async function LoginPage() {
     // Keep zeroed stats if DB/env unavailable at build or first boot.
   }
 
-  return <LandingClient stats={stats} />;
+  return <LandingClient stats={stats} initialTab={initialTab} />;
 }

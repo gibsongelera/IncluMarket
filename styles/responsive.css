@@ -554,12 +554,17 @@ body:not(:has(.site-footer)) {
     min-width: 16px;
   }
 
-  /* The header keeps brand and search (and a guest's Sign in); the tab bar
-     owns navigation and, signed in, the bell (§11). */
+  /* The header keeps brand and search; the tab bar owns navigation (a
+     guest's Sign in too) and, signed in, the bell (§11). */
   .site-header .header-nav .nav-link {
     display: none;
   }
   .site-header .user-strip {
+    display: none;
+  }
+  /* The assist strip stays (lib/assist), at its short length: whose shop,
+     until when, Stop. The start dialog already said that it is all logged. */
+  .assist-strip__more {
     display: none;
   }
   .header-row {
@@ -999,9 +1004,10 @@ h3 {
     gap: var(--space-2);
     padding: var(--space-2) var(--space-3);
     min-height: 0;
-    /* The query below moves the nav to a second row (a guest's Sign in; a
-       signed-in row has no nav on a phone). A container query, not a media
-       query, because its rem follows the 12-24px text scale.
+    /* A container, for the query that trims the Search button on the
+       narrowest bars (no row has nav on a phone any more: .header-row--tabbed).
+       A container query, not a media query, because its rem follows the
+       12-24px text scale.
        `contain: layout` (which container-type does not imply) makes this row
        the containing block of its fixed children, the scoped search's
        suggestions (§14), so `top: 100%` is the header's bottom edge whether
@@ -1034,31 +1040,16 @@ h3 {
   }
 }
 
-/* Below 23rem of bar (measured: under it the input is narrower than 4rem, and
-   at 24px text the "Search" button slides under the bell and Sign out), the
-   search takes the rest of the first row and the nav moves to a second row,
-   at the end: phones up to ~390px at 16px text, every phone at 24px. Brand,
-   search, nav is the DOM order, so what you see is still the focus order. */
-@container header-row (max-width: 23rem) {
-  .header-row > .search {
-    grid-column: 2 / -1;
-    grid-row: 1;
-  }
-  .header-row > .header-nav {
-    grid-column: 1 / -1;
-    grid-row: 2;
-    justify-self: end;
-  }
-}
-/* Signed in, a phone's header is the brand and the search: its nav (links,
-   Cart, the bell, Sign out) is hidden, because the tab bar carries the links
-   and the bell and its More sheet has Sign out (MobileNav). One row, so
-   more of a phone screen is page. */
+/* On a phone the header is the brand and the search, for every role: its nav
+   is hidden because the tab bar (MobileNav) carries it. Signed in, that is
+   the links and the bell, with Sign out in More; for a guest, Sign in is a
+   tab and Create account is in More. One row, so more of a phone screen is
+   page. It used to keep a guest's Sign in, which wrapped to a second row. */
 @media (max-width: 767px) {
-  .header-row--signed-in {
+  .header-row--tabbed {
     grid-template-columns: auto 1fr;
   }
-  .header-row--signed-in > .header-nav {
+  .header-row--tabbed > .header-nav {
     display: none;
   }
 
@@ -2128,4 +2119,9 @@ h3 {
   .slip__order h1 {
     font-size: 16pt;
   }
+}
+
+/* Pay the Workshop: the amount and accounts beside the form (layout.css). */
+@media (min-width: 1024px) {
+  .pay-layout { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); align-items: start; }
 }

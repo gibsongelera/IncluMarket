@@ -93,6 +93,26 @@ Everything is documented in `.env.example`. `NEXT_PUBLIC_*` values are
 Only buyers create their own accounts; sellers are set up by an administrator
 in Admin → Users (migration 0025 enforces this in the database).
 
+**Admin → Users → Set up a seller** takes a PWD trainee's details, the
+details on their PWD ID card (recorded as seen in person, so the ID counts as
+verified) and their shop name. The person then gets an email with a link to
+choose their own password. That email, and the one "Invite a user" sends, come
+from the app's email provider (Brevo or Resend), not from Supabase: Supabase's
+own invite link could not be used here. The link works once, within the
+project's email-link lifetime (one hour); after that the person uses Forgot
+password, or an admin sends the email again.
+
+**Admin → Users → Open Seller Centre** lets AVRC staff work in a seller's
+shop for them, for a seller who is blind, say. The admin writes why, and from
+then on sees the Seller Centre as the seller does: listings they add still go
+to review, and every sale is the seller's. Every audit row names the admin,
+"for seller:<id>" (Admin → Compliance shows the seller's name), and the seller
+is told in the app. The seller's account settings, password, PWD ID, support
+requests and payouts stay closed, and admin pages are closed until the admin
+chooses Stop assisting, signs out, or two hours pass. The cookie behind it is
+signed for that admin's own sign-in (`lib/assist`), so it does nothing in
+anyone else's browser session.
+
 **Sign-up codes and password-reset emails are sent by Supabase Auth**, not by
 the app's email provider. Set them up once in the Supabase dashboard:
 
@@ -122,9 +142,11 @@ the app's email provider. Set them up once in the Supabase dashboard:
 
 4. **Authentication → URL Configuration:** Site URL = your site
    (`https://inclumarket.vercel.app` in production, `http://localhost:3000` in
-   development). The templates build their links and logo from it, so a
-   localhost Site URL sends people to their own computer. Add `<site>/auth/confirm`
-   and `<site>/auth/callback` to the redirect URLs.
+   development). The templates build their button links from it, so a
+   localhost Site URL sends people to their own computer. (The logo always
+   loads from `https://inclumarket.vercel.app`, since an email can't fetch
+   from localhost; change it in both templates if the domain changes.) Add
+   `<site>/auth/confirm` and `<site>/auth/callback` to the redirect URLs.
 
 Everything else (order confirmations, seller notices, ticket replies,
 newsletter) goes through `EMAIL_PROVIDER`. With Brevo, a 401 "unrecognised IP
@@ -155,8 +177,11 @@ a rollback in `supabase/rollback/00xx_down.sql` and tests in `supabase/tests/`.
 | 0023 | Moving product photos from Postgres to Storage |
 | 0024 | Flash sale rules |
 | 0025 | Self sign-up creates buyers only |
+| 0026 | Photos in buyer–seller messages (private `message-media` bucket) |
+| 0027 | Sold-out audit: when listings sell out, and removed photos and listings kept with the old photo |
+| 0028 | Paying the Workshop over the counter (GCash, Maribank, LBP): its accounts, the references buyers send, private `payment-proofs` bucket |
 
-**Apply 0013–0025 to a development project first**, run the app against it,
+**Apply 0013–0028 to a development project first**, run the app against it,
 then production. Every page that depends on a newer migration says which one it
 needs instead of failing. After 0019 and 0023, move existing product photos out
 of the database:

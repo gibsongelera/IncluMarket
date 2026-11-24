@@ -1,4 +1,5 @@
 import "server-only";
+import { SITE } from "@/lib/site";
 
 /**
  * Email templates, authored in code rather than in Brevo's template designer.
@@ -21,6 +22,7 @@ export type EmailKind =
   | "ticket_reply"
   | "newsletter_welcome"
   | "account_status"
+  | "account_setup"
   | "pwd_verification"
   | "flash_sale"
   | "privacy_request"
@@ -55,7 +57,8 @@ function peso(value: unknown): string {
   return `PHP ${n.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
-function siteUrl(): string {
+/** The site every email links to; also the base of the account set-up link. */
+export function siteUrl(): string {
   return process.env.NEXT_PUBLIC_SITE_URL || "https://inclumarket.vercel.app";
 }
 
@@ -115,11 +118,15 @@ export function renderTemplate(kind: EmailKind, d: TemplateData): RenderedEmail 
             p(
               d.paymentMethod === "cod"
                 ? "You chose <strong>cash on delivery</strong>. Please have the exact amount ready when your order arrives."
-                : "We will confirm again as soon as your payment is completed."
+                : d.paymentMethod === "otc"
+                  ? `You chose to pay the <strong>${esc(SITE.workshop.name)}</strong> (${esc(SITE.workshop.under)}) by GCash, Maribank or LandBank. ` +
+                    `Please send <strong>${esc(total)}</strong> to one of the accounts on the payment page, then enter the reference number there. ` +
+                    `We keep your items for ${esc(d.holdHours ?? 48)} hours.`
+                  : "We will confirm again as soon as your payment is completed."
             ) +
             p("You can follow every step of your order from My Orders."),
-          "View my orders",
-          `${url}/buyer/orders`
+          d.paymentMethod === "otc" && d.payUrl ? "Pay the Workshop" : "View my orders",
+          d.paymentMethod === "otc" && d.payUrl ? `${url}${d.payUrl}` : `${url}/buyer/orders`
         ),
         text:
           `Thank you, ${d.buyerName}.\n\n` +
@@ -127,7 +134,12 @@ export function renderTemplate(kind: EmailKind, d: TemplateData): RenderedEmail 
           `Order total: ${total}\n\n` +
           (d.paymentMethod === "cod"
             ? "You chose cash on delivery. Please have the exact amount ready when your order arrives.\n\n"
-            : "We will confirm again as soon as your payment is completed.\n\n") +
+            : d.paymentMethod === "otc"
+              ? `You chose to pay the ${SITE.workshop.name} (${SITE.workshop.under}) by GCash, Maribank or LandBank. ` +
+                `Please send ${total} to one of the accounts on the payment page, then enter the reference number there. ` +
+                `We keep your items for ${d.holdHours ?? 48} hours.\n\n` +
+                (d.payUrl ? `Pay the Workshop: ${url}${d.payUrl}\n\n` : "")
+              : "We will confirm again as soon as your payment is completed.\n\n") +
           `Follow your order: ${url}/buyer/orders\n`,
       };
     }
@@ -328,6 +340,51 @@ export function renderTemplate(kind: EmailKind, d: TemplateData): RenderedEmail 
         text: suspended
           ? `Your account is suspended.\n\nReason: ${d.reason}\n\nIf you think this is a mistake, contact us: ${url}/contact\n`
           : `Your account is active again. Sign in: ${url}/login\n`,
+      };
+    }
+
+    case "account_setup": {
+      // An account an administrator made: a PWD seller AVRC staff set up
+      // (Admin → Users → Set up a seller), or an invited buyer or admin. The
+      // button is a one-hour recovery link to the password form
+      // (lib/auth/set-password-email.ts).
+      const seller = d.seller === true;
+      const shop = d.shopName ? String(d.shopName) : "";
+      const link = String(d.link ?? "");
+      const forgot = `${url}/login?reset=1`;
+      const intro = seller
+        ? `AVRC staff have set up your seller account on InclusiveMarket${shop ? `, with your shop "${shop}"` : ""}.`
+        : "An administrator has made an InclusiveMarket account for you.";
+      const verified = seller && d.verified === true;
+      return {
+        subject: seller ? "Your shop on InclusiveMarket is ready" : "Your InclusiveMarket account is ready",
+        html: shell(
+          `Welcome${d.name ? `, ${esc(d.name)}` : ""}`,
+          p(
+            seller
+              ? `AVRC staff have set up your seller account on InclusiveMarket${shop ? `, with your shop <strong>${esc(shop)}</strong>` : ""}.`
+              : esc(intro)
+          ) +
+            (verified ? p("Your PWD ID is already verified, so you can list products as soon as you sign in.") : "") +
+            p("To sign in, first choose your password. Nobody else knows it, and nobody at InclusiveMarket can see it.") +
+            p(
+              `The button works once, within one hour. After that, open <a href="${esc(forgot)}" style="color:${BRAND_DEEP}">Forgot password</a>, ` +
+                "enter this email address, and we will send you a code instead."
+            ) +
+            p(`Questions? Ask the AVRC staff who set this up, or <a href="${esc(url)}/contact" style="color:${BRAND_DEEP}">contact us</a>.`) +
+            p("If you did not expect this email, you can ignore it."),
+          "Choose my password",
+          link
+        ),
+        text:
+          `Welcome${d.name ? `, ${d.name}` : ""}.\n\n` +
+          `${intro}\n` +
+          (verified ? "Your PWD ID is already verified, so you can list products as soon as you sign in.\n" : "") +
+          "\nTo sign in, first choose your password. Nobody else knows it, and nobody at InclusiveMarket can see it.\n\n" +
+          `Choose your password: ${link}\n\n` +
+          `The link works once, within one hour. After that, go to ${forgot}, enter this email address, and we will send you a code instead.\n\n` +
+          `Questions? Ask the AVRC staff who set this up, or contact us: ${url}/contact\n\n` +
+          "If you did not expect this email, you can ignore it.\n",
       };
     }
 

@@ -72,6 +72,10 @@ async function findOrCreateSession(
   return created?.id ?? null;
 }
 
+/** An admin assisting a seller (lib/assist) does not talk to the assistant as them. */
+const CHAT_CLOSED_WHILE_ASSISTING =
+  "The assistant is off while you assist a seller. Choose Stop assisting at the top of the page to use it.";
+
 export async function sendChatMessage(message: string): Promise<ChatActionResult> {
   const text = String(message || "").trim();
   if (!text) return { ok: false, error: "Message cannot be empty." };
@@ -80,6 +84,7 @@ export async function sendChatMessage(message: string): Promise<ChatActionResult
   }
 
   const identity = await resolveChatIdentity();
+  if (identity.kind === "user" && identity.assisted) return { ok: false, error: CHAT_CLOSED_WHILE_ASSISTING };
 
   // Reachable without signing in and writes two rows per call, so: per-caller,
   // per-IP, and a global daily ceiling so one visitor cannot drain the LLM
@@ -150,6 +155,8 @@ export async function fetchChatHistory(): Promise<{
   const context = await buildChatContext(identity);
 
   if (!identity) return { ok: true, messages: [], audience: context.audience };
+  // The seller's conversations with the assistant stay theirs.
+  if (identity.kind === "user" && identity.assisted) return { ok: true, messages: [], audience: context.audience };
 
   const db = createAdminClient();
   const base = db.from("im_chat_sessions").select("id").eq("status", "open");
@@ -184,6 +191,7 @@ export async function fetchChatHistory(): Promise<{
 /** Hand the caller's own conversation to the support team as a ticket. */
 export async function escalateChat(): Promise<ChatActionResult> {
   const authSession = await getSession();
+  if (authSession?.assistedBy) return { ok: false, error: CHAT_CLOSED_WHILE_ASSISTING };
   if (!authSession) {
     return {
       ok: false,

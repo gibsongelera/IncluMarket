@@ -109,6 +109,11 @@ export function OrdersClient({
     );
   }
 
+  /** Paying the Workshop over the counter (0028): the page with its accounts. */
+  function awaitingCounter(o: Order): boolean {
+    return o.payment_provider === "otc" && o.order_status === "pending" && o.payment_status === "pending" && Boolean(o.checkout_id);
+  }
+
   async function payNow(orderId: number) {
     setPayingId(orderId);
     const res = await retryPayment(orderId);
@@ -275,6 +280,14 @@ export function OrdersClient({
                       >
                         {payingId === o.id ? "Opening payment…" : "Pay now"}
                       </button>
+                    </>
+                  ) : null}
+                  {awaitingCounter(o) ? (
+                    <>
+                      <span className="muted small">Waiting for your payment to the Workshop.</span>
+                      <Link className="btn btn--primary btn--sm" href={`/buyer/pay/${o.checkout_id}`}>
+                        Pay the Workshop<span className="sr-only">{` for order #${o.id}`}</span>
+                      </Link>
                     </>
                   ) : null}
                   {canReceive ? (

@@ -29,6 +29,28 @@ export const TRANSITIONS: Record<OrderState, Partial<Record<OrderState, Actor[]>
   returned: {},
 };
 
+/**
+ * Paid before it is prepared: online through PayMongo, or to the Workshop
+ * over the counter (migration 0028). Cash on delivery is paid on arrival.
+ */
+export function isPrepaid(provider: string | null | undefined): boolean {
+  return provider === "paymongo" || provider === "otc";
+}
+
+/** How an order is paid, in words. */
+export function paymentMethodLabel(provider: string | null | undefined): string {
+  if (provider === "paymongo") return "Online (GCash, Maya, card)";
+  if (provider === "otc") return "Paid to the Workshop (GCash, Maribank, LBP)";
+  return "Cash on delivery";
+}
+
+/** The same, short, for a table cell: "Online", "Paid to the Workshop", "Cash on delivery". */
+export function paymentShortLabel(provider: string | null | undefined): string {
+  if (provider === "paymongo") return "Online";
+  if (provider === "otc") return "Paid to the Workshop";
+  return "Cash on delivery";
+}
+
 export interface OrderFacts {
   order_status: string;
   payment_provider: string | null;
@@ -46,9 +68,9 @@ export function canTransition(
   const from = order.order_status as OrderState;
   const who = TRANSITIONS[from]?.[to];
   if (!who || !who.includes(actor)) return false;
-  if (to === "processing" && order.payment_provider === "paymongo" && order.payment_status !== "paid") return false;
-  // A seller cannot cancel an online order while its payment may still arrive.
-  if (to === "cancelled" && actor === "seller" && order.payment_provider === "paymongo" && order.payment_status === "pending")
+  if (to === "processing" && isPrepaid(order.payment_provider) && order.payment_status !== "paid") return false;
+  // A seller cannot cancel an order paid in advance while its payment may still arrive.
+  if (to === "cancelled" && actor === "seller" && isPrepaid(order.payment_provider) && order.payment_status === "pending")
     return false;
   if (to === "return_requested" && actor === "buyer") {
     if (!order.delivered_at) return false;
@@ -84,7 +106,7 @@ export const BUYER_TABS: { value: BuyerTab; label: string }[] = [
 export function buyerTab(order: OrderFacts): BuyerTab {
   switch (order.order_status) {
     case "pending":
-      return order.payment_provider === "paymongo" && order.payment_status !== "paid" ? "to_pay" : "to_ship";
+      return isPrepaid(order.payment_provider) && order.payment_status !== "paid" ? "to_pay" : "to_ship";
     case "processing":
       return "to_ship";
     case "shipped":
@@ -121,7 +143,7 @@ export function countBuyerTabs(orders: readonly OrderFacts[]): PurchaseCounts {
 export function buyerStatusText(order: OrderFacts): string {
   switch (order.order_status) {
     case "pending":
-      if (order.payment_provider === "paymongo") {
+      if (isPrepaid(order.payment_provider)) {
         return order.payment_status === "failed" ? "Payment not completed" : "Waiting for payment";
       }
       return "Waiting for the seller to confirm";
@@ -154,7 +176,7 @@ export function transitionMessage(code: string, to?: string): string {
     case "forbidden":
       return "You are not allowed to make that change to this order.";
     case "not_paid":
-      return "Wait until the buyer's online payment is complete before preparing this order.";
+      return "Wait until the buyer's payment is confirmed before preparing this order.";
     case "return_window_closed":
       return "The return window for this order has closed. Please contact support if something is wrong.";
     case "reason_required":

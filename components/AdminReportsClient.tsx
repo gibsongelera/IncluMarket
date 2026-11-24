@@ -51,6 +51,18 @@ const REPORTS: { type: ReportType; label: string; hint: string; filenameExample:
     hint: "Actor name/role and actions (latest 5,000 rows).",
     filenameExample: "InclusiveMarket_Audit_Logs_Report_YYYY-MM-DD.xlsx",
   },
+  {
+    type: "sold_out",
+    label: "Sold out",
+    hint: "When each item sold out, units sold, back in stock, photo link (needs migration 0027).",
+    filenameExample: "InclusiveMarket_Sold_Out_Report_YYYY-MM-DD.xlsx",
+  },
+  {
+    type: "item_history",
+    label: "Item history",
+    hint: "Photos and listings removed, with the old photo links and who removed them (needs migration 0027).",
+    filenameExample: "InclusiveMarket_Item_History_Report_YYYY-MM-DD.xlsx",
+  },
 ];
 
 function downloadBase64(base64: string, filename: string) {
@@ -68,6 +80,36 @@ function downloadBase64(base64: string, filename: string) {
   a.click();
   a.remove();
   URL.revokeObjectURL(url);
+}
+
+async function download(type: ReportType): Promise<void> {
+  const res = await exportReport(type);
+  if (!res.ok || !res.fileBase64 || !res.filename) {
+    toast(res.error || "Could not generate the report.", "error");
+    return;
+  }
+  downloadBase64(res.fileBase64, res.filename);
+  toast(`Downloaded ${res.filename}`, "success");
+}
+
+/** One report's download, for a page that offers its own (Sold-out audit). */
+export function ReportDownloadButton({ type, label }: { type: ReportType; label: string }) {
+  const [busy, setBusy] = useState(false);
+  return (
+    <button
+      type="button"
+      className="btn btn--outline btn--sm"
+      aria-busy={busy}
+      onClick={async () => {
+        if (busy) return;
+        setBusy(true);
+        await download(type);
+        setBusy(false);
+      }}
+    >
+      <Icon name="download" size={16} /> {busy ? "Generating…" : label}
+    </button>
+  );
 }
 
 export function AdminReportsClient() {
@@ -103,14 +145,8 @@ export function AdminReportsClient() {
 
   async function onExport(type: ReportType) {
     setBusy(type);
-    const res = await exportReport(type);
+    await download(type);
     setBusy(null);
-    if (!res.ok || !res.fileBase64 || !res.filename) {
-      toast(res.error || "Could not generate the report.", "error");
-      return;
-    }
-    downloadBase64(res.fileBase64, res.filename);
-    toast(`Downloaded ${res.filename}`, "success");
   }
 
   return (

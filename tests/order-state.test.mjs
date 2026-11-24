@@ -1,6 +1,15 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buyerTab, canTransition, nextStates, transitionMessage } from "../lib/orders/state.ts";
+import {
+  buyerStatusText,
+  buyerTab,
+  canTransition,
+  isPrepaid,
+  nextStates,
+  paymentMethodLabel,
+  paymentShortLabel,
+  transitionMessage,
+} from "../lib/orders/state.ts";
 
 const cod = (status, extra = {}) => ({ order_status: status, payment_provider: "cod", payment_status: "unpaid", ...extra });
 const online = (status, pay, extra = {}) => ({ order_status: status, payment_provider: "paymongo", payment_status: pay, ...extra });
@@ -55,4 +64,30 @@ test("every database code has a message", () => {
   for (const c of ["ok", "not_found", "illegal", "forbidden", "not_paid", "return_window_closed", "reason_required"]) {
     assert.ok(transitionMessage(c).length > 3, c);
   }
+});
+
+const counter = (status, pay, extra = {}) => ({ order_status: status, payment_provider: "otc", payment_status: pay, ...extra });
+
+test("an order paid to the Workshop (0028) waits for the payment like an online one", () => {
+  assert.equal(isPrepaid("otc"), true);
+  assert.equal(isPrepaid("paymongo"), true);
+  assert.equal(isPrepaid("cod"), false);
+  assert.equal(isPrepaid(null), false);
+  assert.equal(canTransition(counter("pending", "pending"), "processing", "seller"), false);
+  assert.equal(canTransition(counter("pending", "paid"), "processing", "seller"), true);
+  // The buyer may still be paying: only the buyer, an admin or the hold cancels it.
+  assert.equal(canTransition(counter("pending", "pending"), "cancelled", "seller"), false);
+  assert.equal(canTransition(counter("pending", "pending"), "cancelled", "buyer"), true);
+  assert.equal(buyerTab(counter("pending", "pending")), "to_pay");
+  assert.equal(buyerTab(counter("pending", "paid")), "to_ship");
+  assert.equal(buyerStatusText(counter("pending", "pending")), "Waiting for payment");
+});
+
+test("each way of paying has its words", () => {
+  assert.equal(paymentMethodLabel("otc"), "Paid to the Workshop (GCash, Maribank, LBP)");
+  assert.equal(paymentMethodLabel("paymongo"), "Online (GCash, Maya, card)");
+  assert.equal(paymentMethodLabel("cod"), "Cash on delivery");
+  assert.equal(paymentShortLabel("otc"), "Paid to the Workshop");
+  assert.equal(paymentShortLabel(null), "Cash on delivery");
+  assert.match(transitionMessage("not_paid"), /payment is confirmed/);
 });

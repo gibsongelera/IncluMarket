@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getSession } from "@/lib/session";
+import { ASSIST_CLOSED } from "@/lib/assist/rules";
 import { createNotification, notifyAdmins } from "@/lib/notify";
 import { queueEmail } from "@/lib/email/send";
 import {
@@ -15,13 +16,15 @@ import { checkPublicProduct } from "@/lib/catalog";
 import { priceCartForBuyer } from "@/lib/pricing/engine";
 import type { PricedCart, PricedLine } from "@/lib/pricing/core";
 import { failPendingPayment } from "@/lib/payments/stock";
+import { getCounterAccounts, getCounterHoldHours } from "@/lib/counter-payments";
 import { isMissingObject } from "@/lib/db-errors";
 import { rateLimit } from "@/lib/security/rate-limit";
 import type { Priority } from "@/lib/types";
 
 const LOW_STOCK_THRESHOLD = 5;
 
-export type PaymentMethod = "cod" | "paymongo";
+/** Cash on delivery, online through PayMongo, or to the Workshop over the counter (0028). */
+export type PaymentMethod = "cod" | "paymongo" | "otc";
 
 export interface ActionResult {
   ok: boolean;
@@ -44,6 +47,8 @@ export interface PlaceOrderResult extends ActionResult {
   orderIds?: number[];
   /** Present for online payment: send the browser here to pay. */
   redirectUrl?: string;
+  /** Present for a counter payment: the page with the Workshop's accounts. */
+  payUrl?: string;
 }
 
 /** PH mobile or landline, with or without country code. */
@@ -89,13 +94,24 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
       error: "Please enter a valid Philippine contact number, for example 09171234567.",
     };
 
-  const paymentMethod: PaymentMethod = input?.paymentMethod === "paymongo" ? "paymongo" : "cod";
+  const paymentMethod: PaymentMethod =
+    input?.paymentMethod === "paymongo" ? "paymongo" : input?.paymentMethod === "otc" ? "otc" : "cod";
 
   if (paymentMethod === "paymongo" && !isPayMongoConfigured()) {
     return {
       ok: false,
       error: "Online payment is not available right now. Please choose cash on delivery.",
     };
+  }
+  if (paymentMethod === "otc") {
+    // Only while the Workshop has an account to pay into (Admin → Payments).
+    const accounts = await getCounterAccounts({ activeOnly: true }).catch(() => null);
+    if (!accounts?.length) {
+      return {
+        ok: false,
+        error: "Paying the Workshop is not available right now. Please choose another way to pay.",
+      };
+    }
   }
 
   // ---- price the cart on the server ---------------------------------------
@@ -154,7 +170,9 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
       body:
         paymentMethod === "cod"
           ? "Cash on delivery. Please accept and prepare it."
-          : "Waiting for the buyer's online payment. You'll be told when it's paid.",
+          : paymentMethod === "otc"
+            ? "The buyer is paying the Workshop (GCash, Maribank or LBP). You'll be told when the payment is confirmed. Please don't prepare it yet."
+            : "Waiting for the buyer's online payment. You'll be told when it's paid.",
       link: "/seller/orders",
     });
   }
@@ -204,16 +222,20 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
     return { ok: true, orderId: orderIds[0], orderIds, redirectUrl: checkout.checkoutUrl };
   }
 
-  // Cash on delivery: the cart lines were removed inside the transaction.
+  // Cash on delivery and counter payment: the cart lines were removed inside
+  // the transaction. A counter payment then goes to the page with the
+  // Workshop's accounts, where the buyer sends the reference number.
+  const payUrl = paymentMethod === "otc" ? `/buyer/pay/${checkoutId}` : undefined;
+  const holdHours = paymentMethod === "otc" ? await getCounterHoldHours() : undefined;
   await queueEmail(
     "order_confirmation",
     { email: session.email, name: session.name },
-    { orderId: orderIds.join(", #"), total, buyerName: session.name, paymentMethod: "cod" }
+    { orderId: orderIds.join(", #"), total, buyerName: session.name, paymentMethod, payUrl, holdHours }
   );
 
   revalidatePath("/buyer/orders");
   revalidatePath("/buyer/cart");
-  return { ok: true, orderId: orderIds[0], orderIds };
+  return { ok: true, orderId: orderIds[0], orderIds, payUrl };
 }
 
 /** One order line as im_place_checkout() stores it, with its price breakdown. */
@@ -511,6 +533,7 @@ export async function addReview(
 export async function replyToTicket(ticketId: number, message: string): Promise<ActionResult> {
   const session = await getSession();
   if (!session) return { ok: false, error: "Please sign in first." };
+  if (session.assistedBy) return { ok: false, error: ASSIST_CLOSED };
   const clean = boundedText(message, 4000);
   if (!clean) return { ok: false, error: "Write a message first." };
   const limited = await rateLimit("ticket_reply", `user:${session.user_id}`, { limit: 30, windowSeconds: 3600 });
@@ -566,6 +589,7 @@ export async function createTicket(
 ): Promise<ActionResult> {
   const session = await getSession();
   if (!session) return { ok: false, error: "Please sign in first." };
+  if (session.assistedBy) return { ok: false, error: ASSIST_CLOSED };
   const cleanSubject = boundedText(subject, 200);
   const cleanDesc = boundedText(description, 5000);
   if (!cleanSubject || !cleanDesc)

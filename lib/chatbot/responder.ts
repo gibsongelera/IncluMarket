@@ -36,9 +36,9 @@ const RULES: { keywords: string[]; reply: string }[] = [
       "Open the accessibility button in the corner of any page. It has text size from 12 to 24 pixels, high contrast, reduced motion, a larger cursor, text-to-speech, voice commands, reading mode and visual alerts.",
   },
   {
-    keywords: ["pay", "gcash", "maya", "grabpay", "card", "checkout", "cod", "cash on delivery"],
+    keywords: ["pay", "gcash", "maya", "grabpay", "card", "checkout", "cod", "cash on delivery", "maribank", "landbank", "lbp", "workshop", "over the counter"],
     reply:
-      "At checkout you can pay cash on delivery, or pay online with GCash, Maya, GrabPay or a card. Online payments go through PayMongo's secure page — we never see your card details.",
+      "At checkout you can pay cash on delivery, pay online with GCash, Maya, GrabPay or a card (through PayMongo's secure page — we never see your card details), or pay the Rehabilitation Sheltered Workshop directly by GCash, Maribank or LandBank and then send the reference number from the payment page.",
   },
   {
     keywords: ["seller", "sell", "pwd", "become a seller"],

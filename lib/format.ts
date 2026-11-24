@@ -63,6 +63,16 @@ export function formatDateTime(iso: string | null | undefined): string {
   }
 }
 
+/** A time of day in Manila: "4:15 PM". */
+export function formatTime(iso: string | null | undefined): string {
+  if (!iso) return "";
+  try {
+    return new Date(iso).toLocaleTimeString("en-PH", { timeZone: MANILA, hour: "numeric", minute: "2-digit" });
+  } catch {
+    return String(iso);
+  }
+}
+
 // Basic PII mask: j***@m***.ph
 export function maskEmail(email: string | null | undefined): string {
   if (!email || email.indexOf("@") < 0) return email || "";

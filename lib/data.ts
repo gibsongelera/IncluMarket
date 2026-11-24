@@ -1,6 +1,7 @@
 import "server-only";
 import { createAdminClient } from "./supabase/admin";
 import { sellersWhoCanSell } from "./catalog";
+import { signPrivateImages } from "./media";
 import type { AddressLite } from "./address";
 import type {
   AuditLog,
@@ -407,12 +408,21 @@ export async function getConversationsForUser(
   );
 }
 
+/** How long a message photo's signed URL works; the page re-signs on every load. */
+const MESSAGE_PHOTO_URL_SECONDS = 600;
+
+/**
+ * Messages in these conversations, oldest first. The caller must already
+ * have scoped `conversationIds` to the viewer's own conversations
+ * (getConversationsForUser): photos are signed for every id passed. The
+ * storage path never reaches the browser, only a URL that expires.
+ */
 export async function getMessagesForConversations(
   conversationIds: number[]
 ): Promise<Record<number, Message[]>> {
   const map: Record<number, Message[]> = {};
   if (!conversationIds.length) return map;
-  const data = rows<Message>(
+  const data = rows<Message & { image_path?: string | null }>(
     "messages",
     await db()
       .from("im_messages")
@@ -420,8 +430,13 @@ export async function getMessagesForConversations(
       .in("conversation_id", conversationIds)
       .order("created_at", { ascending: true })
   );
-  data.forEach((m) => {
-    (map[m.conversation_id] ||= []).push(m);
+  const paths = data.map((m) => m.image_path).filter((p): p is string => Boolean(p));
+  const urls = paths.length ? await signPrivateImages("message-media", paths, MESSAGE_PHOTO_URL_SECONDS) : {};
+  data.forEach(({ image_path, ...m }) => {
+    const message: Message = image_path
+      ? { ...m, has_photo: true, image_url: urls[image_path] ?? null, image_alt: m.image_alt ?? null }
+      : m;
+    (map[m.conversation_id] ||= []).push(message);
   });
   return map;
 }

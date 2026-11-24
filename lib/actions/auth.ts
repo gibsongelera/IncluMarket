@@ -7,6 +7,8 @@ import { getSession } from "@/lib/session";
 import { guardByIp, rateLimit, RATE_LIMITED_MESSAGE } from "@/lib/security/rate-limit";
 import { clearRecoveryMarker, hasRecoveryMarker, setRecoveryMarker } from "@/lib/auth/recovery";
 import { RESET_PATH } from "@/lib/auth/email-link";
+import { clearAssistCookie } from "@/lib/assist/cookie";
+import { actorOf } from "@/lib/assist/rules";
 import type { Role } from "@/lib/types";
 
 /*
@@ -127,6 +129,8 @@ export async function loginAction(email: string, password: string): Promise<Auth
     };
   }
 
+  // A new sign-in never resumes an earlier assist session (lib/assist).
+  await clearAssistCookie();
   const session = await getSession();
   if (!session) {
     // Either the profile is suspended (and the Auth ban has not applied yet)
@@ -457,8 +461,12 @@ export async function updatePasswordAction(password: string): Promise<AuthResult
 export async function logoutAction(): Promise<void> {
   const session = await getSession();
   if (session) {
-    await audit(session.user_id, session.role, "auth_logout", `user:${session.user_id}`);
+    // While assisting, the session is the seller's; the admin is signing out.
+    const by = actorOf(session);
+    if (session.assistedBy) await audit(by.user_id, "admin", "assist_ended", `seller:${session.user_id}`);
+    await audit(by.user_id, by.role, "auth_logout", `user:${by.user_id}`);
   }
+  await clearAssistCookie();
   const supabase = await createSupabaseServerClient();
   await supabase.auth.signOut();
   redirect("/");

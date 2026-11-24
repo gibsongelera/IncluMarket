@@ -7,7 +7,7 @@ import { createNotification } from "@/lib/notify";
 import { boundedText } from "@/lib/validation/data-url";
 import { transitionOrder } from "@/lib/orders/transition";
 import { orderSellerIds } from "@/lib/orders/sellers";
-import type { OrderState } from "@/lib/orders/state";
+import { isPrepaid, type OrderState } from "@/lib/orders/state";
 
 export interface OrderActionResult {
   ok: boolean;
@@ -71,8 +71,9 @@ async function buyerMove(
 }
 
 /**
- * Unpaid online orders bought together share ONE PayMongo session. Cancelling
- * one of them alone would leave a session that still charges for it, so a
+ * Unpaid orders bought together share ONE payment: a PayMongo session, or
+ * one transfer to the Workshop for the checkout's total (0028). Cancelling
+ * one of them alone would leave a payment that still covers it, so a
  * "To pay" cancel cancels every still-unpaid order of that checkout.
  */
 async function unpaidSiblings(orderId: number, buyerId: number): Promise<number[]> {
@@ -86,7 +87,7 @@ async function unpaidSiblings(orderId: number, buyerId: number): Promise<number[
   if (error || !order) return [orderId];
   const awaiting =
     order.order_status === "pending" &&
-    order.payment_provider === "paymongo" &&
+    isPrepaid(order.payment_provider) &&
     (order.payment_status === "pending" || order.payment_status === "failed");
   if (!awaiting || !order.checkout_id) return [orderId];
   const { data: siblings } = await db
@@ -95,7 +96,7 @@ async function unpaidSiblings(orderId: number, buyerId: number): Promise<number[
     .eq("checkout_id", order.checkout_id)
     .eq("buyer_id", buyerId)
     .eq("order_status", "pending")
-    .eq("payment_provider", "paymongo")
+    .eq("payment_provider", order.payment_provider)
     .in("payment_status", ["pending", "failed"]);
   const ids = (siblings ?? []).map((s) => s.id as number);
   return ids.length ? ids : [orderId];

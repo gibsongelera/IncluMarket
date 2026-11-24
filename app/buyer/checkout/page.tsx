@@ -6,6 +6,7 @@ import { CheckoutClient } from "@/components/CheckoutClient";
 import { priceCartForBuyer } from "@/lib/pricing/engine";
 import { getAddresses, getDisplayNames } from "@/lib/data";
 import { isPayMongoConfigured } from "@/lib/payments/paymongo";
+import { getCounterOffer } from "@/lib/counter-payments";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Checkout" };
@@ -24,9 +25,10 @@ export default async function CheckoutPage({
     .map(Number)
     .filter((n) => Number.isInteger(n) && n > 0)
     .slice(0, 100);
-  const [cart, addresses] = await Promise.all([
+  const [cart, addresses, counterPayment] = await Promise.all([
     priceCartForBuyer(session.user_id, items.length ? items : undefined),
     getAddresses(session.user_id),
+    getCounterOffer(),
   ]);
 
   if (!cart.lines.length) redirect("/buyer/cart");
@@ -41,6 +43,7 @@ export default async function CheckoutPage({
         <CheckoutClient
           userName={session.name}
           onlinePaymentEnabled={isPayMongoConfigured()}
+          counterPayment={counterPayment}
           cart={cart}
           sellerNames={sellerNames}
           addresses={addresses}

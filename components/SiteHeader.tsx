@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Role, SessionUser } from "@/lib/types";
-import { maskEmail } from "@/lib/format";
+import { formatTime, maskEmail } from "@/lib/format";
+import { AssistStrip } from "./AssistStrip";
 import { getHeaderData } from "@/lib/header-data";
 import { SearchBox } from "./SearchBox";
 import { ScopedSearchBox } from "./ScopedSearchBox";
@@ -25,7 +26,10 @@ export async function SiteHeader({
     return (
       <>
       <header className="site-header site-header--buyer" role="banner">
-        <div className="container header-row">
+        {/* --tabbed: on a phone this row is the brand and the search only,
+            as when signed in. Sign in is a tab in the bar (MobileNav), and
+            Create account is in its More sheet. */}
+        <div className="container header-row header-row--tabbed">
           <Link className="brand" href="/home" aria-label="InclusiveMarket home">
             <BrandMark />
             <span className="brand-word">InclusiveMarket</span>
@@ -53,10 +57,10 @@ export async function SiteHeader({
   return (
     <>
       <header className={`site-header site-header--${variant}`} role="banner">
-        {/* --signed-in: on a phone this row is the brand and the search only.
+        {/* --tabbed: on a phone this row is the brand and the search only.
             Its nav (links, Cart, the bell, Sign out) is hidden there: the tab
             bar has the links and the bell, its More sheet has Sign out. */}
-        <div className="container header-row header-row--signed-in">
+        <div className="container header-row header-row--tabbed">
           {/* The name carries the visible "Seller"/"Admin" too (label in name,
               WCAG 2.5.3); it is an aria-label because on a phone only the
               mark shows. The space before <small> keeps the words apart. */}
@@ -96,18 +100,26 @@ export async function SiteHeader({
           </nav>
         </div>
 
-        <div className="user-strip" id="user-strip" aria-live="polite">
-          <div className="container">
-            <span>
-              Signed in as <strong>{session.name}</strong> &middot;{" "}
-              <span className="role-tag">{session.role}</span> &middot;{" "}
-              <span title="Email masked in shared views">{maskEmail(session.email)}</span>
-            </span>
-            <Link className="user-strip__link" href="/account">
-              Your account
-            </Link>
+        {session.assistedBy ? (
+          <AssistStrip
+            sellerName={session.name}
+            adminName={session.assistedBy.name}
+            until={formatTime(session.assistedBy.until)}
+          />
+        ) : (
+          <div className="user-strip" id="user-strip" aria-live="polite">
+            <div className="container">
+              <span>
+                Signed in as <strong>{session.name}</strong> &middot;{" "}
+                <span className="role-tag">{session.role}</span> &middot;{" "}
+                <span title="Email masked in shared views">{maskEmail(session.email)}</span>
+              </span>
+              <Link className="user-strip__link" href="/account">
+                Your account
+              </Link>
+            </div>
           </div>
-        </div>
+        )}
       </header>
 
       {/* Phone navigation. Rendered here so every page that shows a header gets
