@@ -16,24 +16,41 @@
 
 begin;
 
-alter table public.im_messages add column if not exists image_path text;
-alter table public.im_messages add column if not exists image_alt  text;
+alter table public.im_messages
+add column if not exists image_path text;
+
+alter table public.im_messages
+add column if not exists image_alt text;
 
 -- A photo-only message has no text.
 alter table public.im_messages alter column body set default '';
 
-alter table public.im_messages drop constraint if exists im_messages_has_content;
-alter table public.im_messages add constraint im_messages_has_content
-  check (length(btrim(body)) > 0 or image_path is not null) not valid;
+alter table public.im_messages
+drop constraint if exists im_messages_has_content;
 
-alter table public.im_messages drop constraint if exists im_messages_image_path_shape;
-alter table public.im_messages add constraint im_messages_image_path_shape
-  check (image_path is null
-         or image_path ~ '^[0-9]+/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(jpg|png)$');
+alter table public.im_messages
+add constraint im_messages_has_content check (
+    length(btrim (body)) > 0
+    or image_path is not null
+) not valid;
 
-alter table public.im_messages drop constraint if exists im_messages_image_alt_length;
-alter table public.im_messages add constraint im_messages_image_alt_length
-  check (image_alt is null or length(image_alt) <= 300);
+alter table public.im_messages
+drop constraint if exists im_messages_image_path_shape;
+
+alter table public.im_messages
+add constraint im_messages_image_path_shape check (
+    image_path is null
+    or image_path ~ '^[0-9]+/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(jpg|png)$'
+);
+
+alter table public.im_messages
+drop constraint if exists im_messages_image_alt_length;
+
+alter table public.im_messages
+add constraint im_messages_image_alt_length check (
+    image_alt is null
+    or length(image_alt) <= 300
+);
 
 -- ---------------------------------------------------------------------------
 -- Private bucket for message photos (1 MB, JPEG or PNG; the browser resizes)
@@ -46,11 +63,10 @@ on conflict (id) do update
       allowed_mime_types = excluded.allowed_mime_types;
 
 drop policy if exists im_message_media_deny_clients on storage.objects;
-create policy im_message_media_deny_clients on storage.objects
-  as restrictive
-  for all
-  to anon, authenticated
-  using (bucket_id <> 'message-media')
-  with check (bucket_id <> 'message-media');
+
+create policy im_message_media_deny_clients on storage.objects as restrictive for all to anon,
+authenticated using (bucket_id <> 'message-media')
+with
+    check (bucket_id <> 'message-media');
 
 commit;
