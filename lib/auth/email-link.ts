@@ -28,6 +28,28 @@ import type { Role } from "@/lib/types";
 export const RESET_PATH = "/reset-password";
 
 /**
+ * Where the link in an account set-up email lands (lib/auth/set-password-email.ts):
+ * the same form, worded for someone choosing their first password.
+ */
+export const WELCOME_PATH = `${RESET_PATH}?welcome=1`;
+
+/** Both lead to the password form, and both need the recovery marker. */
+function choosesPassword(next: string | null): boolean {
+  return next === RESET_PATH || next === WELCOME_PATH;
+}
+
+/**
+ * Where a link that could not be redeemed (expired, already used, or cut
+ * short by a mail app) sends the person: to sign-in, saying so, with the
+ * code form open when the link was for choosing a password. It used to be
+ * "/?error=auth_callback", which "/" redirects to /home, dropping the
+ * message: the person just landed on the shop.
+ */
+export function failedLinkPath(next: string | null): string {
+  return choosesPassword(next) ? "/login?reset=1&expired=1" : "/login?expired=1";
+}
+
+/**
  * Only allow same-origin, path-relative redirect targets.
  *
  * `next` used to be concatenated straight onto `origin`, so `?next=@evil.com`
@@ -76,7 +98,7 @@ export async function completeEmailLink(
 
   if (!profile) return NextResponse.redirect(`${origin}/`);
 
-  const isRecovery = next === RESET_PATH;
+  const isRecovery = choosesPassword(next);
 
   if (!isRecovery) {
     await admin.from("im_consent_logs").insert({
@@ -89,7 +111,7 @@ export async function completeEmailLink(
     await admin.from("im_audit_logs").insert({
       actor_id: profile.id,
       actor_role: profile.role,
-      action: "password_recovery_link_used",
+      action: next === WELCOME_PATH ? "account_setup_link_used" : "password_recovery_link_used",
       target: `user:${profile.id}`,
     });
   }

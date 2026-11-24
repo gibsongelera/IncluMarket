@@ -153,10 +153,13 @@ export function AdminUsersClient({
       setErr(res.error || "Could not save user.");
       return;
     }
-    toast(
-      editing ? `User "${fName}" updated.` : `Invitation sent to ${fEmail}. They choose their own password.`,
-      "success"
-    );
+    if (editing) toast(`User "${fName}" updated.`, "success");
+    else if ("emailSent" in res && res.emailSent === false)
+      toast(
+        `The account is made, but the email to ${maskEmail(fEmail)} could not be sent. Open Details and send a password reset email.`,
+        "warning"
+      );
+    else toast(`Invitation sent to ${maskEmail(fEmail)}. They choose their own password.`, "success");
     modalRef.current?.close();
     router.refresh();
   }
@@ -305,8 +308,11 @@ export function AdminUsersClient({
           <p className="muted">Every account: roles, access, and the personal data we hold (RA 10173)</p>
         </div>
         <div className="page-head__actions">
-          <button type="button" className="btn btn--primary" id="add-user" onClick={openCreate}>
-            <Icon name="plus" size={18} /> Invite a user
+          <Link className="btn btn--primary" href="/admin/users/new-seller">
+            <Icon name="plus" size={18} /> Set up a seller
+          </Link>
+          <button type="button" className="btn btn--outline" id="add-user" onClick={openCreate}>
+            Invite a user
           </button>
         </div>
       </div>
@@ -542,6 +548,12 @@ export function AdminUsersClient({
                 <option value="seller">PWD Seller</option>
                 <option value="admin">Administrator</option>
               </select>
+              {!editing && fRole === "seller" ? (
+                <p className="hint">
+                  Setting up a PWD trainee? <Link href="/admin/users/new-seller">Set up a seller</Link> records their
+                  PWD ID and shop as well.
+                </p>
+              ) : null}
             </div>
             <div className="field">
               <label htmlFor="um-disability">Disability type</label>

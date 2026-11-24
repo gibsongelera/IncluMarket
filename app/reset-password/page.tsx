@@ -19,17 +19,19 @@ export const metadata = {
  *
  * Rendering the form is only a hint; updatePasswordAction re-checks both.
  */
-export default async function ResetPasswordPage() {
+export default async function ResetPasswordPage({ searchParams }: { searchParams: Promise<{ welcome?: string }> }) {
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
   const recovering = Boolean(user) && (await hasRecoveryMarker(user!.id));
+  // From an account set-up email (WELCOME_PATH): the first password, not a new one.
+  const welcome = (await searchParams).welcome === "1";
 
   return (
-    <StaticPageLayout title="Choose a new password">
-      <ResetPasswordClient hasSession={recovering} email={user?.email ?? null} /> {/* props-ok: the signed-in user's own address */}
+    <StaticPageLayout title={welcome ? "Choose your password" : "Choose a new password"}>
+      <ResetPasswordClient hasSession={recovering} email={user?.email ?? null} welcome={welcome} /> {/* props-ok: the signed-in user's own address */}
     </StaticPageLayout>
   );
 }

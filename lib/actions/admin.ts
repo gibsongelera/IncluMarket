@@ -9,6 +9,7 @@ import { queueEmail } from "@/lib/email/send";
 import { createNotification, emailIfWanted } from "@/lib/notify";
 import { isMissingObject } from "@/lib/db-errors";
 import { requestPasswordResetAction } from "@/lib/actions/auth";
+import { emailSetPasswordLink } from "@/lib/auth/set-password-email";
 import { verifiedAmongIfAvailable } from "@/lib/pwd/data";
 import type { ProductStatus, ReportType, TicketStatus } from "@/lib/types";
 
@@ -361,7 +362,7 @@ export interface UserInput {
   assistive_needs?: string | null;
 }
 
-export async function createUser(input: UserInput, consent: boolean): Promise<ActionResult> {
+export async function createUser(input: UserInput, consent: boolean): Promise<ActionResult & { emailSent?: boolean }> {
   const admin = await requireAdmin();
   if (!admin) return { ok: false, error: "Admin access required." };
   const name = input.name?.trim();
@@ -387,17 +388,24 @@ export async function createUser(input: UserInput, consent: boolean): Promise<Ac
   // up with that address inherited it. Migration 0009 closed the trigger side;
   // this closes the other half by never producing an unlinked profile at all.
   //
-  // An invite (rather than a password we choose) means no admin ever handles
-  // another person's credentials.
-  const { data: invited, error: inviteErr } = await db.auth.admin.inviteUserByEmail(email, {
-    data: { name },
+  // The person chooses their own password from an emailed link (rather than
+  // one we choose), so no admin ever handles another person's credentials.
+  //
+  // Not Supabase's invite email: its link comes back as an implicit-flow hash
+  // that nothing here can read (app/auth/confirm), so an invited person never
+  // reached a password form. The sign-in is made confirmed and without a
+  // password, and lib/auth/set-password-email.ts sends a working link.
+  const { data: invited, error: inviteErr } = await db.auth.admin.createUser({
+    email,
+    email_confirm: true,
+    user_metadata: { name },
   });
   if (inviteErr || !invited?.user) {
     return {
       ok: false,
-      error:
-        inviteErr?.message ||
-        "Could not send the invitation. Check that email delivery is configured for this project.",
+      error: /already|registered|exists/i.test(inviteErr?.message ?? "")
+        ? "This email address already has a sign-in. Search for it on this page instead."
+        : "Could not create the account. Please try again.",
     };
   }
 
@@ -425,8 +433,10 @@ export async function createUser(input: UserInput, consent: boolean): Promise<Ac
     purpose: "RA 10173 DPA registration consent (admin-recorded)",
   });
   await audit(admin.user_id, `created_user_${input.role}`, `user:${created.id}`);
+  const emailSent = await emailSetPasswordLink(db, { email, name }, { seller: input.role === "seller" });
+  if (!emailSent) await audit(admin.user_id, "account_setup_email_failed", `user:${created.id}`);
   revalidatePath("/admin/users");
-  return { ok: true };
+  return { ok: true, emailSent };
 }
 
 export async function updateUser(userId: number, input: UserInput): Promise<ActionResult> {

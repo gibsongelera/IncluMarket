@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { completeEmailLink, safeNext } from "@/lib/auth/email-link";
+import { completeEmailLink, failedLinkPath, safeNext } from "@/lib/auth/email-link";
 
 /**
  * PKCE landing route: OAuth, and any email still built from the old template.
@@ -23,5 +23,5 @@ export async function GET(request: Request) {
     }
   }
 
-  return NextResponse.redirect(`${origin}/?error=auth_callback`);
+  return NextResponse.redirect(`${origin}${failedLinkPath(next)}`);
 }

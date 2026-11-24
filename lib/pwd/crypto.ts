@@ -35,6 +35,11 @@ export function pwdKeysConfigured(): boolean {
   return key("PWD_ID_HASH_KEY") !== null && key("PWD_ID_ENC_KEY") !== null;
 }
 
+/** An ID seen in person needs only the hash key: its number is never stored, even encrypted. */
+export function pwdHashConfigured(): boolean {
+  return key("PWD_ID_HASH_KEY") !== null;
+}
+
 /** Keyed hash of the normalized number (hex). */
 export function hashPwdIdNumber(normalized: string): string | null {
   const k = key("PWD_ID_HASH_KEY");

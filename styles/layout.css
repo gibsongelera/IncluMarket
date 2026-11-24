@@ -1877,3 +1877,16 @@ a.hero-slide:focus-visible { outline: var(--focus-ring); outline-offset: var(--f
 .counter-accounts .row { align-items: start; }
 /* Who runs the shop, under the admin overview's title (0028). */
 .page-head__org { margin: var(--space-1) 0 0; font-weight: 700; color: var(--text-charcoal); }
+
+/* Admin → Users → Set up a seller: four fieldsets, then what happened. */
+.seller-setup { display: grid; gap: var(--space-4); max-width: 60rem; }
+.seller-setup > .form-error,
+.seller-setup > .hint { margin: 0; }
+.seller-setup fieldset { margin: 0; display: grid; gap: var(--space-3); }
+.seller-setup fieldset > .hint { margin: 0; }
+/* A field with a hint beside one without: each keeps its own height, inputs level. */
+.seller-setup .row { align-items: start; }
+.setup-done { max-width: 60rem; display: grid; gap: var(--space-3); }
+.setup-done > h2 { margin: 0; }
+.setup-done__facts { margin: 0; padding-left: 1.25rem; }
+.setup-done > .notice { margin: 0; }

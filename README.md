@@ -93,6 +93,15 @@ Everything is documented in `.env.example`. `NEXT_PUBLIC_*` values are
 Only buyers create their own accounts; sellers are set up by an administrator
 in Admin → Users (migration 0025 enforces this in the database).
 
+**Admin → Users → Set up a seller** takes a PWD trainee's details, the
+details on their PWD ID card (recorded as seen in person, so the ID counts as
+verified) and their shop name. The person then gets an email with a link to
+choose their own password. That email, and the one "Invite a user" sends, come
+from the app's email provider (Brevo or Resend), not from Supabase: Supabase's
+own invite link could not be used here. The link works once, within the
+project's email-link lifetime (one hour); after that the person uses Forgot
+password, or an admin sends the email again.
+
 **Sign-up codes and password-reset emails are sent by Supabase Auth**, not by
 the app's email provider. Set them up once in the Supabase dashboard:
 

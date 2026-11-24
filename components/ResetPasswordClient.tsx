@@ -12,13 +12,19 @@ import { toast } from "@/lib/toast";
  * No token is handled here. /auth/callback has already exchanged the recovery
  * code for a session, so the server action proves ownership from that session
  * — there is nothing in this component an attacker could tamper with.
+ *
+ * `welcome` words it for someone choosing their first password, from the
+ * set-up email an administrator sent (an account AVRC staff made for them).
+ * Only the words change: the same marker and the same action.
  */
 export function ResetPasswordClient({
   hasSession,
   email,
+  welcome = false,
 }: {
   hasSession: boolean;
   email: string | null;
+  welcome?: boolean;
 }) {
   const router = useRouter();
   const [password, setPassword] = useState("");
@@ -35,16 +41,29 @@ export function ResetPasswordClient({
     if (error) errorRef.current?.focus();
   }, [error]);
 
+  // "/login", not "/": the root redirects to /home and would drop ?reset=1.
   if (!hasSession) {
-    return (
+    return welcome ? (
+      <>
+        <p className="lede">This link is no longer valid.</p>
+        <p>
+          The link in a set-up email works once, within one hour of being sent. You can still choose
+          your password: we will email you a code instead.
+        </p>
+        <p>
+          <Link className="btn btn--primary" href="/login?reset=1">
+            Get a code by email
+          </Link>
+        </p>
+      </>
+    ) : (
       <>
         <p className="lede">This reset link is no longer valid.</p>
         <p>
-          Reset links expire one hour after they are sent, and can only be used once. They also
-          need to be opened in the same browser that requested them.
+          Reset links expire one hour after they are sent, and can only be used once.
         </p>
         <p>
-          <Link className="btn btn--primary" href="/?reset=1">
+          <Link className="btn btn--primary" href="/login?reset=1">
             Request a new link
           </Link>
         </p>
@@ -55,10 +74,10 @@ export function ResetPasswordClient({
   if (done) {
     return (
       <>
-        <p className="lede">Your password has been changed.</p>
+        <p className="lede">{welcome ? "Your password is saved." : "Your password has been changed."}</p>
         <p>You are signed in already — there is no need to enter it again right now.</p>
         <p>
-          <Link className="btn btn--primary" href="/home">
+          <Link className="btn btn--primary" href={welcome ? "/" : "/home"}>
             Continue to InclusiveMarket
           </Link>
         </p>
@@ -85,19 +104,24 @@ export function ResetPasswordClient({
     }
 
     setDone(true);
-    toast("Password changed.", "success");
-    setTimeout(() => router.push("/home"), 1200);
+    toast(welcome ? "Password saved." : "Password changed.", "success");
+    // A new seller's home is the Seller Centre: "/" sends each role to its own.
+    setTimeout(() => router.push(welcome ? "/" : "/home"), 1200);
   }
 
   return (
     <>
       <p className="lede">
-        {email ? `Choose a new password for ${email}.` : "Choose a new password."}
+        {welcome
+          ? `Welcome to InclusiveMarket. Choose the password you will sign in with${email ? `, as ${email}` : ""}.`
+          : email
+            ? `Choose a new password for ${email}.`
+            : "Choose a new password."}
       </p>
 
       <form className="form" onSubmit={onSubmit} noValidate>
         <div className="field">
-          <label htmlFor="new-password">New password</label>
+          <label htmlFor="new-password">{welcome ? "Password" : "New password"}</label>
           <input
             id="new-password"
             name="password"
@@ -114,7 +138,7 @@ export function ResetPasswordClient({
         </div>
 
         <div className="field">
-          <label htmlFor="confirm-password">Repeat new password</label>
+          <label htmlFor="confirm-password">{welcome ? "Repeat the password" : "Repeat new password"}</label>
           <input
             id="confirm-password"
             name="confirm"
@@ -150,7 +174,7 @@ export function ResetPasswordClient({
 
         <div className="form-actions">
           <button type="submit" className="btn btn--primary" disabled={busy}>
-            {busy ? "Saving…" : "Save new password"}
+            {busy ? "Saving…" : welcome ? "Save my password" : "Save new password"}
           </button>
         </div>
       </form>
