@@ -61,6 +61,7 @@ const CHECKS = [
   ["0024_flash_sale_rules", null],
   ["0025_buyer_only_signup", null],
   ["0026_message_photos", () => hasTable("im_messages", "image_path")],
+  ["0027_sold_out_audit", () => hasTable("im_item_history", "photos")],
 ];
 
 let missing = 0;

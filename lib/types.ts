@@ -293,4 +293,6 @@ export type ReportType =
   | "reviews"
   | "tickets"
   | "audit_logs"
+  | "sold_out"
+  | "item_history"
   | "all";

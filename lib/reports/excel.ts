@@ -2,6 +2,7 @@ import ExcelJS from "exceljs";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { maskEmail } from "@/lib/format";
 import type { ReportType } from "@/lib/types";
+import { EXPORT_LIMIT, readItemHistory, readSoldOut } from "@/lib/stock-audit";
 
 
 
@@ -25,6 +26,8 @@ const REPORT_META: Record<
   reviews: { sheet: "Reviews", slug: "Reviews", title: "Reviews Report" },
   tickets: { sheet: "Support Tickets", slug: "Support_Tickets", title: "Support Tickets Report" },
   audit_logs: { sheet: "Audit Logs", slug: "Audit_Logs", title: "Audit Logs Report" },
+  sold_out: { sheet: "Sold Out", slug: "Sold_Out", title: "Sold-Out Report" },
+  item_history: { sheet: "Item History", slug: "Item_History", title: "Item History Report" },
 };
 
 type NameMaps = {
@@ -312,6 +315,133 @@ async function addAuditLogsSheet(workbook: ExcelJS.Workbook, db: Db, maps: NameM
   styleSheet(sheet, sheet.columns.length);
 }
 
+/** A sheet whose table this database does not have yet: one line saying so. */
+function needsMigration(sheet: ExcelJS.Worksheet, what: string) {
+  sheet.columns = [{ header: "Note", key: "note", width: 80 }];
+  sheet.addRow({ note: `${what} need database migration 0027 (supabase/migrations/0027_sold_out_audit.sql).` });
+  styleSheet(sheet, 1);
+}
+
+/** A Storage photo as a link; an inline (data:) photo cannot be one. */
+function photoCell(url: string | null): ExcelJS.CellValue {
+  if (!url) return "";
+  if (url.startsWith("data:")) return "Stored inline before photo storage (not exported)";
+  return /^https?:\/\//i.test(url) ? { text: url, hyperlink: url } : url;
+}
+
+const SOLD_OUT_NOW: Record<string, string> = {
+  sold_out: "Still sold out",
+  restocked: "Back in stock",
+  deleted: "Listing deleted",
+};
+
+async function addSoldOutSheet(workbook: ExcelJS.Workbook, db: Db, maps: NameMaps) {
+  const sheet = workbook.addWorksheet(REPORT_META.sold_out.sheet);
+  const rows = await readSoldOut(db, EXPORT_LIMIT);
+  if (rows === null) return needsMigration(sheet, "Sold-out dates");
+  sheet.columns = [
+    { header: "Product ID", key: "product_id", width: 12 },
+    { header: "Product Title", key: "title", width: 32 },
+    { header: "Seller ID", key: "seller_id", width: 10 },
+    { header: "Seller Name", key: "seller_name", width: 26 },
+    { header: "Category Name", key: "category", width: 20 },
+    { header: `Price Now (${CURRENCY})`, key: "price", width: 16 },
+    { header: "Sold Out At (UTC)", key: "sold_out_at", width: 22 },
+    { header: "Date Is Approximate", key: "approximate", width: 18 },
+    { header: "Back In Stock At (UTC)", key: "restocked_at", width: 22 },
+    { header: "Units Sold (all time)", key: "units_sold", width: 18 },
+    { header: "Stock Now", key: "stock_now", width: 12 },
+    { header: "Now", key: "now", width: 18 },
+    { header: "Listing Status", key: "status", width: 14 },
+    { header: "Photo", key: "photo", width: 48 },
+  ];
+  applyColumnFormats(sheet, {
+    product_id: INT_FMT,
+    seller_id: INT_FMT,
+    price: PHP_AMT,
+    sold_out_at: ISO_DATETIME,
+    restocked_at: ISO_DATETIME,
+    units_sold: INT_FMT,
+    stock_now: INT_FMT,
+  });
+  sheet.addRows(
+    rows.map((r) => ({
+      product_id: r.productId,
+      title: r.title,
+      seller_id: r.sellerId ?? "",
+      seller_name: r.sellerName,
+      category: r.category ? maps.categoryLabel.get(r.category) || r.category : "",
+      price: r.price ?? "",
+      sold_out_at: asDate(r.soldOutAt),
+      approximate: r.approximate ? "Yes (from the last sale)" : "No",
+      restocked_at: asDate(r.restockedAt),
+      units_sold: r.unitsSold ?? "",
+      stock_now: r.stockNow ?? "",
+      now: SOLD_OUT_NOW[r.state] ?? r.state,
+      status: r.status ?? "deleted",
+      photo: photoCell(r.photo),
+    }))
+  );
+  styleSheet(sheet, sheet.columns.length);
+}
+
+async function addItemHistorySheet(workbook: ExcelJS.Workbook, db: Db, maps: NameMaps) {
+  const sheet = workbook.addWorksheet(REPORT_META.item_history.sheet);
+  const rows = await readItemHistory(db, EXPORT_LIMIT);
+  if (rows === null) return needsMigration(sheet, "The item history and its photos");
+  sheet.columns = [
+    { header: "Record ID", key: "id", width: 10 },
+    { header: "What Happened", key: "kind", width: 16 },
+    { header: "Product ID", key: "product_id", width: 12 },
+    { header: "Product Title", key: "title", width: 32 },
+    { header: "Seller ID", key: "seller_id", width: 10 },
+    { header: "Seller Name", key: "seller_name", width: 26 },
+    { header: "Category Name", key: "category", width: 20 },
+    { header: `Price Then (${CURRENCY})`, key: "price", width: 16 },
+    { header: "Stock Then", key: "stock", width: 12 },
+    { header: "Units Sold Then", key: "sold", width: 14 },
+    { header: "Options (deleted listing)", key: "options", width: 36 },
+    { header: "Removed At (UTC)", key: "at", width: 22 },
+    { header: "Removed By", key: "by", width: 26 },
+    { header: "Removed By Role", key: "by_role", width: 14 },
+    { header: "Photo", key: "photo", width: 48 },
+    { header: "More Photos", key: "more_photos", width: 48 },
+    { header: "Inline Photos Not Kept", key: "inline", width: 18 },
+  ];
+  applyColumnFormats(sheet, {
+    id: INT_FMT,
+    product_id: INT_FMT,
+    seller_id: INT_FMT,
+    price: PHP_AMT,
+    stock: INT_FMT,
+    sold: INT_FMT,
+    at: ISO_DATETIME,
+    inline: INT_FMT,
+  });
+  sheet.addRows(
+    rows.map((r) => ({
+      id: r.id,
+      kind: r.kind === "photo_removed" ? "Photo removed" : "Listing deleted",
+      product_id: r.productId,
+      title: r.title,
+      seller_id: r.sellerId ?? "",
+      seller_name: r.sellerName,
+      category: r.category ? maps.categoryLabel.get(r.category) || r.category : "",
+      price: r.price ?? "",
+      stock: r.stock ?? "",
+      sold: r.sold ?? "",
+      options: r.options.map((o) => `${[o.option, o.size].filter(Boolean).join(", ")} (${o.stock})`).join("; "),
+      at: asDate(r.at),
+      by: r.byName ?? "Outside the app (database)",
+      by_role: r.byRole ?? "",
+      photo: photoCell(r.photos[0] ?? null),
+      more_photos: r.photos.slice(1).join(" "),
+      inline: r.inlinePhotos,
+    }))
+  );
+  styleSheet(sheet, sheet.columns.length);
+}
+
 export async function buildReportWorkbook(
   type: ReportType,
   db: Db = createAdminClient()
@@ -354,6 +484,12 @@ export async function buildReportWorkbook(
         break;
       case "audit_logs":
         await addAuditLogsSheet(workbook, db, maps);
+        break;
+      case "sold_out":
+        await addSoldOutSheet(workbook, db, maps);
+        break;
+      case "item_history":
+        await addItemHistorySheet(workbook, db, maps);
         break;
     }
   }

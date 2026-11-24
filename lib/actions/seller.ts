@@ -76,18 +76,54 @@ export async function uploadProductPhoto(form: FormData): Promise<ActionResult &
   return stored.ok ? { ok: true, url: stored.url } : { ok: false, error: stored.error };
 }
 
+/**
+ * Make the listing's photos exactly `images`, in that order (at most 3),
+ * writing only what changed. A photo taken off goes through
+ * im_remove_product_photos (migration 0027), which keeps it in the item
+ * history with who removed it; photos kept only move; new ones are added.
+ * This used to delete every row and insert the list again, so a removed
+ * photo left no trace.
+ */
 async function replaceImages(
   db: ReturnType<typeof createAdminClient>,
   productId: number,
-  images: string[]
+  images: string[],
+  actor: { user_id: number; role: string }
 ) {
-  await db.from("im_product_images").delete().eq("product_id", productId);
-  const rows = (images || []).slice(0, 3).map((url, i) => ({
-    product_id: productId,
-    url,
-    position: i,
-  }));
-  if (rows.length) await db.from("im_product_images").insert(rows);
+  const wanted = (images || []).slice(0, 3);
+  const { data } = await db
+    .from("im_product_images")
+    .select("id, url, position")
+    .eq("product_id", productId)
+    .order("position");
+  const unused = ((data ?? []) as { id: number; url: string; position: number }[]).slice();
+  // Each wanted photo keeps the first current row with the same URL.
+  const plan = wanted.map((url, position) => {
+    const i = unused.findIndex((r) => r.url === url);
+    return { url, position, row: i >= 0 ? unused.splice(i, 1)[0] : null };
+  });
+
+  if (unused.length) {
+    const ids = unused.map((r) => r.id);
+    const { error } = await db.rpc("im_remove_product_photos", {
+      p_product_id: productId,
+      p_image_ids: ids,
+      p_actor_id: actor.user_id,
+      p_actor_role: actor.role,
+    });
+    if (error) {
+      // Before migration 0027 there is no history to keep them in.
+      if (!isMissingObject(error)) console.error(`[seller] remove photos: ${error.message}`);
+      await db.from("im_product_images").delete().eq("product_id", productId).in("id", ids);
+    }
+  }
+  for (const p of plan) {
+    if (p.row && p.row.position !== p.position) {
+      await db.from("im_product_images").update({ position: p.position }).eq("id", p.row.id).eq("product_id", productId);
+    }
+  }
+  const fresh = plan.filter((p) => !p.row).map((p) => ({ product_id: productId, url: p.url, position: p.position }));
+  if (fresh.length) await db.from("im_product_images").insert(fresh);
 }
 
 /**
@@ -186,7 +222,7 @@ export async function createProduct(input: ProductInput): Promise<ActionResult> 
     };
   }
 
-  if (imageCheck.value) await replaceImages(db, product.id, imageCheck.value);
+  if (imageCheck.value) await replaceImages(db, product.id, imageCheck.value, seller);
   await saveTags(db, product.id, cleanTags(input.adaptiveTags));
 
   await db.from("im_audit_logs").insert({
@@ -339,7 +375,7 @@ export async function updateProduct(
     }
   }
 
-  if (imagesChanged && imageCheck.value) await replaceImages(db, productId, imageCheck.value);
+  if (imagesChanged && imageCheck.value) await replaceImages(db, productId, imageCheck.value, seller);
 
   if (backToReview) {
     await notifyAdmins({
@@ -796,7 +832,7 @@ export async function duplicateProduct(productId: number): Promise<ActionResult>
       sku_code: autoSku(copy.id, i),
     }))
   );
-  if (images?.length) await replaceImages(db, copy.id, (images as { url: string }[]).map((i) => i.url));
+  if (images?.length) await replaceImages(db, copy.id, (images as { url: string }[]).map((i) => i.url), seller);
   await saveTags(db, copy.id, Array.isArray(src.adaptive_tags) ? src.adaptive_tags : undefined);
 
   await db.from("im_audit_logs").insert({
