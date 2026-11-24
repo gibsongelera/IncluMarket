@@ -18,11 +18,11 @@ different application.
 |---|---|
 | Framework | **Next.js 15 App Router**. Not Vite, not an SPA. |
 | Styling | **Hand-written CSS** in `styles/`. **No Tailwind**, no PostCSS pipeline, no CSS-in-JS. Do not suggest adding one. |
-| Data | **Supabase Postgres**, 42 `im_`-prefixed tables (migrations 0001–0027). Not localStorage. |
+| Data | **Supabase Postgres**, 44 `im_`-prefixed tables (migrations 0001–0028). Not localStorage. |
 | Pages | All async **Server Components**. No React Context providers anywhere. |
 | Mutations | **Server actions** in `lib/actions/*.ts`. Three route handlers only: `app/auth/callback` and `app/auth/confirm` (Supabase email links) and `app/api/webhooks/paymongo`. Do not add another; background work runs as throttled sweeps on page loads (no cron). |
 | Reads | `lib/data.ts` and the other `import "server-only"` modules (`storefront.ts`, `admin-content.ts`, `finance.ts`, `pwd/data.ts`, …) that shape DTOs — never raw rows to the client |
-| Payments | **PayMongo** (covers GCash, Maya, GrabPay, card as methods) |
+| Payments | **PayMongo** (covers GCash, Maya, GrabPay, card as methods), and **paying the Workshop over the counter** (provider `otc`, 0028): buyers send a GCash, Maribank or LBP reference, an admin confirms it on Admin → Payments, and it settles through the same `lib/payments/apply.ts`. `isPrepaid()` in `lib/orders/state.ts` is "PayMongo or counter"; never test for `"paymongo"` alone where prepaid is meant |
 | Email | Sign-up codes and password reset: **Supabase Auth** (dashboard templates + Custom SMTP). Everything else: **Brevo** (default) or **Resend** over HTTP; templates in `lib/email/templates.ts` |
 | Chatbot | Rule-based by default; **OpenRouter** when `CHAT_PROVIDER=openrouter` |
 
@@ -37,7 +37,8 @@ different application.
   check, EXIF refused, 1 MB, generated paths); PWD ID photos to the private
   `pwd-ids` bucket, read only through 60-second signed URLs; message photos
   to the private `message-media` bucket (`storePrivateImage`), signed for the
-  two people in the conversation only (`signPrivateImages`). Older product
+  two people in the conversation only (`signPrivateImages`); payment receipts
+  to the private `payment-proofs` bucket, signed for admins only. Older product
   photos may still be data URLs until `npm run backfill-product-images` runs
   (migration 0023); readers accept both. Never add a new base64-in-Postgres
   image.

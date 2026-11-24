@@ -2115,3 +2115,8 @@ h3 {
     font-size: 16pt;
   }
 }
+
+/* Pay the Workshop: the amount and accounts beside the form (layout.css). */
+@media (min-width: 1024px) {
+  .pay-layout { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); align-items: start; }
+}

@@ -170,7 +170,7 @@ export function SellerFinanceClient({ finance }: { finance: SellerFinance }) {
                   <tr key={e.orderId}>
                     <td>#{e.orderId}</td>
                     <td>{formatDate(e.createdAt)}</td>
-                    <td>{e.online ? "Online" : "Cash on delivery"}</td>
+                    <td>{e.paidVia}</td>
                     <td className="price">{money(e.net)}</td>
                     <td>{AVAIL_TEXT[e.availability]}</td>
                   </tr>

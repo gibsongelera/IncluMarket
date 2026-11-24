@@ -1,4 +1,5 @@
 import "server-only";
+import { SITE } from "@/lib/site";
 
 /**
  * Email templates, authored in code rather than in Brevo's template designer.
@@ -115,11 +116,15 @@ export function renderTemplate(kind: EmailKind, d: TemplateData): RenderedEmail 
             p(
               d.paymentMethod === "cod"
                 ? "You chose <strong>cash on delivery</strong>. Please have the exact amount ready when your order arrives."
-                : "We will confirm again as soon as your payment is completed."
+                : d.paymentMethod === "otc"
+                  ? `You chose to pay the <strong>${esc(SITE.workshop.name)}</strong> (${esc(SITE.workshop.under)}) by GCash, Maribank or LandBank. ` +
+                    `Please send <strong>${esc(total)}</strong> to one of the accounts on the payment page, then enter the reference number there. ` +
+                    `We keep your items for ${esc(d.holdHours ?? 48)} hours.`
+                  : "We will confirm again as soon as your payment is completed."
             ) +
             p("You can follow every step of your order from My Orders."),
-          "View my orders",
-          `${url}/buyer/orders`
+          d.paymentMethod === "otc" && d.payUrl ? "Pay the Workshop" : "View my orders",
+          d.paymentMethod === "otc" && d.payUrl ? `${url}${d.payUrl}` : `${url}/buyer/orders`
         ),
         text:
           `Thank you, ${d.buyerName}.\n\n` +
@@ -127,7 +132,12 @@ export function renderTemplate(kind: EmailKind, d: TemplateData): RenderedEmail 
           `Order total: ${total}\n\n` +
           (d.paymentMethod === "cod"
             ? "You chose cash on delivery. Please have the exact amount ready when your order arrives.\n\n"
-            : "We will confirm again as soon as your payment is completed.\n\n") +
+            : d.paymentMethod === "otc"
+              ? `You chose to pay the ${SITE.workshop.name} (${SITE.workshop.under}) by GCash, Maribank or LandBank. ` +
+                `Please send ${total} to one of the accounts on the payment page, then enter the reference number there. ` +
+                `We keep your items for ${d.holdHours ?? 48} hours.\n\n` +
+                (d.payUrl ? `Pay the Workshop: ${url}${d.payUrl}\n\n` : "")
+              : "We will confirm again as soon as your payment is completed.\n\n") +
           `Follow your order: ${url}/buyer/orders\n`,
       };
     }

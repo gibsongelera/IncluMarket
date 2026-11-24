@@ -18,5 +18,15 @@ export const SHIPPING_FEE = 60;
 /** Largest quantity of one variant a buyer can put in a cart line. */
 export const MAX_LINE_QUANTITY = 99;
 
-/** Minutes an online payment may stay unpaid before its stock is released. */
+/**
+ * Minutes an online payment may stay unpaid before its stock is released, unless
+ * Admin → Settings says otherwise (payment_hold_minutes).
+ */
 export const PAYMENT_HOLD_MINUTES = 60;
+
+/**
+ * Hours an order paid to the Workshop over the counter (migration 0028) keeps
+ * its items before it is cancelled, unless Admin → Settings says otherwise
+ * (otc_hold_hours).
+ */
+export const OTC_HOLD_HOURS = 48;

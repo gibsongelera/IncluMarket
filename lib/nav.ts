@@ -72,7 +72,7 @@ export const NAV: Record<NavRole, NavItem[]> = {
     { href: "/admin/compliance", label: "Compliance", icon: "shield", mobile: "more", header: true, section: "Insight" },
     { href: "/admin/newsletter", label: "Newsletter", icon: "message-circle", mobile: "more", section: "Insight" },
     { href: "/admin/discounts", label: "Discounts", icon: "sparkles", mobile: "more", header: true, section: "Settings" },
-    { href: "/admin/payments", label: "Payments", icon: "download", mobile: "more", header: true, section: "Settings" },
+    { href: "/admin/payments", label: "Payments", icon: "wallet", mobile: "more", header: true, section: "Settings" },
     { href: "/admin/theme", label: "Theme", icon: "sparkles", mobile: "more", header: true, section: "Settings" },
     { href: "/admin/settings", label: "Settings", icon: "edit", mobile: "more", section: "Settings" },
   ],

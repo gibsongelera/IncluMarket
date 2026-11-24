@@ -10,11 +10,18 @@ import { saveAddress } from "@/lib/actions/account";
 import { abandonPayment } from "@/lib/actions/payments-buyer";
 import { addressLine, cleanAddress, type AddressField, type AddressLite } from "@/lib/address";
 import type { PricedCart } from "@/lib/pricing/core";
+import { SITE } from "@/lib/site";
 
 const DRAFT_KEY = "im_checkout_draft";
 
 type Fields = Record<AddressField, string>;
-type Draft = { choice: number | "new"; fields: Fields; payment: "cod" | "paymongo"; save: boolean };
+type Payment = "cod" | "paymongo" | "otc";
+type Draft = { choice: number | "new"; fields: Fields; payment: Payment; save: boolean };
+
+/** "GCash, Maribank or LandBank (LBP)". */
+function listWords(items: string[]): string {
+  return items.length < 2 ? items.join("") : `${items.slice(0, -1).join(", ")} or ${items[items.length - 1]}`;
+}
 
 const FIELD_ORDER: AddressField[] = ["recipient", "phone", "line1", "barangay", "city", "province", "postalCode"];
 
@@ -32,6 +39,7 @@ export function CheckoutClient({
   addresses,
   selection,
   onlinePaymentEnabled,
+  counterPayment,
   cancelledOrderId,
 }: {
   userName: string;
@@ -42,6 +50,8 @@ export function CheckoutClient({
   /** The cart lines chosen for this checkout, or null for the whole cart. */
   selection: number[] | null;
   onlinePaymentEnabled: boolean;
+  /** Paying the Workshop (0028): the channels it has accounts for, and the hold. Null when not offered. */
+  counterPayment: { channels: string[]; holdHours: number } | null;
   cancelledOrderId: number | null;
 }) {
   const router = useRouter();
@@ -58,7 +68,7 @@ export function CheckoutClient({
     province: "",
     postalCode: "",
   });
-  const [payment, setPayment] = useState<"cod" | "paymongo">("cod");
+  const [payment, setPayment] = useState<Payment>("cod");
   const [save, setSave] = useState(addresses !== null);
   const [errors, setErrors] = useState<Partial<Record<AddressField, string>>>({});
   const [formError, setFormError] = useState<string | null>(null);
@@ -77,7 +87,8 @@ export function CheckoutClient({
       const d = JSON.parse(raw) as Partial<Draft>;
       if (d.fields) setFields((f) => ({ ...f, ...d.fields }));
       if (d.choice === "new" || (typeof d.choice === "number" && saved.some((a) => a.id === d.choice))) setChoice(d.choice);
-      if (d.payment === "cod" || (d.payment === "paymongo" && onlinePaymentEnabled)) setPayment(d.payment);
+      if (d.payment === "cod" || (d.payment === "paymongo" && onlinePaymentEnabled) || (d.payment === "otc" && counterPayment))
+        setPayment(d.payment);
       if (typeof d.save === "boolean") setSave(d.save && addresses !== null);
     } catch {
       // A broken or blocked draft is simply ignored.
@@ -166,6 +177,12 @@ export function CheckoutClient({
     try {
       window.sessionStorage.removeItem(DRAFT_KEY);
     } catch {}
+    if (res.payUrl) {
+      // Paying the Workshop: on to its accounts and the reference form.
+      toast(`Order ${res.orderId} placed. Now pay the Workshop.`, "success");
+      router.push(res.payUrl);
+      return;
+    }
     setBusy(false);
     toast(`Order ${res.orderId} placed. Thank you!`, "success");
     router.push(`/buyer/orders?placed=${res.orderId}`);
@@ -293,6 +310,26 @@ export function CheckoutClient({
                 : "Online payment is not available right now."}
             </p>
           </div>
+          {counterPayment ? (
+            <div className="field">
+              <label className="radio">
+                <input
+                  type="radio"
+                  name="payment"
+                  value="otc"
+                  checked={payment === "otc"}
+                  onChange={() => setPayment("otc")}
+                  aria-describedby="pay-counter-hint"
+                />
+                Pay the Workshop — {listWords(counterPayment.channels)}
+              </label>
+              <p id="pay-counter-hint" className="hint">
+                Send the total to the {SITE.workshop.name}&rsquo;s account, at a counter or in your app,
+                then enter the reference number. We keep your items for {counterPayment.holdHours} hours, and the
+                seller starts once the Workshop confirms the payment.
+              </p>
+            </div>
+          ) : null}
         </fieldset>
 
         {!cart.purchasable ? (

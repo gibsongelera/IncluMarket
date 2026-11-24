@@ -46,6 +46,14 @@ export const SITE = {
     facebook: url(process.env.NEXT_PUBLIC_FACEBOOK_URL),
     instagram: url(process.env.NEXT_PUBLIC_INSTAGRAM_URL),
   },
+  /**
+   * Who buyers pay when they pay over the counter (migration 0028): the
+   * Workshop runs the shop's counter accounts and pays sellers out.
+   */
+  workshop: {
+    name: "Rehabilitation Sheltered Workshop",
+    under: "AVRC III, DSWD Field Office IX",
+  },
   /** The DSWD center whose trainees sell here, and its official marks. */
   partner: {
     name: "Area Vocational Rehabilitation Center III (AVRC III)",

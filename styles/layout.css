@@ -1814,3 +1814,66 @@ a.hero-slide:focus-visible { outline: var(--focus-ring); outline-offset: var(--f
   overflow-wrap: anywhere;
   color: inherit;
 }
+
+/* ---------------------------------------------------------------------------
+   Pay the Workshop (/buyer/pay/[checkout], migration 0028) and the admin's
+   "Payments to check" queue. Two columns from 1024px (responsive.css).
+   --------------------------------------------------------------------------- */
+.pay-layout { display: grid; gap: var(--space-4); margin-top: var(--space-4); }
+.pay-layout__main,
+.pay-layout__side { display: grid; gap: var(--space-4); align-content: start; min-width: 0; }
+.pay-layout .card > h2 { margin-top: 0; }
+.pay-due__amount {
+  margin: 0 0 var(--space-2);
+  font-family: var(--font-display);
+  font-size: var(--step-4);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-charcoal);
+}
+.pay-steps { margin: var(--space-3) 0 0; padding-left: 1.25rem; display: grid; gap: var(--space-2); max-width: var(--measure); }
+.pay-accounts { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-3); }
+.pay-account {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-gray);
+  color: var(--text-charcoal);
+}
+.pay-account__channel { font-family: var(--font-display); font-weight: 700; font-size: var(--step-1); }
+.pay-account__name { font-weight: 600; overflow-wrap: anywhere; }
+.pay-account__number { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); }
+.pay-account__number .mono { font-size: var(--step-1); font-weight: 700; overflow-wrap: anywhere; }
+.pay-form { display: grid; gap: var(--space-4); }
+.pay-form .form-actions { margin: 0; }
+.pay-form__photo-set { border: 0; padding: 0; margin: 0; display: grid; gap: var(--space-2); justify-items: start; }
+.pay-form__photo { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); }
+.pay-form__photo img {
+  width: 6rem;
+  height: 6rem;
+  object-fit: cover;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.pay-orders { list-style: none; margin: var(--space-3) 0 0; padding: 0; display: grid; gap: var(--space-2); }
+.pay-orders li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--border);
+}
+.pay-orders li:last-child { border-bottom: 0; padding-bottom: 0; }
+.pay-orders__meta { margin-left: auto; display: inline-flex; align-items: center; gap: var(--space-2); }
+.pay-mismatch { color: var(--warning-text); font-weight: 700; }
+.pay-receipt { max-width: min(36rem, 100%); }
+.pay-receipt img { display: block; max-width: 100%; height: auto; margin: var(--space-3) 0; border: 1px solid var(--border); }
+.counter-accounts { display: grid; gap: var(--space-4); }
+.counter-accounts fieldset { margin: 0; display: grid; gap: var(--space-3); }
+/* A field with a hint beside one without: each keeps its own height, inputs level. */
+.counter-accounts .row { align-items: start; }
+/* Who runs the shop, under the admin overview's title (0028). */
+.page-head__org { margin: var(--space-1) 0 0; font-weight: 700; color: var(--text-charcoal); }

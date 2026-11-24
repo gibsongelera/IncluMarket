@@ -174,8 +174,10 @@ export async function applyPaymentResult(
 
   // The cart is cleared on payment, not at order creation: an abandoned
   // checkout leaves it intact so the buyer can retry. Only the lines that were
-  // actually ordered are removed — the buyer may have added more since.
-  await clearOrderedCartLines(db, order.id, order.buyer_id);
+  // actually ordered are removed — the buyer may have added more since. A
+  // counter payment (0028) left the cart when it was placed, and clearing
+  // now, days later, would take out the same item added again since.
+  if (providerId !== "otc") await clearOrderedCartLines(db, order.id, order.buyer_id);
 
   await createNotification({
     userId: order.buyer_id,

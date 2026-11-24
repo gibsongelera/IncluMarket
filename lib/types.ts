@@ -153,7 +153,7 @@ export interface Order {
   total_amount: number;
   order_status: OrderStatus;
   payment_status: PaymentStatus;
-  /** "cod" | "paymongo"; null on orders placed before migration 0010. */
+  /** "cod" | "paymongo" | "otc" (paid to the Workshop, 0028); null on orders placed before migration 0010. */
   payment_provider: string | null;
   payment_reference: string | null;
   shipping_name: string | null;

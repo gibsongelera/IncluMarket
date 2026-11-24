@@ -12,6 +12,7 @@ import { SalesOverview } from "@/components/SalesOverview";
 import { TableWrap } from "@/components/TableWrap";
 import { rangeSummary } from "@/lib/kpi";
 import { formatDate, initials, money, moneyWhole, svgPlaceholder } from "@/lib/format";
+import { SITE } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Overview" };
@@ -29,6 +30,7 @@ const TODO_ICON: Record<string, string> = {
   products: "box",
   verifications: "shield",
   flags: "flag",
+  proofs: "receipt",
   payouts: "wallet",
   refunds: "receipt",
   returns: "undo",
@@ -171,6 +173,9 @@ export default async function AdminOverviewPage() {
         <div className="page-head__text">
           <h1>Overview</h1>
           <p className="muted">What needs you today and how the shop is doing</p>
+          <p className="page-head__org small">
+            {SITE.workshop.name} · under {SITE.workshop.under}
+          </p>
         </div>
         <Link className="btn btn--primary" href="/admin/reports">
           <Icon name="download" size={18} /> Download report

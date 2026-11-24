@@ -9,7 +9,7 @@ import { Pill } from "./Pill";
 import { updateOrderStatus } from "@/lib/actions/seller";
 import { OrderTimeline } from "./OrderTimeline";
 import { ConfirmDialog } from "./ConfirmDialog";
-import { nextStates, type OrderState } from "@/lib/orders/state";
+import { isPrepaid, nextStates, type OrderState } from "@/lib/orders/state";
 import { SLIP_STATUSES, type SellerOrderRow, type SellerOrdersEmpty } from "@/lib/seller-list-types";
 import { TableWrap } from "./TableWrap";
 import { DeepLinkFocus } from "./DeepLinkFocus";
@@ -23,6 +23,7 @@ type Ask =
 
 /** How the buyer pays, in words. */
 function paymentWords(o: SellerOrderRow): string {
+  if (o.payment_provider === "otc") return o.payment_status === "paid" ? "Paid to the Workshop" : "Payment to the Workshop pending";
   if (o.payment_provider !== "paymongo") return "Cash on delivery";
   return o.payment_status === "paid" ? "Paid online" : "Online payment pending";
 }
@@ -215,7 +216,7 @@ export function SellerOrdersClient({ rows, empty }: { rows: SellerOrderRow[]; em
                       </small>
                     </span>
                   ))}
-                  {o.pwdCheck && o.payment_provider !== "paymongo" ? (
+                  {o.pwdCheck && !isPrepaid(o.payment_provider) ? (
                     <p className="notice notice--warning small">
                       <strong>PWD discount applied (−{money(o.pwdCheck.amount)}).</strong> Check the buyer&rsquo;s PWD ID
                       on delivery{o.pwdCheck.last4 ? ` — ID ending ${o.pwdCheck.last4}` : ""}.
@@ -232,7 +233,7 @@ export function SellerOrdersClient({ rows, empty }: { rows: SellerOrderRow[]; em
                 <td>
                   <Pill status={o.order_status} />
                   {/* Why there is no Accept or Cancel yet (both wait for the payment). */}
-                  {o.order_status === "pending" && o.payment_provider === "paymongo" && o.payment_status === "pending" ? (
+                  {o.order_status === "pending" && isPrepaid(o.payment_provider) && o.payment_status === "pending" ? (
                     <div className="small muted">Waiting for the buyer&apos;s payment</div>
                   ) : null}
                   {o.tracking_number ? (

@@ -14,7 +14,7 @@ import {
   getVariantsByIds,
 } from "@/lib/data";
 import { getSettingInts } from "@/lib/settings";
-import { buyerStatusText } from "@/lib/orders/state";
+import { buyerStatusText, paymentMethodLabel } from "@/lib/orders/state";
 import { formatDate, formatDateTime, money } from "@/lib/format";
 import { roundMoney } from "@/lib/pricing/core";
 
@@ -114,10 +114,32 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
             <h2 id="od-payment">Payment</h2>
             <dl className="details-list">
               <dt>Method</dt>
-              <dd>{order.payment_provider === "paymongo" ? "Online (GCash, Maya, card)" : "Cash on delivery"}</dd>
+              <dd>{paymentMethodLabel(order.payment_provider)}</dd>
               <dt>Status</dt>
-              <dd>{order.payment_status === "paid" ? "Paid" : order.payment_status === "failed" ? "Not completed" : order.payment_status === "refunded" ? "Refunded" : order.payment_provider === "paymongo" ? "Waiting for payment" : "Pay on delivery"}</dd>
+              <dd>
+                {order.payment_status === "paid"
+                  ? "Paid"
+                  : order.payment_status === "failed"
+                    ? "Not completed"
+                    : order.payment_status === "refunded"
+                      ? "Refunded"
+                      : order.payment_provider === "paymongo"
+                        ? "Waiting for payment"
+                        : order.payment_provider === "otc"
+                          ? "Waiting for your payment to the Workshop"
+                          : "Pay on delivery"}
+              </dd>
             </dl>
+            {order.payment_provider === "otc" &&
+            order.checkout_id &&
+            order.order_status === "cancelled" &&
+            order.payment_status !== "paid" &&
+            order.payment_status !== "refunded" ? (
+              <p className="small">
+                Paid the Workshop before this order was cancelled?{" "}
+                <Link href={`/buyer/pay/${order.checkout_id}`}>Send the payment details for a refund</Link>.
+              </p>
+            ) : null}
             <h3 className="order-detail__subhead">Price</h3>
             <dl className="details-list details-list--money">
               <dt>Items</dt>

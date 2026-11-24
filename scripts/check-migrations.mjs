@@ -62,6 +62,7 @@ const CHECKS = [
   ["0025_buyer_only_signup", null],
   ["0026_message_photos", () => hasTable("im_messages", "image_path")],
   ["0027_sold_out_audit", () => hasTable("im_item_history", "photos")],
+  ["0028_counter_payments", () => hasTable("im_payment_proofs", "receipt_path")],
 ];
 
 let missing = 0;

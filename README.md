@@ -159,8 +159,9 @@ a rollback in `supabase/rollback/00xx_down.sql` and tests in `supabase/tests/`.
 | 0025 | Self sign-up creates buyers only |
 | 0026 | Photos in buyer–seller messages (private `message-media` bucket) |
 | 0027 | Sold-out audit: when listings sell out, and removed photos and listings kept with the old photo |
+| 0028 | Paying the Workshop over the counter (GCash, Maribank, LBP): its accounts, the references buyers send, private `payment-proofs` bucket |
 
-**Apply 0013–0027 to a development project first**, run the app against it,
+**Apply 0013–0028 to a development project first**, run the app against it,
 then production. Every page that depends on a newer migration says which one it
 needs instead of failing. After 0019 and 0023, move existing product photos out
 of the database:

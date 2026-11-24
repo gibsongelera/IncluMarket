@@ -29,13 +29,15 @@ type Filter = (q: ReturnType<ReturnType<Db["from"]>["select"]>) => ReturnType<Re
 
 async function count(db: Db, table: string, filter: Filter = (q) => q): Promise<number | null> {
   const { count: n, error } = await filter(db.from(table).select("*", { count: "exact", head: true }));
-  return error ? null : n ?? 0;
+  // A HEAD on a table that does not exist yet comes back as a bodiless 404,
+  // which postgrest-js reports as success with no count: unavailable, not 0.
+  return error || n == null ? null : n;
 }
 
 /**
- * The nine "Needs attention" counts, in their tile order. Memoised for one
+ * The ten "Needs attention" counts, in their tile order. Memoised for one
  * server render (React cache), so the layout's badges and the overview's
- * tiles cost one set of nine HEAD counts between them. Checks the admin role
+ * tiles cost one set of ten HEAD counts between them. Checks the admin role
  * itself: the counts are not for anyone else, whichever page asks.
  */
 export const getAdminTodo = cache(async (): Promise<OverviewCount[]> => {
@@ -43,7 +45,7 @@ export const getAdminTodo = cache(async (): Promise<OverviewCount[]> => {
   const db = createAdminClient();
   const dayAgo = new Date(Date.now() - 86_400_000).toISOString();
 
-  const [pendingProducts, verifications, flags, payouts, tickets, privacy, refunds, returns, contact] =
+  const [pendingProducts, verifications, flags, payouts, tickets, privacy, refunds, returns, contact, proofs] =
     await Promise.all([
       count(db, "im_products", (q) => q.eq("status", "pending")),
       count(db, "im_pwd_verifications", (q) => q.eq("status", "submitted")),
@@ -54,12 +56,14 @@ export const getAdminTodo = cache(async (): Promise<OverviewCount[]> => {
       count(db, "im_orders", (q) => q.eq("refund_due", true)),
       count(db, "im_orders", (q) => q.eq("order_status", "return_requested").lt("return_requested_at", dayAgo)),
       count(db, "im_contact_messages", (q) => q.eq("status", "new")),
+      count(db, "im_payment_proofs", (q) => q.eq("status", "submitted")),
     ]);
 
   return [
     { key: "products", label: "Listings to review", count: pendingProducts, href: "/admin/products?status=pending" },
     { key: "verifications", label: "PWD IDs to review", count: verifications, href: "/admin/verifications" },
     { key: "flags", label: "Duplicate ID flags", count: flags, href: "/admin/verifications?view=flags" },
+    { key: "proofs", label: "Workshop payments to check", count: proofs, href: "/admin/payments#to-check" },
     { key: "payouts", label: "Payouts to approve or send", count: payouts, href: "/admin/payouts" },
     { key: "refunds", label: "Orders with a refund due", count: refunds, href: "/admin/orders?view=refunds" },
     { key: "returns", label: "Returns waiting over a day", count: returns, href: "/admin/orders?view=returns" },
@@ -81,6 +85,7 @@ const BADGE_SOURCES: Record<string, string[]> = {
   "/admin/orders": ["refunds", "returns"],
   "/admin/tickets": ["tickets"],
   "/admin/payouts": ["payouts"],
+  "/admin/payments": ["proofs"],
   "/admin/compliance": ["privacy", "contact"],
 };
 
