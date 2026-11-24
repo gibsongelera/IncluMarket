@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getSession } from "@/lib/session";
+import { ASSIST_CLOSED } from "@/lib/assist/rules";
 import { createNotification, notifyAdmins } from "@/lib/notify";
 import { queueEmail } from "@/lib/email/send";
 import {
@@ -532,6 +533,7 @@ export async function addReview(
 export async function replyToTicket(ticketId: number, message: string): Promise<ActionResult> {
   const session = await getSession();
   if (!session) return { ok: false, error: "Please sign in first." };
+  if (session.assistedBy) return { ok: false, error: ASSIST_CLOSED };
   const clean = boundedText(message, 4000);
   if (!clean) return { ok: false, error: "Write a message first." };
   const limited = await rateLimit("ticket_reply", `user:${session.user_id}`, { limit: 30, windowSeconds: 3600 });
@@ -587,6 +589,7 @@ export async function createTicket(
 ): Promise<ActionResult> {
   const session = await getSession();
   if (!session) return { ok: false, error: "Please sign in first." };
+  if (session.assistedBy) return { ok: false, error: ASSIST_CLOSED };
   const cleanSubject = boundedText(subject, 200);
   const cleanDesc = boundedText(description, 5000);
   if (!cleanSubject || !cleanDesc)

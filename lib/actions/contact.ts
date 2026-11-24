@@ -53,7 +53,8 @@ export async function submitContactMessage(input: ContactInput): Promise<{ ok: b
   const db = createAdminClient();
   const { data, error } = await db
     .from("im_contact_messages")
-    .insert({ profile_id: session?.user_id ?? null, name, email, topic, message, consent: true })
+    // An admin assisting a seller (lib/assist) writes as themselves, not as the seller.
+    .insert({ profile_id: session && !session.assistedBy ? session.user_id : null, name, email, topic, message, consent: true })
     .select("id")
     .single();
   if (error || !data) {

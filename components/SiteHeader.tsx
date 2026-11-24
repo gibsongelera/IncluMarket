@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Role, SessionUser } from "@/lib/types";
-import { maskEmail } from "@/lib/format";
+import { formatTime, maskEmail } from "@/lib/format";
+import { AssistStrip } from "./AssistStrip";
 import { getHeaderData } from "@/lib/header-data";
 import { SearchBox } from "./SearchBox";
 import { ScopedSearchBox } from "./ScopedSearchBox";
@@ -99,18 +100,26 @@ export async function SiteHeader({
           </nav>
         </div>
 
-        <div className="user-strip" id="user-strip" aria-live="polite">
-          <div className="container">
-            <span>
-              Signed in as <strong>{session.name}</strong> &middot;{" "}
-              <span className="role-tag">{session.role}</span> &middot;{" "}
-              <span title="Email masked in shared views">{maskEmail(session.email)}</span>
-            </span>
-            <Link className="user-strip__link" href="/account">
-              Your account
-            </Link>
+        {session.assistedBy ? (
+          <AssistStrip
+            sellerName={session.name}
+            adminName={session.assistedBy.name}
+            until={formatTime(session.assistedBy.until)}
+          />
+        ) : (
+          <div className="user-strip" id="user-strip" aria-live="polite">
+            <div className="container">
+              <span>
+                Signed in as <strong>{session.name}</strong> &middot;{" "}
+                <span className="role-tag">{session.role}</span> &middot;{" "}
+                <span title="Email masked in shared views">{maskEmail(session.email)}</span>
+              </span>
+              <Link className="user-strip__link" href="/account">
+                Your account
+              </Link>
+            </div>
           </div>
-        </div>
+        )}
       </header>
 
       {/* Phone navigation. Rendered here so every page that shows a header gets

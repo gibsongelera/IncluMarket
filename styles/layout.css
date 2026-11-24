@@ -234,6 +234,30 @@
 .site-header--admin  .user-strip { background: var(--palette-primary-dark); color: #FFFFFF; --focus-ring: 3px solid #FFFFFF; }
 
 .user-strip .container { display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; }
+
+/* An admin assisting a seller (lib/assist): in the "Signed in as" strip's
+   place, on phones too. The fixed warning pair, not a themed colour, so it
+   reads the same under every event theme: dark text on the light fill
+   (Guardrail 1), the darker border only as a border. */
+.assist-strip {
+  background: var(--status-warn-100);
+  color: var(--status-text);
+  border-bottom: 3px solid var(--status-warn);
+  font-size: .875rem;
+  padding-block: var(--space-2);
+  --focus-ring: var(--focus-ring-page); /* light surface inside the dark header */
+}
+.assist-strip__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-4);
+}
+/* One sentence, so it may run the strip's width; the button keeps to the end
+   and comes up beside the text on a phone while there is room. */
+.assist-strip__text { margin: 0; flex: 1 1 12rem; }
+.assist-strip__text .icon { display: inline-block; vertical-align: -0.25em; }
+.assist-strip__stop { flex: none; margin-inline-start: auto; }
 .user-strip__link {
   margin-left: auto;
   color: inherit;

@@ -102,6 +102,17 @@ own invite link could not be used here. The link works once, within the
 project's email-link lifetime (one hour); after that the person uses Forgot
 password, or an admin sends the email again.
 
+**Admin → Users → Open Seller Centre** lets AVRC staff work in a seller's
+shop for them, for a seller who is blind, say. The admin writes why, and from
+then on sees the Seller Centre as the seller does: listings they add still go
+to review, and every sale is the seller's. Every audit row names the admin,
+"for seller:<id>" (Admin → Compliance shows the seller's name), and the seller
+is told in the app. The seller's account settings, password, PWD ID, support
+requests and payouts stay closed, and admin pages are closed until the admin
+chooses Stop assisting, signs out, or two hours pass. The cookie behind it is
+signed for that admin's own sign-in (`lib/assist`), so it does nothing in
+anyone else's browser session.
+
 **Sign-up codes and password-reset emails are sent by Supabase Auth**, not by
 the app's email provider. Set them up once in the Supabase dashboard:
 

@@ -5,6 +5,7 @@ import { getAuditLogs, getConsentLogs, getOrders, getProfiles } from "@/lib/data
 import { getContactMessages, getPrivacyRequestsForAdmin } from "@/lib/admin-content";
 import { ContactInboxClient, PrivacyRequestsClient } from "@/components/AdminInboxClient";
 import { TableWrap } from "@/components/TableWrap";
+import { assistedSellerOf } from "@/lib/assist/rules";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Privacy and compliance" };
@@ -168,19 +169,28 @@ export default async function AdminCompliancePage() {
                   </td>
                 </tr>
               ) : (
-                rows.map((a) => (
-                  <tr key={a.id}>
-                    <td>{formatDateTime(a.created_at)}</td>
-                    <td>
-                      {a.actor_id != null ? nameById[a.actor_id] || `user:${a.actor_id}` : "system"}{" "}
-                      <span className="muted small">({a.actor_role})</span>
-                    </td>
-                    <td>{a.action}</td>
-                    <td>
-                      <code>{a.target}</code>
-                    </td>
-                  </tr>
-                ))
+                rows.map((a) => {
+                  // An admin assisting a seller (lib/assist): "Admin X (admin), for seller Y".
+                  const forSeller = assistedSellerOf(a.target);
+                  return (
+                    <tr key={a.id}>
+                      <td>{formatDateTime(a.created_at)}</td>
+                      <td>
+                        {a.actor_id != null ? nameById[a.actor_id] || `user:${a.actor_id}` : "system"}{" "}
+                        <span className="muted small">({a.actor_role})</span>
+                        {forSeller != null ? (
+                          <span className="small">
+                            , for {nameById[forSeller] || `seller:${forSeller}`}
+                          </span>
+                        ) : null}
+                      </td>
+                      <td>{a.action}</td>
+                      <td>
+                        <code>{a.target}</code>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>

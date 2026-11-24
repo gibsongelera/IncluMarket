@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getSession } from "@/lib/session";
+import { ASSIST_CLOSED } from "@/lib/assist/rules";
 import { guardByIp } from "@/lib/security/rate-limit";
 import { isMissingObject } from "@/lib/db-errors";
 import { queueEmail } from "@/lib/email/send";
@@ -72,6 +73,7 @@ export async function unsubscribeNewsletter(token: string): Promise<ActionResult
 export async function setMyNewsletter(on: boolean): Promise<ActionResult> {
   const session = await getSession();
   if (!session) return { ok: false, error: "Please sign in again." };
+  if (session.assistedBy) return { ok: false, error: ASSIST_CLOSED };
   const email = session.email.trim().toLowerCase();
   if (on) {
     const res = await subscribe(email, "account");

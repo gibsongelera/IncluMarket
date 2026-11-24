@@ -18,6 +18,7 @@ import {
 import { Icon } from "./Icon";
 import { Pill } from "./Pill";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { AssistSellerDialog } from "./AssistSellerDialog";
 import type { AdminUserRow } from "@/lib/admin-list-types";
 import type { Role } from "@/lib/types";
 import { TableWrap } from "./TableWrap";
@@ -85,6 +86,10 @@ export function AdminUsersClient({
 
   const [pending, setPending] = useState<Pending | null>(null);
   const [pendingError, setPendingError] = useState<string | null>(null);
+  // The seller whose Seller Centre is about to open (lib/actions/assist.ts).
+  const [assist, setAssist] = useState<{ id: number; name: string } | null>(null);
+  const assistTarget = (u: UserRow) => ({ id: u.id, name: u.name || `Seller #${u.id}` });
+  const canAssist = (u: UserRow) => u.role === "seller" && u.account_status === "active";
 
   // Where focus goes when an action takes the row off this tab once
   // router.refresh() lands: a delete, an anonymise (the name changes, and
@@ -439,6 +444,16 @@ export function AdminUsersClient({
                       <button type="button" className="btn btn--ghost btn--sm" onClick={() => openEdit(u)}>
                         Edit…
                       </button>
+                      {canAssist(u) ? (
+                        <button
+                          key="assist"
+                          type="button"
+                          className="btn btn--ghost btn--sm"
+                          onClick={() => setAssist(assistTarget(u))}
+                        >
+                          Open Seller Centre…
+                        </button>
+                      ) : null}
                       {u.role === "seller" ? (
                         <button
                           key={u.is_featured_seller ? "unfeature" : "feature"}
@@ -495,6 +510,8 @@ export function AdminUsersClient({
       >
         {dialog?.body}
       </ConfirmDialog>
+
+      <AssistSellerDialog seller={assist} onClose={() => setAssist(null)} />
 
       <dialog id="user-modal" className="modal modal--wide" ref={modalRef} aria-labelledby="um-title">
         <form className="modal-form" id="user-form" noValidate onSubmit={save}>
@@ -686,6 +703,21 @@ export function AdminUsersClient({
                   >
                     Send password reset email
                   </button>
+                  {canAssist(detail) ? (
+                    <>
+                      {" "}
+                      <button
+                        type="button"
+                        className="btn btn--outline btn--sm"
+                        onClick={() => {
+                          detailsRef.current?.close();
+                          setAssist(assistTarget(detail));
+                        }}
+                      >
+                        Open their Seller Centre…
+                      </button>
+                    </>
+                  ) : null}
                 </p>
                 <h3 className="detail-heading">Activity footprint</h3>
                 <ul className="detail-metrics">

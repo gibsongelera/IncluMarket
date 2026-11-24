@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getSession } from "@/lib/session";
+import { ASSIST_CLOSED } from "@/lib/assist/rules";
 import { isMissingObject } from "@/lib/db-errors";
 import { boundedText } from "@/lib/validation/data-url";
 import { createNotification, notifyAdmins } from "@/lib/notify";
@@ -40,6 +41,7 @@ export async function requestPayout(input: {
 }): Promise<PayoutResult> {
   const session = await getSession();
   if (!session || session.role !== "seller") return { ok: false, error: "Seller access required." };
+  if (session.assistedBy) return { ok: false, error: ASSIST_CLOSED };
   const amount = Math.round(Number(input?.amount) * 100) / 100;
   if (!Number.isFinite(amount) || amount <= 0) return { ok: false, error: "Enter the amount to withdraw." };
   const method = String(input?.method ?? "");
@@ -79,6 +81,7 @@ export async function requestPayout(input: {
 export async function cancelPayoutRequest(payoutId: number): Promise<PayoutResult> {
   const session = await getSession();
   if (!session || session.role !== "seller") return { ok: false, error: "Seller access required." };
+  if (session.assistedBy) return { ok: false, error: ASSIST_CLOSED };
   const { data, error } = await createAdminClient()
     .from("im_payouts")
     .update({ status: "rejected", note: "Cancelled by the seller.", updated_at: new Date().toISOString() })

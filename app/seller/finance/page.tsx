@@ -12,7 +12,7 @@ export default async function SellerFinancePage() {
     <main id="main" tabIndex={-1} className="main--seller">
       <h1>Finance</h1>
       {finance.available ? (
-        <SellerFinanceClient finance={finance} />
+        <SellerFinanceClient finance={finance} closed={Boolean(session.assistedBy)} />
       ) : (
         <p className="notice notice--info">Earnings and payouts need database migration 0020.</p>
       )}

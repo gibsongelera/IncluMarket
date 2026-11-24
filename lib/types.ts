@@ -274,6 +274,11 @@ export interface SessionUser {
   role: Role;
   email: string;
   name: string;
+  /**
+   * Set while an admin works in this seller's Seller Centre for them
+   * (lib/assist): the session is the seller's, this is who is really there.
+   */
+  assistedBy?: { user_id: number; name: string; until: string };
 }
 
 /**

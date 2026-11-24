@@ -16,6 +16,7 @@ import { PWD_ID_EXAMPLE } from "@/lib/pwd/id-number";
 import { maskEmail } from "@/lib/format";
 import { toast } from "@/lib/toast";
 import { EmailText } from "./EmailText";
+import { AssistSellerDialog } from "./AssistSellerDialog";
 
 const EMPTY: SellerSetupInput = {
   name: "",
@@ -71,6 +72,8 @@ export function SellerSetupForm({ canSubmit }: { canSubmit: boolean }) {
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState<Done | null>(null);
   const [sending, setSending] = useState(false);
+  // The seller whose shop the admin is about to open (AssistSellerDialog).
+  const [assist, setAssist] = useState<{ id: number; name: string } | null>(null);
   // Focus moves once the new state has rendered, so a screen reader reads a
   // field together with the error now under it.
   const [focusId, setFocusId] = useState<string | null>(null);
@@ -173,6 +176,13 @@ export function SellerSetupForm({ canSubmit }: { canSubmit: boolean }) {
           <button type="button" className="btn btn--outline" onClick={sendAgain} disabled={sending}>
             {sending ? "Sending…" : "Send the email again"}
           </button>
+          <button
+            type="button"
+            className="btn btn--outline"
+            onClick={() => setAssist({ id: done.userId, name: done.name })}
+          >
+            Help them add products…
+          </button>
           <Link className="btn btn--outline" href={`/admin/users?q=${done.userId}&focus=${done.userId}`}>
             Open their account
           </Link>
@@ -180,6 +190,7 @@ export function SellerSetupForm({ canSubmit }: { canSubmit: boolean }) {
             Set up another seller
           </button>
         </div>
+        <AssistSellerDialog seller={assist} onClose={() => setAssist(null)} />
       </section>
     );
   }

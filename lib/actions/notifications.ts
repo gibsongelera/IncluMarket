@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getSession } from "@/lib/session";
+import { ASSIST_CLOSED } from "@/lib/assist/rules";
 import type { Notification } from "@/lib/types";
 import { groupsFor } from "@/lib/notification-types";
 import { isMissingObject } from "@/lib/db-errors";
@@ -66,6 +67,7 @@ export async function saveNotificationPref(
 ): Promise<ActionResult> {
   const session = await getSession();
   if (!session) return { ok: false, error: "Sign in required." };
+  if (session.assistedBy) return { ok: false, error: ASSIST_CLOSED };
   if (channel !== "in_app" && channel !== "email") return { ok: false, error: "Unknown setting." };
   const group = groupsFor(session.role).find((g) => g.key === groupKey);
   if (!group) return { ok: false, error: "Unknown setting." };

@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { readAssistCookie } from "@/lib/assist/cookie";
 import type { Role, SessionUser } from "./types";
 
 const CONTRAST_COOKIE = "im_contrast";
@@ -45,11 +46,52 @@ export async function getSession(): Promise<SessionUser | null> {
   // terminates the session (FR-12).
   if (profile.account_status === "suspended") return null;
 
+  if (profile.role === "admin") {
+    const assisted = await assistedSession(admin, user.id, profile);
+    if (assisted) return assisted;
+  }
+
   return {
     user_id: profile.id,
     role: profile.role as Role,
     email: profile.email,
     name: profile.name,
+  };
+}
+
+/**
+ * An admin working in a seller's Seller Centre (lib/actions/assist.ts) gets
+ * the SELLER's session, with assistedBy naming the admin: every seller page
+ * and action then works on the seller's own shop, so listings and sales stay
+ * theirs, and admin pages and actions are closed until the admin stops.
+ *
+ * The cookie counts only for the sign-in it was signed for, only while the
+ * admin is an active admin (checked above) and only while the seller is an
+ * active seller; anything else is the admin's own session again.
+ */
+async function assistedSession(
+  db: ReturnType<typeof createAdminClient>,
+  authUserId: string,
+  adminProfile: { id: number; name: string }
+): Promise<SessionUser | null> {
+  const grant = await readAssistCookie(authUserId);
+  if (!grant || grant.adminId !== adminProfile.id) return null;
+  const { data: seller } = await db
+    .from("im_profiles")
+    .select("id, role, email, name, account_status")
+    .eq("id", grant.sellerId)
+    .maybeSingle();
+  if (!seller || seller.role !== "seller" || seller.account_status !== "active") return null;
+  return {
+    user_id: seller.id,
+    role: "seller",
+    email: seller.email,
+    name: seller.name,
+    assistedBy: {
+      user_id: adminProfile.id,
+      name: adminProfile.name,
+      until: new Date(grant.until * 1000).toISOString(),
+    },
   };
 }
 

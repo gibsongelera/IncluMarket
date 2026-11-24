@@ -24,7 +24,8 @@ const GUEST_COOKIE = "im_chat_guest";
 const GUEST_MAX_AGE = 60 * 60 * 24 * 30; // 30 days
 
 export type ChatIdentity =
-  | { kind: "user"; userId: number; role: Role; name: string; email: string }
+  /** assisted: an admin is working in this seller's shop (lib/assist). */
+  | { kind: "user"; userId: number; role: Role; name: string; email: string; assisted?: boolean }
   | { kind: "guest"; guestId: string };
 
 /**
@@ -43,6 +44,7 @@ export async function resolveChatIdentity(): Promise<ChatIdentity> {
       role: session.role,
       name: session.name,
       email: session.email,
+      assisted: Boolean(session.assistedBy),
     };
   }
 
@@ -77,6 +79,7 @@ export async function peekChatIdentity(): Promise<ChatIdentity | null> {
       role: session.role,
       name: session.name,
       email: session.email,
+      assisted: Boolean(session.assistedBy),
     };
   }
   const jar = await cookies();

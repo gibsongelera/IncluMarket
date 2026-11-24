@@ -8,6 +8,7 @@ import { storePrivateImage } from "@/lib/media";
 import { boundedText } from "@/lib/validation/data-url";
 import { rateLimit } from "@/lib/security/rate-limit";
 import { isMissingObject } from "@/lib/db-errors";
+import { auditActor } from "@/lib/assist/rules";
 
 export interface ActionResult {
   ok: boolean;
@@ -58,7 +59,8 @@ export async function startConversation(
 const MAX_BODY = 2000;
 const MAX_ALT = 300;
 
-type Sender = { user_id: number; role: "buyer" | "seller" };
+/** assistedBy: the admin sending for this seller (lib/assist), if any. */
+type Sender = { user_id: number; role: "buyer" | "seller"; assistedBy?: number };
 type Convo = { buyer_id: number; seller_id: number };
 
 /** The signed-in buyer or seller, and the conversation if they are in it. */
@@ -79,7 +81,11 @@ async function senderIn(
   if (!convo) return { ok: false, error: "Conversation not found." };
   if (convo.buyer_id !== session.user_id && convo.seller_id !== session.user_id)
     return { ok: false, error: "You are not part of this conversation." };
-  return { ok: true, sender: { user_id: session.user_id, role: session.role }, convo };
+  return {
+    ok: true,
+    sender: { user_id: session.user_id, role: session.role, assistedBy: session.assistedBy?.user_id },
+    convo,
+  };
 }
 
 /** Save one message, touch the conversation and tell the other person. */
@@ -90,12 +96,22 @@ async function deliver(
   row: { body: string; image_path?: string; image_alt?: string | null }
 ): Promise<ActionResult> {
   const db = createAdminClient();
+  // The message is the seller's (the buyer is talking to their shop); the
+  // audit log says which admin wrote it for them.
   const { error } = await db.from("im_messages").insert({
     conversation_id: conversationId,
     sender_id: sender.user_id,
     sender_role: sender.role,
     ...row,
   });
+  if (!error && sender.assistedBy) {
+    await db.from("im_audit_logs").insert({
+      actor_id: sender.assistedBy,
+      actor_role: "admin",
+      action: row.image_path ? "sent_message_photo" : "sent_message",
+      target: `conversation:${conversationId} for seller:${sender.user_id}`,
+    });
+  }
   if (error) {
     if (row.image_path && isMissingObject(error)) return { ok: false, error: PHOTOS_NEED_MIGRATION };
     console.error(`[messages] insert: ${error.message}`);
@@ -178,6 +194,14 @@ export async function markConversationRead(conversationId: number): Promise<Acti
     .neq("sender_id", session.user_id)
     .is("read_at", null);
   if (error) return { ok: false, error: error.message };
+
+  // Opening a seller's conversation is reading a buyer's private messages,
+  // so an assisting admin's reading is on the record too.
+  if (session.assistedBy) {
+    await db
+      .from("im_audit_logs")
+      .insert({ ...auditActor(session, `conversation:${conversationId}`), action: "read_conversation" });
+  }
 
   revalidateMessages();
   return { ok: true };
