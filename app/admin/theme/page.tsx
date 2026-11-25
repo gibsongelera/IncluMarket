@@ -4,6 +4,7 @@ import { getThemePresets, getThemePreset } from "@/lib/theme";
 import { getThemeSettings } from "@/lib/data";
 
 export const dynamic = "force-dynamic";
+export const metadata = { title: "Theme & appearance" };
 
 export default async function AdminThemePage() {
   const session = await requireRole(["admin"]);

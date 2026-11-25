@@ -2,6 +2,7 @@ import { requireRole } from "@/lib/session";
 import { AdminReportsClient } from "@/components/AdminReportsClient";
 
 export const dynamic = "force-dynamic";
+export const metadata = { title: "Reports" };
 
 export default async function AdminReportsPage() {
   const session = await requireRole(["admin"]);

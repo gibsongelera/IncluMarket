@@ -3,6 +3,7 @@ import { MessagesClient } from "@/components/MessagesClient";
 import { getConversationsForUser, getDisplayNames, getMessagesForConversations } from "@/lib/data";
 
 export const dynamic = "force-dynamic";
+export const metadata = { title: "Messages" };
 
 export default async function SellerMessagesPage({
   searchParams,

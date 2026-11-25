@@ -6,6 +6,7 @@ import { priceCartForBuyer } from "@/lib/pricing/engine";
 import { getDisplayNames } from "@/lib/data";
 
 export const dynamic = "force-dynamic";
+export const metadata = { title: "Your cart" };
 
 export default async function CartPage() {
   const session = await requireRole(["buyer"]);

@@ -3,6 +3,7 @@ import { AdminTicketsClient } from "@/components/AdminTicketsClient";
 import { getProfiles, getTicketResponses, getTickets } from "@/lib/data";
 
 export const dynamic = "force-dynamic";
+export const metadata = { title: "Support tickets" };
 
 export default async function AdminTicketsPage() {
   const session = await requireRole(["admin"]);

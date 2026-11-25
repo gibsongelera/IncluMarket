@@ -4,6 +4,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { LandingClient } from "@/components/LandingClient";
 
 export const dynamic = "force-dynamic";
+// Both tabs live here and switch without a reload, so the title names both.
+export const metadata = { title: "Sign in or create an account" };
 
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
   const session = await getSession().catch(() => null);
