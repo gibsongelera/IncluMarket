@@ -5,6 +5,7 @@ import { SupportClient } from "@/components/SupportClient";
 import { getTicketResponsesForTickets, getTicketsForUser } from "@/lib/data";
 
 export const dynamic = "force-dynamic";
+export const metadata = { title: "Help & support" };
 
 export default async function SupportPage() {
   const session = await requireRole(["buyer"]);
