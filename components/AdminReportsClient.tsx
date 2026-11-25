@@ -54,13 +54,13 @@ const REPORTS: { type: ReportType; label: string; hint: string; filenameExample:
   {
     type: "sold_out",
     label: "Sold out",
-    hint: "When each item sold out, units sold, back in stock, photo link (needs migration 0027).",
+    hint: "When each item sold out, units sold, back in stock, photo link.",
     filenameExample: "InclusiveMarket_Sold_Out_Report_YYYY-MM-DD.xlsx",
   },
   {
     type: "item_history",
     label: "Item history",
-    hint: "Photos and listings removed, with the old photo links and who removed them (needs migration 0027).",
+    hint: "Photos and listings removed, with the old photo links and who removed them.",
     filenameExample: "InclusiveMarket_Item_History_Report_YYYY-MM-DD.xlsx",
   },
 ];
